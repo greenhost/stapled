@@ -1,9 +1,13 @@
+#!/usr/bin/env python3
+import os
 import sys
 import argparse
 import time
 import logging
 import threading
-from OpenSSL import crypto
+from queue import Queue
+import daemon
+import cryptography
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -11,8 +15,11 @@ logging.basicConfig(
 )
 LOG = logging.getLogger()
 
+QUEUE_MAX_SIZE = 0  # 0 = unlimited
+FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
 
-def main():
+
+def init():
     """
         Parse arguments
     """
@@ -26,18 +33,12 @@ def main():
     )
 
     parser.add_argument(
-        'certdir',
-        type=str,
-        help='Directory containing the certificates used by HAProxy.'
-    )
-
-    parser.add_argument(
         '--minimum-validity',
         type=int,
         default=7200,
         help=(
-            'If the staple is valid for less than this time in seconds an '
-            'attempt will be made to get a new, valid staple (default: 7200).'
+            "If the staple is valid for less than this time in seconds an "
+            "attempt will be made to get a new, valid staple (default: 7200)."
         )
     )
 
@@ -46,7 +47,7 @@ def main():
         '--threads',
         type=int,
         default=2,
-        help='Amount of threads to run for renewing staples.'
+        help="Amount of threads to run for renewing staples."
     )
 
     parser.add_argument(
@@ -54,38 +55,103 @@ def main():
         '--verbose',
         action='count',
         default=0,
-        help='Print more info (default: FATAL).'
+        help="Print more info (default: FATAL)."
+    )
+
+    parser.add_argument(
+        '-d',
+        '--daemon',
+        action='store_true',
+        help=(
+            "Daemonise the process, release from shell and process group, run"
+            "under new process group, optionally drop privileges and chroot."
+        )
+
+    )
+
+    parser.add_argument(
+        '--file-extensions',
+        type=str,
+        default=FILE_EXTENSIONS_DEFAULT,
+        help=(
+            "Files with which extensions should be scanned? Comma separated "
+            "list (default: crt,pem,cer)"
+        )
+    )
+
+    parser.add_argument(
+        'certdirs',
+        type=str,
+        nargs='+',
+        help="Directory containing the certificates used by HAProxy."
     )
 
     args = parser.parse_args()
 
     LOG.setLevel(max(min(args.verbose*10, 50), 0))
 
-    LOG.info("Spawning main thread.")
-    d = threading.Thread(name='daemon', target=daemon, kwargs=args.__dict__)
-    d.setDaemon(True)
-    d.start()
-    LOG.info("Started main thread (%s)", d.ident)
-    d.join()
+    if args.daemon:
+        LOG.info("Daemonising now..")
+        with daemon.DaemonContext():
+            daemon = OCSPSDaemon(args)
+    else:
+        LOG.info("Running interactively..")
+        daemon = OCSPSDaemon(args)
 
 
-def daemon(**kwargs):
-    time.sleep(0.1)
-    LOG.info(kwargs)
-    LOG.info('Spawning OSCP stapling renewal threads.')
-    threads = []
-    for tid in range(kwargs['threads']):
-        thread = OSCPSRenew()
-        thread.name = "thread-{}".format(tid)
-        thread.start()
-        threads.append(thread)
+class OCSPSDaemon(object):
 
-    while True:
-        for thread in threads:
-            if not thread.is_alive():
+    def __init__(self, args):
+        LOG.debug("Started with CLI args: %s", str(args))
+        self.queue = Queue(QUEUE_MAX_SIZE)
+        self.certdirs = args.certdirs
+        self.file_extensions = args.file_extensions.replace(" ","").split(",")
+        self.thread_count = args.threads
 
-                thread = OSCPSRenew()
+        # Ledger of files and their data.
+        self.cert_files = {}
 
+        LOG.info(
+            "Starting OCSP Stapling daemon, finding files of types: %s with "
+            "%d threads.",
+            args.file_extensions,
+            self.thread_count
+        )
+
+        self.run()
+
+    def run(self):
+        #while True:
+        self.find_new_certs()
+
+        for tid in range(self.thread_count):
+            thread = OSCPSRenew()
+            thread.name = "thread-{}".format(tid)
+            thread.daemon = True
+            thread.start()
+        time.sleep(2)
+
+    def find_new_certs(self):
+        files = []
+        LOG.info("Scanning directories: %s", ", ".join(self.certdirs))
+        try:
+            for path in self.certdirs:
+                LOG.debug("Scanning directory: %s", path)
+                for file in os.listdir(path):
+                    ext = os.path.splitext(file)[1].lstrip(".")
+                    file = os.path.join(path, file)
+                    if ext in self.file_extensions:
+                        LOG.debug("Found a candidate file %s", file)
+                        if file not in self.cert_files:
+                            self.cert_files[file] = ParsedCertFile(file)
+        except FileNotFoundError:
+            LOG.error("Can't read directory: %s, does not exist.", path)
+
+
+class ParsedCertFile(object):
+
+    def __init__(self, file):
+        pass
 
 class OSCPSRenew(threading.Thread):
     '''
@@ -98,7 +164,7 @@ class OSCPSRenew(threading.Thread):
         while True:
             self.hello_world(i)
             i = i+1
-            time.sleep(1)
+            time.sleep(.1)
 
     @staticmethod
     def hello_world(iteration):
@@ -111,4 +177,4 @@ class OSCPSRenew(threading.Thread):
         )
 
 if __name__ == '__main__':
-    main()
+    init()

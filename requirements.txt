@@ -1,0 +1,9 @@
+cffi==1.9.1
+cryptography==1.7.1
+docutils==0.13.1
+idna==2.2
+lockfile==0.12.2
+pyasn1==0.1.9
+pycparser==2.17
+python-daemon==2.1.2
+six==1.10.0
