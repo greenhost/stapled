@@ -8,6 +8,7 @@ import threading
 from queue import Queue
 import daemon
 import cryptography
+from models.parsedcert import ParsedCertFile
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -93,10 +94,10 @@ def init():
     if args.daemon:
         LOG.info("Daemonising now..")
         with daemon.DaemonContext():
-            daemon = OCSPSDaemon(args)
+            context = OCSPSDaemon(args)
     else:
         LOG.info("Running interactively..")
-        daemon = OCSPSDaemon(args)
+        DaemonContext = OCSPSDaemon(args)
 
 
 class OCSPSDaemon(object):
@@ -148,11 +149,6 @@ class OCSPSDaemon(object):
             LOG.error("Can't read directory: %s, does not exist.", path)
 
 
-class ParsedCertFile(object):
-
-    def __init__(self, file):
-        pass
-
 class OSCPSRenew(threading.Thread):
     '''
         The thread that renews OCSP staples.
@@ -161,7 +157,7 @@ class OSCPSRenew(threading.Thread):
     def run(self):
         super(OSCPSRenew, self).__init__()
         i = 0
-        while True:
+        while i<5:
             self.hello_world(i)
             i = i+1
             time.sleep(.1)
