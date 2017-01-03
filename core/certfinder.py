@@ -69,6 +69,8 @@ def _cert_finder_factory(threaded=True):
                  :refresh_interval int optional: The minimum amount of time (s)
                     between indexing runs, defaults to 10 seconds. Set to None
                     to run only once.
+                :file_extensions array optional: An array containing the file
+                    extensions of files to check for certificate content.
             """
             self.last_refresh = None
             self.files = {}

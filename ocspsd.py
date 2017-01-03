@@ -1,13 +1,34 @@
 #!/usr/bin/env python3
-import os
-import sys
+"""
+    This is the main script that starts the OCSP Staple daemon which indexes
+    your certificate directories and requests staples for all certificates
+    in them. They will be saved as `certificatename.pem.staple` in the
+    directories that are being indexed.
+
+    This is meant as a helper daemon for HAProxy which doesn't do OCSP stapling
+    out of the box, even though it can serve staple files, which is what we use
+    to our benefit.
+
+    Type ocsp.py -h for all command line arguments.
+
+    This module collects the command line arguments and detaches the process
+    from the user's context if `-d` (daemon mode) is specified, then spawns a
+    bunch of threads for:
+     - Indexing certificates in the given directories.
+     - Parsing certificate files and determining validity, then requesting a
+       staple if valid.
+     - Renewing staples for certificates from the queue. This process requires
+       a connection to the CA of that issued the certificate and is blocking. It
+       is therefore heavily threaded. This is also the only process you can
+       select the amount of threads for with a command line argument.
+"""
+
 import argparse
-import time
 import logging
 import threading
-from queue import Queue
+import queue
 import daemon
-from models.parsedcert import ParsedCertFile
+from core import certfinder, oscp
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -15,8 +36,8 @@ logging.basicConfig(
 )
 LOG = logging.getLogger()
 
-QUEUE_MAX_SIZE = 0  # 0 = unlimited
-FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
+QUEUE_MAX_SIZE_PARSE = 0  # 0 = unlimited
+QUEUE_MAX_SIZE_RENEW = 0  # 0 = unlimited
 
 
 def init():
@@ -44,7 +65,7 @@ def init():
 
     parser.add_argument(
         '-t',
-        '--threads',
+        '--renewal-threads',
         type=int,
         default=2,
         help="Amount of threads to run for renewing staples."
@@ -72,7 +93,7 @@ def init():
     parser.add_argument(
         '--file-extensions',
         type=str,
-        default=FILE_EXTENSIONS_DEFAULT,
+        default=certfinder.FILE_EXTENSIONS_DEFAULT,
         help=(
             "Files with which extensions should be scanned? Comma separated "
             "list (default: crt,pem,cer)"
@@ -88,10 +109,15 @@ def init():
     )
 
     parser.add_argument(
-        'certdirs',
+        'directories',
         type=str,
         nargs='+',
-        help="Directory containing the certificates used by HAProxy."
+        help=(
+            "Directories containing the certificates used by HAProxy. "
+            "Multiple directories may be specified separated by a space. "
+            "This is a positional argument and nothing but directories may "
+            "succeed it."
+        )
     )
 
     args = parser.parse_args()
@@ -104,128 +130,40 @@ def init():
             context = OCSPSDaemon(args)
     else:
         LOG.info("Running interactively..")
-        DaemonContext = OCSPSDaemon(args)
+        context = OCSPSDaemon(args)
 
 
 class OCSPSDaemon(object):
 
     def __init__(self, args):
         LOG.debug("Started with CLI args: %s", str(args))
-        self.queue = Queue(QUEUE_MAX_SIZE)
-        self.certdirs = args.certdirs
-        self.file_extensions = args.file_extensions.replace(" ","").split(",")
-        self.thread_count = args.threads
+        self.parse_queue = queue.Queue(QUEUE_MAX_SIZE_PARSE)
+        self.renew_queue = queue.Queue(QUEUE_MAX_SIZE_RENEW)
+        self.directories = args.directories
+        self.file_extensions = args.file_extensions.replace(" ", "").split(",")
+        self.renewal_threads = args.renewal_threads
         self.refresh_interval = args.refresh_interval
-
-        # Ledger of files and their data.
-        self.crt_files = {}
 
         LOG.info(
             "Starting OCSP Stapling daemon, finding files of types: %s with "
             "%d threads.",
-            args.file_extensions,
-            self.thread_count
+            ", ".join(self.file_extensions),
+            self.renewal_threads
         )
 
-        self.run()
-        self.queue.join()
-
-    def run(self):
-
-        for tid in range(self.thread_count):
-            thread = OSCPSRenew()
+        # Spawn renewal threads
+        for tid in range(self.renewal_threads):
+            thread = ocsp.OSCPSRenewThreaded()
             thread.name = "thread-{}".format(tid)
             thread.daemon = True
             thread.start()
 
-        # Initially find all certs in cert dirs.
-        self.refresh(forever=True)
-
-    def _find_new_certs(self):
-        files = []
-        LOG.info("Scanning directories: %s", ", ".join(self.certdirs))
-        try:
-            for path in self.certdirs:
-                LOG.debug("Scanning directory: %s", path)
-                for file in os.listdir(path):
-                    ext = os.path.splitext(file)[1].lstrip(".")
-                    file = os.path.join(path, file)
-                    if ext in self.file_extensions:
-                        LOG.debug("Found a candidate file %s", file)
-                        if file not in self.crt_files:
-                            parsed_crt = ParsedCertFile(file)
-                            self.crt_files[file] = parsed_crt
-                            self.queue.put(parsed_crt)
-
-        except FileNotFoundError:
-            LOG.error("Can't read directory: %s, does not exist.", path)
-
-    def _update_cached_certs(self):
-        for crt_file, parsed_cert in self.crt_files.items():
-            # purge certs that no longer exist in the cert dirs
-            if not os.path.exists(crt_file):
-                del self.crt_file[crt_file]
-            if os.path.getmtime(crt_file) > parsed_cert.time_parsed:
-                self.queue.put(parsed_crt)
-
-    def refresh(self, forever=False):
-        self.last_refresh = time.time()
-        LOG.info("Updating current cache..")
-        self._update_cached_certs()
-        LOG.info("Adding new certificates to cache..")
-        self._find_new_certs()
-
-        # Schedule the next refresh run..
-        if forever:
-            since_last = time.time() - self.last_refresh
-            # Check if the last refresh took longer than the interval..
-            if since_last > self.refresh_interval:
-                # It did so start right now..
-                LOG.info(
-                    "Starting a new refresh immediately because the last "
-                    "refresh took %0.3f seconds while the minimum interval is "
-                    "%d seconds.",
-                    since_last,
-                    self.refresh_interval
-                )
-                self.refresh()
-            else:
-                # Wait the remaining time before refreshing again..
-                LOG.info(
-                    "Scheduling a new refresh in %0.2f seconds because the "
-                    "last refresh took %0.2f seconds while the minimum "
-                    "interval is %d seconds.",
-                    self.refresh_interval - since_last,
-                    since_last,
-                    self.refresh_interval
-                )
-                threading.Timer(
-                    self.refresh_interval - since_last,
-                    self.refresh,
-                    kwargs=dict(forever=forever)
-                ).start()
-
-class OSCPSRenew(threading.Thread):
-    '''
-        The thread that renews OCSP staples.
-    '''
-
-    def run(self):
-        super(OSCPSRenew, self).__init__()
-        i = 0
-        while i<3000:
-            # self.hello_world(i)
-            i = i+1
-            time.sleep(.1)
-
-    @staticmethod
-    def hello_world(iteration):
-        """
-            Print Hello world, the iteration and the thread ID
-        """
-        LOG.info(
-            "Hello world %s",
-            iteration
+        # Start finding certificates in the specified directories
+        certfinder.CertFinderThreaded(
+            directories=self.directories,
+            parse_queue=self.parse_queue,
+            refresh_interval=self.refresh_interval,
+            file_extensions=self.file_extensions
         )
 
 if __name__ == '__main__':
