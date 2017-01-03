@@ -7,7 +7,6 @@ import logging
 import threading
 from queue import Queue
 import daemon
-import cryptography
 from models.parsedcert import ParsedCertFile
 
 logging.basicConfig(
@@ -81,6 +80,14 @@ def init():
     )
 
     parser.add_argument(
+        '-r',
+        '--refresh-interval',
+        type=int,
+        default=10,
+        help="Minimum time to wait between parsing cert dirs and certificates."
+    )
+
+    parser.add_argument(
         'certdirs',
         type=str,
         nargs='+',
@@ -108,9 +115,10 @@ class OCSPSDaemon(object):
         self.certdirs = args.certdirs
         self.file_extensions = args.file_extensions.replace(" ","").split(",")
         self.thread_count = args.threads
+        self.refresh_interval = args.refresh_interval
 
         # Ledger of files and their data.
-        self.cert_files = {}
+        self.crt_files = {}
 
         LOG.info(
             "Starting OCSP Stapling daemon, finding files of types: %s with "
@@ -120,19 +128,20 @@ class OCSPSDaemon(object):
         )
 
         self.run()
+        self.queue.join()
 
     def run(self):
-        #while True:
-        self.find_new_certs()
 
         for tid in range(self.thread_count):
             thread = OSCPSRenew()
             thread.name = "thread-{}".format(tid)
             thread.daemon = True
             thread.start()
-        time.sleep(2)
 
-    def find_new_certs(self):
+        # Initially find all certs in cert dirs.
+        self.refresh(forever=True)
+
+    def _find_new_certs(self):
         files = []
         LOG.info("Scanning directories: %s", ", ".join(self.certdirs))
         try:
@@ -143,11 +152,58 @@ class OCSPSDaemon(object):
                     file = os.path.join(path, file)
                     if ext in self.file_extensions:
                         LOG.debug("Found a candidate file %s", file)
-                        if file not in self.cert_files:
-                            self.cert_files[file] = ParsedCertFile(file)
+                        if file not in self.crt_files:
+                            parsed_crt = ParsedCertFile(file)
+                            self.crt_files[file] = parsed_crt
+                            self.queue.put(parsed_crt)
+
         except FileNotFoundError:
             LOG.error("Can't read directory: %s, does not exist.", path)
 
+    def _update_cached_certs(self):
+        for crt_file, parsed_cert in self.crt_files.items():
+            # purge certs that no longer exist in the cert dirs
+            if not os.path.exists(crt_file):
+                del self.crt_file[crt_file]
+            if os.path.getmtime(crt_file) > parsed_cert.time_parsed:
+                self.queue.put(parsed_crt)
+
+    def refresh(self, forever=False):
+        self.last_refresh = time.time()
+        LOG.info("Updating current cache..")
+        self._update_cached_certs()
+        LOG.info("Adding new certificates to cache..")
+        self._find_new_certs()
+
+        # Schedule the next refresh run..
+        if forever:
+            since_last = time.time() - self.last_refresh
+            # Check if the last refresh took longer than the interval..
+            if since_last > self.refresh_interval:
+                # It did so start right now..
+                LOG.info(
+                    "Starting a new refresh immediately because the last "
+                    "refresh took %0.3f seconds while the minimum interval is "
+                    "%d seconds.",
+                    since_last,
+                    self.refresh_interval
+                )
+                self.refresh()
+            else:
+                # Wait the remaining time before refreshing again..
+                LOG.info(
+                    "Scheduling a new refresh in %0.2f seconds because the "
+                    "last refresh took %0.2f seconds while the minimum "
+                    "interval is %d seconds.",
+                    self.refresh_interval - since_last,
+                    since_last,
+                    self.refresh_interval
+                )
+                threading.Timer(
+                    self.refresh_interval - since_last,
+                    self.refresh,
+                    kwargs=dict(forever=forever)
+                ).start()
 
 class OSCPSRenew(threading.Thread):
     '''
@@ -157,8 +213,8 @@ class OSCPSRenew(threading.Thread):
     def run(self):
         super(OSCPSRenew, self).__init__()
         i = 0
-        while i<5:
-            self.hello_world(i)
+        while i<3000:
+            # self.hello_world(i)
             i = i+1
             time.sleep(.1)
 
