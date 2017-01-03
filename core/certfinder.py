@@ -75,6 +75,9 @@ def _cert_finder_factory(threaded=True):
             self.directories = kwargs.pop('directories', None)
             self.parse_queue = kwargs.pop('parse_queue', None)
             self.refresh_interval = kwargs.pop('refresh_interval', 10)
+            self.file_extensions = kwargs.pop(
+                'file_extensions', FILE_EXTENSIONS_DEFAULT
+            )
             if base_object is threading.Thread:
                 self.threaded = True
                 super(_CertFinder, self).__init__()
