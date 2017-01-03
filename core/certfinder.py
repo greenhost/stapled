@@ -81,11 +81,12 @@ def _cert_finder_factory(threaded=True):
                 'file_extensions', FILE_EXTENSIONS_DEFAULT
             )
             if base_object is threading.Thread:
-                self.threaded = True
                 super(_CertFinder, self).__init__()
+                self.threaded = True
                 tid = kwargs.pop('tid', 0)
-                self.name = "cert-finder-{}".format(tid)
-                self.daemon = True
+                # self.name = "cert-finder-{}".format(tid)
+                self.name = "cert-finder"
+                self.daemon = False
                 self.start()
             else:
                 self.threaded = False
@@ -130,7 +131,7 @@ def _cert_finder_factory(threaded=True):
                                 if new_cert.valid:
                                     self.files[filename] = new_cert
                                     self.parse_queue.put(new_cert)
-            except OSError, exception:
+            except OSError(exception):
                 LOG.error(
                     "Can't read directory: %s, reason: %s.",
                     path, exception
@@ -157,7 +158,7 @@ def _cert_finder_factory(threaded=True):
                     )
                     continue
                 # purge and re-add files that have changed
-                if os.path.getmtime(filename) > cert_file.mod_time:
+                if os.path.getmtime(filename) > cert_file.modtime:
                     new_cert = CertFile(filename)
                     if new_cert.hash != cert_file.hash:
                         LOG.info(
@@ -181,6 +182,11 @@ def _cert_finder_factory(threaded=True):
             self._update_cached_certs()
             LOG.info("Adding new certificates to cache..")
             self._find_new_certs()
+
+            LOG.info(
+                "Queue info: %s items in queue.",
+                self.parse_queue.qsize()
+            )
 
             if self.refresh_interval is None:
                 # Stop refreshing if it is not wanted.
@@ -209,15 +215,9 @@ def _cert_finder_factory(threaded=True):
                     since_last,
                     self.refresh_interval
                 )
-                if self.threaded:
-                    threading.Timer(
-                        self.refresh_interval - since_last,
-                        self.refresh
-                    ).start()
-                else:
-                    time.sleep(self.refresh_interval - since_last)
-                    # TODO: Test if this still works after many iterations..
-                    self.refresh
+                time.sleep(self.refresh_interval - since_last)
+                # TODO: Test if this still works after many iterations..
+                self.refresh()
 
     return _CertFinder
 

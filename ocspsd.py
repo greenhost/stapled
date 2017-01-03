@@ -28,7 +28,8 @@ import logging
 import threading
 import queue
 import daemon
-from core import certfinder, oscp
+import time
+from core import certfinder, ocsp, certparser
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -87,7 +88,6 @@ def init():
             "Daemonise the process, release from shell and process group, run"
             "under new process group, optionally drop privileges and chroot."
         )
-
     )
 
     parser.add_argument(
@@ -122,7 +122,7 @@ def init():
 
     args = parser.parse_args()
 
-    LOG.setLevel(max(min(args.verbose*10, 50), 0))
+    LOG.setLevel(max(min(50 - args.verbose * 10, 50), 0))
 
     if args.daemon:
         LOG.info("Daemonising now..")
@@ -151,20 +151,25 @@ class OCSPSDaemon(object):
             self.renewal_threads
         )
 
-        # Spawn renewal threads
-        for tid in range(self.renewal_threads):
+        # Start ocsp response gathering threads
+        self.threads_list = []
+        for tid in range(0, self.renewal_threads):
             thread = ocsp.OSCPSRenewThreaded()
             thread.name = "thread-{}".format(tid)
             thread.daemon = True
             thread.start()
+            self.threads_list.append(thread)
 
-        # Start finding certificates in the specified directories
-        certfinder.CertFinderThreaded(
+        # Start certificate finding thread
+        self.parser_thread = certfinder.CertFinderThreaded(
             directories=self.directories,
             parse_queue=self.parse_queue,
             refresh_interval=self.refresh_interval,
             file_extensions=self.file_extensions
         )
+
+        # Start certificate parsing thread
+        self.finder_thread = certparser.CertParserThreaded()
 
 if __name__ == '__main__':
     init()

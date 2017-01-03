@@ -39,7 +39,7 @@ class CertFile(object):
         try:
             with open(filename, 'rb') as f_obj:
                 sha1.update(f_obj.read())
-        except IOError, exception:
+        except IOError(exception):
             # Catch to log the error and re-raise to handle at the appropriate
             # level
             LOG.error("Can't access file %s", filename)

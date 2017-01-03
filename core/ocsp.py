@@ -23,7 +23,7 @@ def _ocsp_renewal_factory(threaded=True):
         '''
 
         def run(self):
-            super(OSCPSRenew, self).__init__()
+            super(_OSCPSRenew, self).__init__()
             i = 0
             while i < 3000:
                 # self.hello_world(i)
