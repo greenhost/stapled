@@ -71,11 +71,13 @@ def _cert_finder_factory(threaded=True):
                     to run only once.
                 :file_extensions array optional: An array containing the file
                     extensions of files to check for certificate content.
+                :ignore_list array optional: List of files to ignore.
             """
             self.last_refresh = None
             self.files = {}
             self.directories = kwargs.pop('directories', None)
             self.parse_queue = kwargs.pop('parse_queue', None)
+            self.ignore_list = kwargs.pop('ignore_list', [])
             self.refresh_interval = kwargs.pop('refresh_interval', 10)
             self.file_extensions = kwargs.pop(
                 'file_extensions', FILE_EXTENSIONS_DEFAULT
@@ -126,15 +128,16 @@ def _cert_finder_factory(threaded=True):
                         ext = os.path.splitext(filename)[1].lstrip(".")
                         if ext in self.file_extensions:
                             filename = os.path.join(path, filename)
-                            if filename not in self.files:
+                            if filename not in self.files and \
+                                    filename not in self.ignore_list:
                                 new_cert = CertFile(filename)
                                 if new_cert.valid:
                                     self.files[filename] = new_cert
                                     self.parse_queue.put(new_cert)
-            except OSError(exception):
+            except OSError as err:
                 LOG.error(
                     "Can't read directory: %s, reason: %s.",
-                    path, exception
+                    path, err
                 )
 
         def _update_cached_certs(self):

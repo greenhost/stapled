@@ -29,7 +29,7 @@ import threading
 import queue
 import daemon
 import time
-from core import certfinder, ocsp, certparser
+from core import certfinder, ocsprenewer
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -38,7 +38,6 @@ logging.basicConfig(
 LOG = logging.getLogger()
 
 QUEUE_MAX_SIZE_PARSE = 0  # 0 = unlimited
-QUEUE_MAX_SIZE_RENEW = 0  # 0 = unlimited
 
 
 def init():
@@ -138,11 +137,11 @@ class OCSPSDaemon(object):
     def __init__(self, args):
         LOG.debug("Started with CLI args: %s", str(args))
         self.parse_queue = queue.Queue(QUEUE_MAX_SIZE_PARSE)
-        self.renew_queue = queue.Queue(QUEUE_MAX_SIZE_RENEW)
         self.directories = args.directories
         self.file_extensions = args.file_extensions.replace(" ", "").split(",")
         self.renewal_threads = args.renewal_threads
         self.refresh_interval = args.refresh_interval
+        self.ignore_list = []
 
         LOG.info(
             "Starting OCSP Stapling daemon, finding files of types: %s with "
@@ -154,10 +153,11 @@ class OCSPSDaemon(object):
         # Start ocsp response gathering threads
         self.threads_list = []
         for tid in range(0, self.renewal_threads):
-            thread = ocsp.OSCPSRenewThreaded()
-            thread.name = "thread-{}".format(tid)
-            thread.daemon = True
-            thread.start()
+            thread = ocsprenewer.OCSPRenewerThreaded(
+                parse_queue=self.parse_queue,
+                ignore_list=self.ignore_list,
+                tid=tid
+            )
             self.threads_list.append(thread)
 
         # Start certificate finding thread
@@ -165,11 +165,9 @@ class OCSPSDaemon(object):
             directories=self.directories,
             parse_queue=self.parse_queue,
             refresh_interval=self.refresh_interval,
-            file_extensions=self.file_extensions
+            file_extensions=self.file_extensions,
+            ignore_list=self.ignore_list
         )
-
-        # Start certificate parsing thread
-        self.finder_thread = certparser.CertParserThreaded()
 
 if __name__ == '__main__':
     init()

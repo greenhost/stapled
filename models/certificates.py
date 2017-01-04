@@ -14,7 +14,7 @@ class CertFile(object):
         """
             Initialise the CertFile model object.
         """
-        self.filename = None
+        self.filename = filename
         self.hash = self.hashfile(filename)
         self.modtime = self.file_modification_time(filename)
 
@@ -39,11 +39,11 @@ class CertFile(object):
         try:
             with open(filename, 'rb') as f_obj:
                 sha1.update(f_obj.read())
-        except IOError(exception):
+        except IOError as err:
             # Catch to log the error and re-raise to handle at the appropriate
             # level
             LOG.error("Can't access file %s", filename)
-            raise exception
+            raise err
         return sha1.hexdigest()
 
     def __repr__(self):
@@ -53,35 +53,3 @@ class CertFile(object):
         """
         return self.filename
 
-
-class ParsedCertFile(object):
-    """
-        Parses and holds parsed certificates.
-    """
-
-    def __init__(self, crt_file):
-        """
-            Initialise the parsed certificate model and parse the certificate.
-            :param CertFile crt_file:
-        """
-        self.filename = crt_file
-        LOG.info("Parsing cert file \"%s\".", crt_file)
-        with open(crt_file, 'rb') as cert_obj:
-            self.raw_data = cert_obj.read()
-        LOG.debug("Trying to parse certificate: \"%s\"", crt_file)
-
-        self.time_parsed = time.time()
-
-        # TODO: fill in these variables
-        self.ocsps_data = None
-        self.parsed_data = None
-        self.not_before = None
-        self.not_after = None
-        self.oscp_staple_not_after = None
-
-    def set_ocsp_staple_data(self, ocsp_data):
-        self._set_ocsp_staple_file(ocsp_data)
-
-    def _set_ocsp_staple_file(self, ocsp_staple_data):
-        with open("{}{}".format(self.filename, '.oscp'), 'wb') as ocsp_file:
-            ocsp_file.write(ocsp_staple_data)
