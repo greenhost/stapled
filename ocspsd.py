@@ -25,15 +25,19 @@
 
 import argparse
 import logging
+import logging.handlers
 import threading
 import queue
 import daemon
 import time
+import os
 from core import certfinder, ocsprenewer
+
+LOGFORMAT = '(%(threadName)-10s) %(message)s'
 
 logging.basicConfig(
     level=logging.DEBUG,
-    format='(%(threadName)-10s) %(message)s'
+    format=LOGFORMAT
 )
 LOG = logging.getLogger()
 
@@ -108,6 +112,20 @@ def init():
     )
 
     parser.add_argument(
+        '-l',
+        '--logfile',
+        type=str,
+        help="File to log output to."
+    )
+
+    parser.add_argument(
+        '--syslog',
+        action='store_true',
+        default=False,
+        help="Output to syslog."
+    )
+
+    parser.add_argument(
         'directories',
         type=str,
         nargs='+',
@@ -119,13 +137,29 @@ def init():
         )
     )
 
-    args = parser.parse_args()
+    log_file_handles = []
 
-    LOG.setLevel(max(min(50 - args.verbose * 10, 50), 0))
+    args = parser.parse_args()
+    args.directories = [os.path.abspath(d) for d in args.directories]
+
+    log_level = max(min(50 - args.verbose * 10, 50), 0)
+    LOG.setLevel(log_level)
+    if args.logfile:
+        fh = logging.FileHandler(args.logfile)
+        fh.setLevel(log_level)
+        fh.setFormatter(logging.Formatter(LOGFORMAT))
+        LOG.addHandler(fh)
+        log_file_handles.append(fh.stream)
+
+    if args.syslog:
+        sl = logging.handlers.SysLogHandler()
+        sl.setLevel(log_level)
+        sl.setFormatter(logging.Formatter(LOGFORMAT))
+        LOG.addHandler(sl)
 
     if args.daemon:
         LOG.info("Daemonising now..")
-        with daemon.DaemonContext():
+        with daemon.DaemonContext(files_preserve=log_file_handles):
             context = OCSPSDaemon(args)
     else:
         LOG.info("Running interactively..")
