@@ -26,12 +26,10 @@
 import argparse
 import logging
 import logging.handlers
-import threading
-import queue
-import daemon
-import time
 import os
-from core import certfinder, ocsprenewer
+import daemon
+from core import certfinder
+from core.daemon import OCSPSDaemon
 
 LOGFORMAT = '(%(threadName)-10s) %(message)s'
 
@@ -40,9 +38,6 @@ logging.basicConfig(
     format=LOGFORMAT
 )
 LOG = logging.getLogger()
-
-QUEUE_MAX_SIZE_PARSE = 0  # 0 = unlimited
-
 
 def init():
     """
@@ -107,8 +102,9 @@ def init():
         '-r',
         '--refresh-interval',
         type=int,
-        default=10,
-        help="Minimum time to wait between parsing cert dirs and certificates."
+        default=60,
+        help="Minimum time to wait between parsing cert dirs and "
+        "certificates (default=60)."
     )
 
     parser.add_argument(
@@ -145,63 +141,25 @@ def init():
     log_level = max(min(50 - args.verbose * 10, 50), 0)
     LOG.setLevel(log_level)
     if args.logfile:
-        fh = logging.FileHandler(args.logfile)
-        fh.setLevel(log_level)
-        fh.setFormatter(logging.Formatter(LOGFORMAT))
-        LOG.addHandler(fh)
-        log_file_handles.append(fh.stream)
+        file_handler = logging.FileHandler(args.logfile)
+        file_handler.setLevel(log_level)
+        file_handler.setFormatter(logging.Formatter(LOGFORMAT))
+        LOG.addHandler(file_handler)
+        log_file_handles.append(file_handler.stream)
 
     if args.syslog:
-        sl = logging.handlers.SysLogHandler()
-        sl.setLevel(log_level)
-        sl.setFormatter(logging.Formatter(LOGFORMAT))
-        LOG.addHandler(sl)
+        syslog_handler = logging.handlers.SysLogHandler()
+        syslog_handler.setLevel(log_level)
+        syslog_handler.setFormatter(logging.Formatter(LOGFORMAT))
+        LOG.addHandler(syslog_handler)
 
     if args.daemon:
         LOG.info("Daemonising now..")
         with daemon.DaemonContext(files_preserve=log_file_handles):
-            context = OCSPSDaemon(args)
+            OCSPSDaemon(args)
     else:
         LOG.info("Running interactively..")
-        context = OCSPSDaemon(args)
-
-
-class OCSPSDaemon(object):
-
-    def __init__(self, args):
-        LOG.debug("Started with CLI args: %s", str(args))
-        self.parse_queue = queue.Queue(QUEUE_MAX_SIZE_PARSE)
-        self.directories = args.directories
-        self.file_extensions = args.file_extensions.replace(" ", "").split(",")
-        self.renewal_threads = args.renewal_threads
-        self.refresh_interval = args.refresh_interval
-        self.ignore_list = []
-
-        LOG.info(
-            "Starting OCSP Stapling daemon, finding files of types: %s with "
-            "%d threads.",
-            ", ".join(self.file_extensions),
-            self.renewal_threads
-        )
-
-        # Start ocsp response gathering threads
-        self.threads_list = []
-        for tid in range(0, self.renewal_threads):
-            thread = ocsprenewer.OCSPRenewerThreaded(
-                parse_queue=self.parse_queue,
-                ignore_list=self.ignore_list,
-                tid=tid
-            )
-            self.threads_list.append(thread)
-
-        # Start certificate finding thread
-        self.parser_thread = certfinder.CertFinderThreaded(
-            directories=self.directories,
-            parse_queue=self.parse_queue,
-            refresh_interval=self.refresh_interval,
-            file_extensions=self.file_extensions,
-            ignore_list=self.ignore_list
-        )
+        OCSPSDaemon(args)
 
 if __name__ == '__main__':
     init()

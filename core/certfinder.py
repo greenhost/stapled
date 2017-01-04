@@ -109,7 +109,37 @@ def _cert_finder_factory(threaded=True):
                     "queued for parsing."
                 )
             LOG.info("Scanning directories: %s", ", ".join(self.directories))
-            self.refresh()
+            while True:
+                self.refresh()
+                if self.refresh_interval is None:
+                    # Stop refreshing if it is not wanted.
+                    return
+
+                # Schedule the next refresh run..
+                since_last = time.time() - self.last_refresh
+                # Check if the last refresh took longer than the interval..
+                if since_last > self.refresh_interval:
+                    # It did so start right now..
+                    LOG.info(
+                        "Starting a new refresh immediately because the last "
+                        "refresh took %0.3f seconds while the minimum "
+                        "interval is %d seconds.",
+                        since_last,
+                        self.refresh_interval
+                    )
+                    self.refresh()
+                else:
+                    # Wait the remaining time before refreshing again..
+                    LOG.info(
+                        "Scheduling a new refresh in %0.2f seconds because "
+                        "the last refresh took %0.2f seconds while the "
+                        "minimum interval is %d seconds.",
+                        self.refresh_interval - since_last,
+                        since_last,
+                        self.refresh_interval
+                    )
+                    time.sleep(self.refresh_interval - since_last)
+                    self.refresh()
 
         def _find_new_certs(self):
             """
@@ -190,37 +220,6 @@ def _cert_finder_factory(threaded=True):
                 "Queue info: %s items in queue.",
                 self.parse_queue.qsize()
             )
-
-            if self.refresh_interval is None:
-                # Stop refreshing if it is not wanted.
-                return
-
-            # Schedule the next refresh run..
-            since_last = time.time() - self.last_refresh
-            # Check if the last refresh took longer than the interval..
-            if since_last > self.refresh_interval:
-                # It did so start right now..
-                LOG.info(
-                    "Starting a new refresh immediately because the last "
-                    "refresh took %0.3f seconds while the minimum "
-                    "interval is %d seconds.",
-                    since_last,
-                    self.refresh_interval
-                )
-                self.refresh()
-            else:
-                # Wait the remaining time before refreshing again..
-                LOG.info(
-                    "Scheduling a new refresh in %0.2f seconds because "
-                    "the last refresh took %0.2f seconds while the "
-                    "minimum interval is %d seconds.",
-                    self.refresh_interval - since_last,
-                    since_last,
-                    self.refresh_interval
-                )
-                time.sleep(self.refresh_interval - since_last)
-                # TODO: Test if this still works after many iterations..
-                self.refresh()
 
     return _CertFinder
 
