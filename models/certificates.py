@@ -1,6 +1,8 @@
 import os
 import logging
 import hashlib
+import base64
+import urllib
 import certvalidator
 import ocspbuilder
 from asn1crypto import pem, x509
@@ -25,17 +27,9 @@ class CertFile(object):
         self.hash = self.hashfile(filename)
         self.modtime = self.file_modification_time(filename)
         self.end_entity = None
-        self.intermediates = None
+        self.intermediates = []
         self.ocsp_staple = None
-        self._validator = None
-
-    @property
-    def valid(self):
-        """
-            TODO: Implement some basic check to see if this could possibly be a
-            valid certificate file.
-        """
-        return True
+        self.chain = None
 
     @staticmethod
     def file_modification_time(filename):
@@ -61,22 +55,50 @@ class CertFile(object):
         """
             Extract the certificate (end_entity) and the chain (intermediates)
         """
-        end_entity, intermediates = self._read_full_chain()
-        if self._validate_cert(end_entity, intermediates):
-            self.end_entity = end_entity
-            self.intermediates = intermediates
-        else:
-            raise CertValidationError
+        self._read_full_chain()
+        self.chain = self._validate_cert()
 
-    def renew_ocsp_staple(self):
-            """
-                Renew the OCSP staple and save it to the correct file path
-            """
-            self._validate_cert_with_ocsp()
+    def renew_ocsp_staple(self, url_index=0):
+        """
+            Renew the OCSP staple and save it to the correct file path
+        """
+        self.ocsp_request = self._build_ocsp_request(
+            self.end_entity,
+            self.chain[-1]
+        )
+        LOG.info(
+            "Trying to get OCSP staple from url \"%s\"..",
+            self.ocsp_urls[url_index]
+        )
+        with open("{}.request".format(self.filename), 'wb') as fl:
+            fl.write(self.ocsp_request)
+        req = urllib.request.Request(
+            url=self.ocsp_urls[url_index],
+            data=self.ocsp_request,
+            method='POST',
+            headers={
+                "Content-Type": "application/ocsp-request"
+            }
+        )
+        with urllib.request.urlopen(req) as open_url:
+            data = open_url.read()
+        if 200 < open_url.status < 300:
+            LOG.warn(
+                "Tried the the OCSP url \"%s\" but the return status is bad.",
+                self.ocsp_urls[url_index]
+            )
+            if len(self.ocsp_urls) >= url_index+1:
+                self.renew_ocsp_staple(self, url_index=url_index+1)
+            else:
+                LOG.error(
+                    "Exhausted OCSP urls, stopping OCSP renewal.",
+                    self.ocsp_urls[url_index]
+                )
+        else:
+            LOG.info("Successful OCSP staple request.")
+            LOG.debug(data.decode('utf-8'))
 
     def _read_full_chain(self):
-        end_entity = None
-        intermediates = []
         with open(self.filename, 'rb') as f_obj:
             pem_obj = pem.unarmor(f_obj.read(), multiple=True)
         for type_name, _, der_bytes in pem_obj:
@@ -84,23 +106,45 @@ class CertFile(object):
                 cert = x509.Certificate.load(der_bytes)
                 if cert.ca:
                     LOG.debug("Found part of the chain..")
-                    intermediates.append(der_bytes)
+                    self.intermediates.append(der_bytes)
                 else:
                     LOG.debug("Found the end entity..")
-                    end_entity = der_bytes
-        return end_entity, intermediates
-
-    def _validate_cert(self, end_entity, intermediates):
-        try:
-            # Cache the validator for later use.
-            self._validator = certvalidator.CertificateValidator(
-                end_entity, intermediates
+                    self.end_entity = der_bytes
+                    self.ocsp_urls = cert.ocsp_urls
+        if self.end_entity is None:
+            LOG.error(
+                "Can't find server certificate items for \"%s\".",
+                self.filename
             )
-            self._validator.validate_usage(
+        if len(self.intermediates) < 1:
+            LOG.error(
+                "Can't find the CA certificate chain items.",
+                self.filename
+            )
+
+    def _validate_cert(self):
+        try:
+            if self.ocsp_staple is None:
+                LOG.info("Validating without OSCP staple.")
+                context = certvalidator.ValidationContext()
+            else:
+                LOG.info("Validating with OSCP staple.")
+                context = certvalidator.ValidationContext(
+                    ocsps=[self.ocsp_staple],
+                    allow_fetching=True
+                )
+            validator = certvalidator.CertificateValidator(
+                self.end_entity,
+                self.intermediates,
+                validation_context=context
+            )
+            chain = validator.validate_usage(
                 key_usage=set(['digital_signature']),
                 extended_key_usage=set(['server_auth']),
                 extended_optional=True
             )
+            LOG.debug("Certificate chain for \"%s\" validated.", self.filename)
+            return chain
         except certvalidator.errors.PathValidationError:
             raise CertValidationError(
                 "Failed to validate certificate path for \"{}\", will not "
@@ -116,59 +160,18 @@ class CertFile(object):
                 "Certificate \"{}\" is invalid, will not try to parse it "
                 "again.".format(self.filename)
             )
-        LOG.debug("Certificate chain for \"%s\" validated.", self.filename)
-        return True
 
-    def _validate_cert_with_ocsp(self):
+    @staticmethod
+    def _build_ocsp_request(end_entity, ca_crt):
         """
-            Check that the chain and the OCSP response validate together,
-            to prevent the proxy from serving invalid OCSP responses.
+            Generate an OCSP request to post to the OCSP server.
         """
-        try:
-            # ocsps = [self.ocsp_staple]
-            context = certvalidator.ValidationContext(
-                # ocsps=ocsps,
-                allow_fetching=True
-            )
-            validator = certvalidator.CertificateValidator(
-                self.end_entity,
-                self.intermediates,
-                validation_context=context
-            )
-            validator.validate_usage(
-                key_usage=set(['digital_signature']),
-                extended_key_usage=set(['server_auth']),
-                extended_optional=True
-            )
-            # How to get the OCSP staple out...
-            for var in validator._path.pop():
-                LOG.debug(var)
-
-        except certvalidator.errors.PathValidationError:
-            raise CertValidationError(
-                "Failed to validate certificate together with the OCSP staple "
-                "path for \"{}\", will not try to parse it again.".format(
-                    self.filename
-                )
-            )
-            return False
-        except certvalidator.errors.RevokedError:
-            raise CertValidationError(
-                "Certificate \"{}\" was revoked, will not try to parse it "
-                "again.".format(self.filename)
-            )
-            return False
-        except certvalidator.errors.InvalidCertificateError:
-            raise CertValidationError(
-                "Certificate \"{}\" is invalid, will not try to parse it "
-                "again.".format(self.filename)
-            )
-            return False
-        LOG.debug(
-            "Certificate chain for \"%s\" validated with OCSP.",
-            self.filename
+        builder = ocspbuilder.OCSPRequestBuilder(
+            asymmetric.load_certificate(end_entity),
+            asymmetric.load_certificate(ca_crt)
         )
-        return True
+        ocsp_request = builder.build()
+        return ocsp_request.dump()
 
     def __repr__(self):
         """

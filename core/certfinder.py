@@ -161,9 +161,8 @@ def _cert_finder_factory(threaded=True):
                             if filename not in self.files and \
                                     filename not in self.ignore_list:
                                 new_cert = CertFile(filename)
-                                if new_cert.valid:
-                                    self.files[filename] = new_cert
-                                    self.parse_queue.put(new_cert)
+                                self.files[filename] = new_cert
+                                self.parse_queue.put(new_cert)
             except OSError as err:
                 LOG.error(
                     "Can't read directory: %s, reason: %s.",
