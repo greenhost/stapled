@@ -70,47 +70,30 @@ class CertFile(object):
             "Trying to get OCSP staple from url \"%s\"..",
             self.ocsp_urls[url_index]
         )
-        with open("{}.request".format(self.filename), 'wb') as fl:
-            fl.write(self.ocsp_request)
-        req = urllib.request.Request(
-            url=self.ocsp_urls[url_index],
-            data=self.ocsp_request,
-            method='POST',
-            headers={
-                "Content-Type": "application/ocsp-request"
-            }
-        )
-        with urllib.request.urlopen(req) as open_url:
-            data = open_url.read()
-        if 200 < open_url.status < 300:
-            LOG.warn(
-                "Tried the the OCSP url \"%s\" but the return status is bad.",
-                self.ocsp_urls[url_index]
-            )
-            if len(self.ocsp_urls) >= url_index+1:
-                self.renew_ocsp_staple(self, url_index=url_index+1)
-            else:
-                LOG.error(
-                    "Exhausted OCSP urls, stopping OCSP renewal.",
-                    self.ocsp_urls[url_index]
-                )
-        else:
-            LOG.info("Successful OCSP staple request.")
-            LOG.debug(data.decode('utf-8'))
+        try:
+            ocsp_data = certvalidator.ocsp_client.fetch(
+                self.end_entity,
+                self.chain[-1],
+                hash_algo='sha256',
+                nonce=True
+            ).dump()
+            LOG.debug(ocsp_data)
+        except TypeError:
+            LOG.error("Received empty response from OCSP server.")
 
     def _read_full_chain(self):
         with open(self.filename, 'rb') as f_obj:
             pem_obj = pem.unarmor(f_obj.read(), multiple=True)
         for type_name, _, der_bytes in pem_obj:
             if type_name == 'CERTIFICATE':
-                cert = x509.Certificate.load(der_bytes)
-                if cert.ca:
+                crt = x509.Certificate.load(der_bytes)
+                if crt.ca:
                     LOG.debug("Found part of the chain..")
-                    self.intermediates.append(der_bytes)
+                    self.intermediates.append(crt)
                 else:
                     LOG.debug("Found the end entity..")
-                    self.end_entity = der_bytes
-                    self.ocsp_urls = cert.ocsp_urls
+                    self.end_entity = crt
+                    self.ocsp_urls = crt.ocsp_urls
         if self.end_entity is None:
             LOG.error(
                 "Can't find server certificate items for \"%s\".",

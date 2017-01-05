@@ -78,6 +78,7 @@ def _cert_finder_factory(threaded=True):
             self.directories = kwargs.pop('directories', None)
             self.parse_queue = kwargs.pop('parse_queue', None)
             self.ignore_list = kwargs.pop('ignore_list', [])
+            self.cert_list = kwargs.pop('cert_list', None)
             self.refresh_interval = kwargs.pop('refresh_interval', 10)
             self.file_extensions = kwargs.pop(
                 'file_extensions', FILE_EXTENSIONS_DEFAULT
@@ -107,6 +108,10 @@ def _cert_finder_factory(threaded=True):
                 raise ValueError(
                     "You need to pass a queue where found certificates can be "
                     "queued for parsing."
+                )
+            if self.cert_list is None:
+                raise ValueError(
+                    "You need to pass a dict for certificate data to be kept."
                 )
             LOG.info("Scanning directories: %s", ", ".join(self.directories))
             while True:
@@ -198,7 +203,7 @@ def _cert_finder_factory(threaded=True):
                             "parsing queue.",
                             filename
                         )
-                        del self.crt_file[filename]
+                        del self.cert_list[filename]
                         self.parse_queue.put(new_cert)
                         continue
 

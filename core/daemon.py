@@ -56,5 +56,6 @@ class OCSPSDaemon(object):
             parse_queue=self.parse_queue,
             refresh_interval=self.refresh_interval,
             file_extensions=self.file_extensions,
-            ignore_list=self.ignore_list
+            ignore_list=self.ignore_list,
+            cert_list=self.cert_list
         )
