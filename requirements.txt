@@ -5,3 +5,4 @@ lockfile==0.12.2
 ocspbuilder==0.10.2
 oscrypto==0.17.2
 python-daemon==2.1.2
+requests==2.12.4

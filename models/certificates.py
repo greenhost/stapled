@@ -4,6 +4,7 @@ import hashlib
 import binascii
 import urllib
 import time
+import requests
 import certvalidator
 import ocspbuilder
 from asn1crypto import pem, x509
@@ -87,6 +88,8 @@ class CertFile(object):
                 "Certificate chain is missing in \"{}\", can't validate "
                 "without it.".format(self.filename)
             )
+        url = self.ocsp_urls[url_index]
+        host = urllib.parse.urlparse(url).hostname
         self.ocsp_request = self._build_ocsp_request(
             self.end_entity,
             self.chain[-2]
@@ -100,37 +103,60 @@ class CertFile(object):
         )
         LOG.info(
             "Trying to get OCSP staple from url \"%s\"..",
-            self.ocsp_urls[url_index]
+            url
         )
         retry = RETRY_COUNT
         while retry > 0:
             try:
-                ocsp_response = certvalidator.ocsp_client.fetch(
-                    self.end_entity,
-                    self.chain[-1],
-                    hash_algo='sha256',
-                    nonce=True
-                ).dump()
-                if ocsp_response == b'':
+
+                request = requests.post(
+                    url,
+                    data=self.ocsp_request,
+                    headers={
+                        'Content-Type': 'application/ocsp-request',
+                        'Accept': 'application/ocsp-response',
+                        'Host': host
+                    }
+                )
+                # Raise HTTP exception if any occurred
+                request.raise_for_status()
+                ocsp_staple = request.content
+                LOG.debug(request.request.headers)
+                if ocsp_staple == b'':
                     msg = "Received empty response from {} for {}".format(
-                        self.ocsp_urls[0],
+                        url,
                         self.filename
                     )
                     LOG.warn(msg)
                     raise TypeError(msg)
+                self.ocsp_staple = ocsp_staple
 
-                self.ocsp_staple = ocsp_response
+                # TODO: Check the staples validity!
+                # TODO: Make a scheduler for renewal of staples
+                # TODO: send merge request for header in ocsp fetching
+
                 LOG.info(
-                    "Received good response from OCSP server for %s",
-                    self.filename
+                    "Received good response from OCSP server %s for %s",
+                    url,
+                    self.filename,
                 )
                 break
             except urllib.error.URLError as err:
                 LOG.error("Connection problem: %s", err)
             except TypeError:
                 LOG.warn(
-                    "Received empty response from OCSP server for %s",
+                    "Received empty response from OCSP server %s for %s",
+                    url,
                     self.filename
+                )
+            except requests.exceptions.HTTPError as err:
+                LOG.warn(
+                    "Received bad HTTP status code %s from OCSP server %s for "
+                    " %s: %s",
+                    request.status,
+                    url,
+                    self.filename,
+                    err
                 )
 
             retry = retry - 1
