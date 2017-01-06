@@ -1,8 +1,9 @@
 import os
 import logging
 import hashlib
-import base64
+import binascii
 import urllib
+import time
 import certvalidator
 import ocspbuilder
 from asn1crypto import pem, x509
@@ -10,8 +11,14 @@ from oscrypto import asymmetric
 
 LOG = logging.getLogger()
 
+RETRY_COUNT = 3
 
-class CertValidationError(BaseException):
+
+class CertValidationError(Exception):
+    pass
+
+
+class OCSPRenewError(BaseException):
     pass
 
 
@@ -29,7 +36,9 @@ class CertFile(object):
         self.end_entity = None
         self.intermediates = []
         self.ocsp_staple = None
-        self.chain = None
+        self.ocsp_request = None
+        self.ocsp_urls = []
+        self.chain = []
 
     @staticmethod
     def file_modification_time(filename):
@@ -55,45 +64,127 @@ class CertFile(object):
         """
             Extract the certificate (end_entity) and the chain (intermediates)
         """
-        self._read_full_chain()
-        self.chain = self._validate_cert()
+        try:
+            self._read_full_chain()
+            self.chain = self._validate_cert()
+        except TypeError:
+            raise CertValidationError(
+                "Can't validate the certificate because part of the "
+                "certificate chain is missing in \"{}\"".format(self.filename)
+            )
 
     def renew_ocsp_staple(self, url_index=0):
         """
             Renew the OCSP staple and save it to the correct file path
         """
+        if not self.end_entity:
+            raise CertValidationError(
+                "Certificate is missing in \"{}\", can't validate "
+                "without it.".format(self.filename)
+            )
+        if len(self.chain) < 1:
+            raise CertValidationError(
+                "Certificate chain is missing in \"{}\", can't validate "
+                "without it.".format(self.filename)
+            )
         self.ocsp_request = self._build_ocsp_request(
             self.end_entity,
-            self.chain[-1]
+            self.chain[-2]
+        )
+        LOG.debug(
+            # urllib.parse.quote_plus(
+            binascii.b2a_base64(
+                self.ocsp_request
+            ).decode('ascii').replace("\n", "")
+            # )
         )
         LOG.info(
             "Trying to get OCSP staple from url \"%s\"..",
             self.ocsp_urls[url_index]
         )
-        try:
-            ocsp_data = certvalidator.ocsp_client.fetch(
-                self.end_entity,
-                self.chain[-1],
-                hash_algo='sha256',
-                nonce=True
-            ).dump()
-            LOG.debug(ocsp_data)
-        except TypeError:
-            LOG.error("Received empty response from OCSP server.")
+        retry = RETRY_COUNT
+        while retry > 0:
+            try:
+                ocsp_response = certvalidator.ocsp_client.fetch(
+                    self.end_entity,
+                    self.chain[-1],
+                    hash_algo='sha256',
+                    nonce=True
+                ).dump()
+                if ocsp_response == b'':
+                    msg = "Received empty response from {} for {}".format(
+                        self.ocsp_urls[0],
+                        self.filename
+                    )
+                    LOG.warn(msg)
+                    raise TypeError(msg)
+
+                self.ocsp_staple = ocsp_response
+                LOG.info(
+                    "Received good response from OCSP server for %s",
+                    self.filename
+                )
+                break
+            except urllib.error.URLError as err:
+                LOG.error("Connection problem: %s", err)
+            except TypeError:
+                LOG.warn(
+                    "Received empty response from OCSP server for %s",
+                    self.filename
+                )
+
+            retry = retry - 1
+            if retry > 0:
+                sleep_time = (RETRY_COUNT - retry) * 5
+                LOG.info("Retrying in %d seconds..", sleep_time)
+                time.sleep(sleep_time)
+            else:
+                if url_index + 1 < len(self.ocsp_urls):
+                    self.renew_ocsp_staple(url_index+1)
+                else:
+                    raise OCSPRenewError(
+                        "Couldn't renew OCSP staple for \"{}\"".format(
+                            self.filename
+                        )
+                    )
+        # If we got this far it means we have a staple in self.ocsp_staple
+        # We would have had an exception otherwise. So let's verify that the
+        # staple is actually working before serving it to clients.
+        # To do this we run the validation again, this time self.ocsp_staple
+        # will be taken into account because it is no longer None
+        # If validation fails, it will raise an exception that should be
+        # handled at another level.
+        LOG.info("Validating staple..")
+        self._validate_cert()
+        # No exception was raised, so we can assume the staple is ok and write
+        # it to disk.
+        ocsp_filename = "{}.ocsp".format(self.filename)
+        LOG.info(
+            "Succesfully validated writing to file \"%s\"",
+            ocsp_filename
+        )
+        with open(ocsp_filename, 'wb') as f_obj:
+            f_obj.write(self.ocsp_staple)
 
     def _read_full_chain(self):
         with open(self.filename, 'rb') as f_obj:
             pem_obj = pem.unarmor(f_obj.read(), multiple=True)
-        for type_name, _, der_bytes in pem_obj:
-            if type_name == 'CERTIFICATE':
-                crt = x509.Certificate.load(der_bytes)
-                if crt.ca:
-                    LOG.debug("Found part of the chain..")
-                    self.intermediates.append(crt)
-                else:
-                    LOG.debug("Found the end entity..")
-                    self.end_entity = crt
-                    self.ocsp_urls = crt.ocsp_urls
+        try:
+            for type_name, _, der_bytes in pem_obj:
+                if type_name == 'CERTIFICATE':
+                    crt = x509.Certificate.load(der_bytes)
+                    if crt.ca:
+                        LOG.info("Found part of the chain..")
+                        self.intermediates.append(crt)
+                    else:
+                        LOG.info("Found the end entity..")
+                        self.end_entity = crt
+                        self.ocsp_urls = crt.ocsp_urls
+        except binascii.Error:
+            LOG.error(
+                "Certificate file contains errors \"%s\".",
+                self.filename
+            )
         if self.end_entity is None:
             LOG.error(
                 "Can't find server certificate items for \"%s\".",
@@ -101,7 +192,7 @@ class CertFile(object):
             )
         if len(self.intermediates) < 1:
             LOG.error(
-                "Can't find the CA certificate chain items.",
+                "Can't find the CA certificate chain items in \"%s\".",
                 self.filename
             )
 
@@ -126,12 +217,17 @@ class CertFile(object):
                 extended_key_usage=set(['server_auth']),
                 extended_optional=True
             )
-            LOG.debug("Certificate chain for \"%s\" validated.", self.filename)
+            LOG.info("Certificate chain for \"%s\" validated.", self.filename)
             return chain
+        except certvalidator.errors.PathBuildingError:
+            raise CertValidationError(
+                "Failed to validate certificate path for \"{}\", will not "
+                "try to parse it again.".format(self.filename)
+            )
         except certvalidator.errors.PathValidationError:
             raise CertValidationError(
                 "Failed to validate certificate path for \"{}\", will not "
-                " try to parse it again.".format(self.filename)
+                "try to parse it again.".format(self.filename)
             )
         except certvalidator.errors.RevokedError:
             raise CertValidationError(
@@ -153,8 +249,11 @@ class CertFile(object):
             asymmetric.load_certificate(end_entity),
             asymmetric.load_certificate(ca_crt)
         )
+        builder.nonce = False
+        #builder.hash_algo = 'sha256'
+        #builder.key_hash_algo = 'sha256'
         ocsp_request = builder.build()
-        return ocsp_request.dump()
+        return ocsp_request.dump(True)
 
     def __repr__(self):
         """

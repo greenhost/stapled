@@ -76,6 +76,10 @@ def _cert_parser_factory(threaded=True):
                     return False
                 self.parse_queue.task_done()
                 self.renew_queue.put(crt)
+                LOG.debug(
+                    "Queue info: %s items in renewal queue.",
+                    self.renew_queue.qsize()
+                )
 
         def _handle_failed_validation(self, crt, msg, delete_ocsp=True):
             self.ignore_list.append(crt.filename)

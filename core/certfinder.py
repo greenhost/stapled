@@ -158,7 +158,7 @@ def _cert_finder_factory(threaded=True):
             """
             try:
                 for path in self.directories:
-                    LOG.debug("Scanning directory: %s", path)
+                    LOG.info("Scanning directory: %s", path)
                     for filename in os.listdir(path):
                         ext = os.path.splitext(filename)[1].lstrip(".")
                         if ext in self.file_extensions:
@@ -188,7 +188,8 @@ def _cert_finder_factory(threaded=True):
             for filename, cert_file in self.files.items():
                 # purge certs that no longer exist in the cert dirs
                 if not os.path.exists(filename):
-                    del self.crt_file[filename]
+                    if filename in self.cert_list:
+                        del self.cert_list[filename]
                     LOG.info(
                         "File \"%s\" was deleted, removing it from the list.",
                         filename
@@ -203,7 +204,8 @@ def _cert_finder_factory(threaded=True):
                             "parsing queue.",
                             filename
                         )
-                        del self.cert_list[filename]
+                        if filename in self.cert_list:
+                            del self.cert_list[filename]
                         self.parse_queue.put(new_cert)
                         continue
 
@@ -220,8 +222,8 @@ def _cert_finder_factory(threaded=True):
             LOG.info("Adding new certificates to cache..")
             self._find_new_certs()
 
-            LOG.info(
-                "Queue info: %s items in queue.",
+            LOG.debug(
+                "Queue info: %s items in parse queue.",
                 self.parse_queue.qsize()
             )
 

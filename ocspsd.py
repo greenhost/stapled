@@ -31,7 +31,7 @@ import daemon
 from core import certfinder
 from core.daemon import OCSPSDaemon
 
-LOGFORMAT = '(%(threadName)-10s) %(message)s'
+LOGFORMAT = '(%(threadName)-10s) %(levelname)s %(message)s'
 
 logging.basicConfig(
     level=logging.DEBUG,
