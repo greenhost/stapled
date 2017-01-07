@@ -28,8 +28,8 @@ import logging
 import logging.handlers
 import os
 import daemon
+import core.daemon
 from core import certfinder
-from core.daemon import OCSPSDaemon
 
 LOGFORMAT = '(%(threadName)-10s) %(levelname)s %(message)s'
 
@@ -156,10 +156,10 @@ def init():
     if args.daemon:
         LOG.info("Daemonising now..")
         with daemon.DaemonContext(files_preserve=log_file_handles):
-            OCSPSDaemon(args)
+            core.daemon.run(args)
     else:
         LOG.info("Running interactively..")
-        OCSPSDaemon(args)
+        core.daemon.run(args)
 
 if __name__ == '__main__':
     init()

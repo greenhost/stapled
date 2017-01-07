@@ -14,10 +14,10 @@ LOG = logging.getLogger()
 def _ocsp_renewer_factory(threaded=True):
     """
         Returns a threaded or non-threaded class (not an instance) of
-            CertParser
+            OCSPRenewer
 
         :param bool threaded: Should the returned class be threaded?
-        :return class: _CertFinder class threaded if threaded argument == True
+        :return class: OCSPRenewer class threaded if threaded argument == True
     """
 
     if threaded:
@@ -69,11 +69,11 @@ def _ocsp_renewer_factory(threaded=True):
                 try:
                     crt.renew_ocsp_staple()
                 except OCSPRenewError as err:
-                    LOG.error(err)
+                    self._handle_failed_validation(crt, err)
                 except CertValidationError as err:
                     self._handle_failed_validation(crt, err)
-                self.renew_queue.task_done()
 
+                self.renew_queue.task_done()
                 # Keep cached record of parsed crt
                 self.cert_list[crt.filename] = crt
 
@@ -81,7 +81,7 @@ def _ocsp_renewer_factory(threaded=True):
                 self, crt, msg, delete_ocsp=True, ignore=False):
             if ignore:
                 self.ignore_list.append(crt.filename)
-            LOG.error(msg)
+            LOG.critical(msg)
             if delete_ocsp:
                 LOG.info(
                     "Deleting any OCSP staple: \"%s.ocsp\" if it exists.",
@@ -90,12 +90,12 @@ def _ocsp_renewer_factory(threaded=True):
                 try:
                     os.remove("{}.ocsp".format(crt.filename))
                 except IOError:
-                    LOG.info(
+                    LOG.debug(
                         "Can't delete OCSP staple, maybe it does not exist."
                     )
 
     return _OCSPRenewer
 
-# Create the objects for a threaded and a non-threaded CertFinder
+# Create the objects for a threaded and a non-threaded OCSPRenewer
 OCSPRenewerThreaded = _ocsp_renewer_factory()
 OCSPRenewer = _ocsp_renewer_factory(threaded=False)
