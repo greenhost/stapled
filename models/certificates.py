@@ -7,8 +7,10 @@ import time
 import requests
 import certvalidator
 import ocspbuilder
-from asn1crypto import pem, x509
+import asn1crypto
 from oscrypto import asymmetric
+from core.scheduler import Context, Action
+import datetime
 
 LOG = logging.getLogger()
 
@@ -40,6 +42,7 @@ class CertFile(object):
         self.ocsp_request = None
         self.ocsp_urls = []
         self.chain = []
+        self.valid_until = None
 
     @staticmethod
     def file_modification_time(filename):
@@ -108,7 +111,7 @@ class CertFile(object):
         retry = RETRY_COUNT
         while retry > 0:
             try:
-
+                # TODO: send merge request for header in ocsp fetching
                 request = requests.post(
                     url,
                     data=self.ocsp_request,
@@ -121,34 +124,43 @@ class CertFile(object):
                 # Raise HTTP exception if any occurred
                 request.raise_for_status()
                 ocsp_staple = request.content
-                LOG.debug(request.request.headers)
                 if ocsp_staple == b'':
-                    msg = "Received empty response from {} for {}".format(
+                    raise OCSPRenewError(
+                        "Received empty response from {} for {}".format(
+                                url,
+                                self.filename
+                            )
+                        )
+                parsed_staple = asn1crypto.ocsp.OCSPResponse.load(ocsp_staple)
+                cert_response = parsed_staple['response_bytes']['response']
+                cert_response = cert_response.parsed['tbs_response_data']
+                cert_response = cert_response['responses'][0]
+                self.ocsp_staple = parsed_staple
+                status = cert_response['cert_status'].name
+                if status == 'good':
+                    LOG.info(
+                        "Received good response from OCSP server %s for %s, "
+                        "valid until: %s",
                         url,
-                        self.filename
+                        self.filename,
+                        datetime.datetime.strptime(
+                            str(cert_response['next_update']),
+                            "%Y%m%d%H%M%SZ"
+                        ).strftime('%Y-%m-%d %H:%M:%S')
                     )
-                    LOG.warn(msg)
-                    raise TypeError(msg)
-                self.ocsp_staple = ocsp_staple
-
-                # TODO: Check the staples validity!
-                # TODO: Make a scheduler for renewal of staples
-                # TODO: send merge request for header in ocsp fetching
-
-                LOG.info(
-                    "Received good response from OCSP server %s for %s",
-                    url,
-                    self.filename,
-                )
-                break
+                    break  # out of retry loop
+                elif status == 'revoked':
+                    raise OCSPRenewError(
+                        "Certificate {} was revoked!".format(self.filename)
+                    )
+                else:
+                    LOG.info("Can't get status for {} from {}".format(
+                            self.filename,
+                            url
+                        )
+                    )
             except urllib.error.URLError as err:
                 LOG.error("Connection problem: %s", err)
-            except TypeError:
-                LOG.warn(
-                    "Received empty response from OCSP server %s for %s",
-                    url,
-                    self.filename
-                )
             except requests.exceptions.HTTPError as err:
                 LOG.warn(
                     "Received bad HTTP status code %s from OCSP server %s for "
@@ -190,15 +202,16 @@ class CertFile(object):
             ocsp_filename
         )
         with open(ocsp_filename, 'wb') as f_obj:
-            f_obj.write(self.ocsp_staple)
+            f_obj.write(ocsp_staple)
+        return True
 
     def _read_full_chain(self):
         with open(self.filename, 'rb') as f_obj:
-            pem_obj = pem.unarmor(f_obj.read(), multiple=True)
+            pem_obj = asn1crypto.pem.unarmor(f_obj.read(), multiple=True)
         try:
             for type_name, _, der_bytes in pem_obj:
                 if type_name == 'CERTIFICATE':
-                    crt = x509.Certificate.load(der_bytes)
+                    crt = asn1crypto.x509.Certificate.load(der_bytes)
                     if crt.ca:
                         LOG.info("Found part of the chain..")
                         self.intermediates.append(crt)
@@ -276,8 +289,6 @@ class CertFile(object):
             asymmetric.load_certificate(ca_crt)
         )
         builder.nonce = False
-        #builder.hash_algo = 'sha256'
-        #builder.key_hash_algo = 'sha256'
         ocsp_request = builder.build()
         return ocsp_request.dump(True)
 

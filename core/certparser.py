@@ -17,7 +17,7 @@ def _cert_parser_factory(threaded=True):
             CertParser
 
         :param bool threaded: Should the returned class be threaded?
-        :return class: _CertFinder class threaded if threaded argument == True
+        :return class: _CertParser class threaded if threaded argument == True
     """
 
     if threaded:
@@ -58,6 +58,11 @@ def _cert_parser_factory(threaded=True):
                     "You need to pass a queue where found certificates can be "
                     "retrieved from for parsing."
                 )
+            if self.renew_queue is None:
+                raise ValueError(
+                    "You need to pass a queue where parsed certificates can "
+                    "be retrieved from for renewing."
+                )
             LOG.info("Started a parser thread.")
             while True:
                 crt = self.parse_queue.get()
@@ -76,10 +81,6 @@ def _cert_parser_factory(threaded=True):
                     return False
                 self.parse_queue.task_done()
                 self.renew_queue.put(crt)
-                LOG.debug(
-                    "Queue info: %s items in renewal queue.",
-                    self.renew_queue.qsize()
-                )
 
         def _handle_failed_validation(self, crt, msg, delete_ocsp=True):
             self.ignore_list.append(crt.filename)
@@ -96,6 +97,6 @@ def _cert_parser_factory(threaded=True):
 
     return _CertParser
 
-# Create the objects for a threaded and a non-threaded CertFinder
+# Create the objects for a threaded and a non-threaded CertParser
 CertParserThreaded = _cert_parser_factory()
 CertParser = _cert_parser_factory(threaded=False)
