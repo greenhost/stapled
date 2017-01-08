@@ -71,9 +71,10 @@ def _ocsp_renewer_factory(threaded=True):
                 except CertValidationError as err:
                     self._handle_failed_validation(crt, err)
 
-                self.renew_queue.task_done()
                 # Keep cached record of parsed crt
                 self.cert_list[crt.filename] = crt
+                self.renew_queue.task_done()
+                self.schedule_renew(crt)
 
         def _handle_failed_validation(
                 self, crt, msg, delete_ocsp=True, ignore=False):
@@ -91,6 +92,20 @@ def _ocsp_renewer_factory(threaded=True):
                     LOG.debug(
                         "Can't delete OCSP staple, maybe it doesn't exist."
                     )
+
+        @classmethod
+        def schedule_renew(crt, sched_time=None):
+            """
+                Schedule to renew this certificate's OCSP staple in
+                `sched_time` seconds.
+
+                :param models.certificates.CertFile crt: CertFile instance
+                    None to calculate it automatically.
+                :param int shed_time: Amount of seconds to wait for renewal or
+                    None to calculate it automatically.
+            """
+            if not sched_time:
+                sched_time = 1  # TODO: Implement a scheduling here.
 
     return _OCSPRenewer
 

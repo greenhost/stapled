@@ -10,6 +10,15 @@ LOG = logging.getLogger()
 class Action(enum.Enum):
     """
         Enum of possible schedling actions for the scheduling context.
+
+        Enum values ar bitmaps for allowing multiple actions to be chosen at
+        once.
+        I.e.: REMOVE_AND_IGNORE has value: # b0110
+        b0110 | b0100 == b0100 (IGNORE)
+        b0110 | b0010 == b0010 (REMOVE)
+        So both of these evaluate to true and runs the corresponding
+        actions
+
         :ADD: Add a certificate to the schedule for renewal.
         :REMOVE: Remove a certificate from the schedule and delete its data.
     """
