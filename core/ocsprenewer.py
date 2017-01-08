@@ -6,7 +6,7 @@
 import threading
 import logging
 import os
-from models.certificates import CertFile, OCSPRenewError, CertValidationError
+from models import CertFile, OCSPRenewError, CertValidationError
 
 LOG = logging.getLogger()
 
@@ -63,9 +63,7 @@ def _ocsp_renewer_factory(threaded=True):
             LOG.info("Started a parser thread.")
             while True:
                 crt = self.renew_queue.get()
-                LOG.info(
-                    "Renewing OCSP staple for file \"%s\"..", crt.filename
-                )
+                LOG.info("Renewing OCSP staple for file \"%s\"..", crt)
                 try:
                     crt.renew_ocsp_staple()
                 except OCSPRenewError as err:
@@ -85,13 +83,13 @@ def _ocsp_renewer_factory(threaded=True):
             if delete_ocsp:
                 LOG.info(
                     "Deleting any OCSP staple: \"%s.ocsp\" if it exists.",
-                    crt.filename
+                    crt
                 )
                 try:
-                    os.remove("{}.ocsp".format(crt.filename))
+                    os.remove("{}.ocsp".format(crt))
                 except IOError:
                     LOG.debug(
-                        "Can't delete OCSP staple, maybe it does not exist."
+                        "Can't delete OCSP staple, maybe it doesn't exist."
                     )
 
     return _OCSPRenewer

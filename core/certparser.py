@@ -6,7 +6,7 @@
 import threading
 import logging
 import os
-from models.certificates import CertValidationError
+from models import CertValidationError
 
 LOG = logging.getLogger()
 

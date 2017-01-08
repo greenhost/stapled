@@ -16,7 +16,7 @@ import threading
 import time
 import logging
 import os
-from models.certificates import CertFile
+from models import CertFile
 
 LOG = logging.getLogger()
 
