@@ -49,7 +49,7 @@ class OCSPResponseParser():
         self.data = ocsp_data
         response = asn1crypto.ocsp.OCSPResponse.load(ocsp_data)
         self.response = response.response_data
-        # SingleResponce object should be in these keys
+        # SingleResponse object should be in these keys
         self.tbsresponse = self.response['responses'][0]
 
     @property
@@ -122,7 +122,10 @@ class CertFile(object):
 
     def parse_crt_chain(self):
         """
-            Extract the certificate (end_entity) and the chain (intermediates)
+            Extract the certificate (end_entity) and the chain (intermediates).
+            Validates the certificate chain.
+
+            :raises CertValidationError: When the certificate chain is invalid.
         """
         try:
             self._read_full_chain()
@@ -135,7 +138,18 @@ class CertFile(object):
 
     def renew_ocsp_staple(self, url_index=0):
         """
-            Renew the OCSP staple and save it to the correct file path
+            Renew the OCSP staple and save it to the file path of the
+            certificate file (`certificate.pem.ocsp`)
+
+            :param int url_index: There can be several OCSP URLs. When the
+                first URL fails, this function calls itself with the index of
+                the next.
+
+            :raises CertValidationError: when there is no end_entity or
+                certificate chain is missing.
+            :raises OCSPRenewError: when the ocsp staple is an empty byte
+                string, or when the certificate was revoked, or when all URLs
+                fail
         """
         if not self.end_entity:
             raise CertValidationError(
@@ -171,6 +185,8 @@ class CertFile(object):
                 request = requests.post(
                     url,
                     data=self.ocsp_request,
+                    # Set 'Host' header because Let's Encrypt server might not
+                    # react when it's absent
                     headers={
                         'Content-Type': 'application/ocsp-request',
                         'Accept': 'application/ocsp-response',
@@ -218,21 +234,18 @@ class CertFile(object):
                     )
             except urllib.error.URLError as err:
                 LOG.error("Connection problem: %s", err)
-            except (
-                    requests.ConnectionError,
-                    requests.RequestException
-                    ) as err:
-                LOG.warn("Connection error for %s: %s", self.filename, err)
-            except (
-                    requests.Timeout,
+            except (requests.ConnectionError,
+                    requests.RequestException) as err:
+                LOG.warning("Connection error for %s: %s", self.filename, err)
+            except (requests.Timeout,
                     requests.ConnectTimeout,
-                    requests.ReadTimeout
-                    ) as err:
-                LOG.warn("Timeout error for %s: %s", self.filename, err)
+                    requests.ReadTimeout) as err:
+                LOG.warning("Timeout error for %s: %s", self.filename, err)
             except requests.TooManyRedirects as err:
-                LOG.warn("Too many redirects for %s: %s", self.filename, err)
+                LOG.warning(
+                    "Too many redirects for %s: %s", self.filename, err)
             except requests.HTTPError as err:
-                LOG.warn(
+                LOG.warning(
                     "Received bad HTTP status code %s from OCSP server %s for "
                     " %s: %s",
                     request.status,
@@ -248,13 +261,14 @@ class CertFile(object):
                 time.sleep(sleep_time)
             else:
                 if url_index + 1 < len(self.ocsp_urls):
-                    self.renew_ocsp_staple(url_index+1)
+                    return self.renew_ocsp_staple(url_index+1)
                 else:
                     raise OCSPRenewError(
                         "Couldn't renew OCSP staple for \"{}\"".format(
                             self.filename
                         )
                     )
+
         # If we got this far it means we have a staple in self.ocsp_staple
         # We would have had an exception otherwise. So let's verify that the
         # staple is actually working before serving it to clients.
@@ -308,10 +322,10 @@ class CertFile(object):
     def _validate_cert(self):
         try:
             if self.ocsp_staple is None:
-                LOG.info("Validating without OSCP staple.")
+                LOG.info("Validating without OCSP staple.")
                 context = certvalidator.ValidationContext()
             else:
-                LOG.info("Validating with OSCP staple.")
+                LOG.info("Validating with OCSP staple.")
                 context = certvalidator.ValidationContext(
                     ocsps=[self.ocsp_staple.data],
                     allow_fetching=True

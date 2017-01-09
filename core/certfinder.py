@@ -87,7 +87,7 @@ def _cert_finder_factory(threaded=True):
             if base_object is threading.Thread:
                 super(_CertFinder, self).__init__()
                 self.threaded = True
-                tid = kwargs.pop('tid', 0)
+                # tid = kwargs.pop('tid', 0)
                 # self.name = "cert-finder-{}".format(tid)
                 self.name = "cert-finder"
                 self.daemon = False
@@ -115,8 +115,8 @@ def _cert_finder_factory(threaded=True):
                     "You need to pass a dict for certificate data to be kept."
                 )
             LOG.info("Scanning directories: %s", ", ".join(self.directories))
+            self.refresh()
             while True:
-                self.refresh()
                 if self.refresh_interval is None:
                     # Stop refreshing if it is not wanted.
                     return
@@ -212,9 +212,8 @@ def _cert_finder_factory(threaded=True):
 
         def refresh(self):
             """
-                Wraps up the internal `self._find_new_certs()` and
-                `self._find_new_certs()` functions and sets a next iteration of
-                itself if wanted.
+                Wraps up the internal `self._update_cached_certs()` and
+                `self._find_new_certs()` functions.
             """
             self.last_refresh = time.time()
             LOG.info("Updating current cache..")

@@ -87,12 +87,12 @@ def _ocsp_renewer_factory(threaded=True):
                 self.cert_list[crt.filename] = crt
                 self.renew_queue.task_done()
 
-                # self.schedule_renew(crt)
-                # DEBUG scheduling, schedule 30 seconds in the future.
-                self.schedule_renew(
-                    crt,
-                    datetime.datetime.now()+datetime.timedelta(seconds=10)
-                )
+                self.schedule_renew(crt)
+                # DEBUG scheduling, schedule 10 seconds in the future.
+                #self.schedule_renew(
+                #    crt,
+                #    datetime.datetime.now()+datetime.timedelta(seconds=10)
+                #)
 
         def _handle_failed_validation(
                 self, crt, msg, delete_ocsp=True, ignore=False):
