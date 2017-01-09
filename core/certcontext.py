@@ -4,88 +4,26 @@ import hashlib
 import binascii
 import urllib
 import time
-import datetime
-from functools import lru_cache
 import requests
 import certvalidator
 import ocspbuilder
 import asn1crypto
 from oscrypto import asymmetric
-
+from util.ocsp import OCSPResponseParser
+from core.exceptions import CertValidationError
+from core.exceptions import OCSPRenewError
 LOG = logging.getLogger()
 
 RETRY_COUNT = 3
 
 
-class CertValidationError(Exception):
-    """
-    Gets raised when something went wrong while validating the certificate
-    chain.
-
-    .. Note: This may or may not include an OCSP staple.
-    """
-    pass
-
-
-class OCSPRenewError(BaseException):
-    """
-    Gets raised when something went wrong while renewing the OCSP staple.
-    """
-    pass
-
-
-class OCSPResponseParser():
-    """
-    Simpler wrapper for OCSP responses, with shortcuts to most used data.
-    """
-    def __init__(self, ocsp_data=None):
-        """
-        Initialise an `asn1crypto.ocsp.OCSPResponse` object in self._response.
-        Don't try to make this an extension of `asn1crypto.ocsp.OCSPResponse`
-        because it will complain about missing arguments.
-        """
-        self.data = ocsp_data
-        response = asn1crypto.ocsp.OCSPResponse.load(ocsp_data)
-        self.response = response.response_data
-        # SingleResponse object should be in these keys
-        self.tbsresponse = self.response['responses'][0]
-
-    @property
-    def status(self):
-        return self.tbsresponse['cert_status'].name
-
-    @property
-    def valid_from_raw(self):
-        return self.tbsresponse['this_update']
-
-    @property
-    def valid_until_raw(self):
-        return self.tbsresponse['next_update']
-
-    @property
-    @lru_cache(1)
-    def valid_from(self):
-        return datetime.datetime.strptime(
-            str(self.tbsresponse['this_update']),
-            "%Y%m%d%H%M%SZ"
-        )
-
-    @property
-    @lru_cache(1)
-    def valid_until(self):
-        return datetime.datetime.strptime(
-            str(self.tbsresponse['next_update']),
-            "%Y%m%d%H%M%SZ"
-        )
-
-
-class CertFile(object):
+class CertContext(object):
     """
     Model for certificate files.
     """
     def __init__(self, filename):
         """
-        Initialise the CertFile model object.
+        Initialise the CertContext model object.
         """
         self.filename = filename
         self.hash = self.hashfile(filename)

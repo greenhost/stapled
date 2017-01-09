@@ -16,13 +16,13 @@ def run(args):
     LOG.debug("Started with CLI args: %s", str(args))
     parse_queue = queue.Queue(QUEUE_MAX_SIZE_PARSE)
     renew_queue = queue.Queue(QUEUE_MAX_SIZE_RENEW)
-    sched_queue = queue.Queue(QUEUE_MAX_SIZE_RENEW)
+    sched_queue = queue.Queue(QUEUE_MAX_SIZE_SCHED)
     directories = args.directories
     file_extensions = args.file_extensions.replace(" ", "").split(",")
     renewal_threads = args.renewal_threads
     refresh_interval = args.refresh_interval
     ignore_list = []
-    cert_list = {}
+    contexts = {}
 
     LOG.info(
         "Starting OCSP Stapling daemon, finding files of types: %s with "
@@ -38,7 +38,7 @@ def run(args):
             cli_args=args,
             renew_queue=renew_queue,
             ignore_list=ignore_list,
-            cert_list=cert_list,
+            contexts=contexts,
             sched_queue=sched_queue,
             tid=tid
         )
@@ -65,7 +65,7 @@ def run(args):
         file_extensions=file_extensions,
         ignore_list=ignore_list,
         sched_queue=sched_queue,
-        cert_list=cert_list
+        contexts=contexts
     )
 
     # Scheduler thread

@@ -6,7 +6,7 @@ certificate can be used to request OCSP responses.
 import threading
 import logging
 import os
-from core.models import CertValidationError
+from core.exceptions import CertValidationError
 from core.scheduler import ScheduleContext
 from core.scheduler import ScheduleAction
 
@@ -66,38 +66,38 @@ def _cert_parser_factory(threaded=True):
                 )
             LOG.info("Started a parser thread.")
             while True:
-                crt = self.parse_queue.get()
-                LOG.info("Parsing file \"%s\"..", crt.filename)
+                context = self.parse_queue.get()
+                LOG.info("Parsing file \"%s\"..", context.filename)
                 try:
-                    crt.parse_crt_chain()
+                    context.parse_crt_chain()
                 except CertValidationError as err:
-                    self._handle_failed_validation(crt, err)
+                    self._handle_failed_validation(context, err)
                 except KeyError as err:
                     self._handle_failed_validation(
-                        crt,
+                        context,
                         "KeyError {}, processing file \"{}\"".format(
-                            err, crt.filename
+                            err, context.filename
                         )
                     )
                     return False
                 self.parse_queue.task_done()
-                self.renew_queue.put(crt)
+                self.renew_queue.put(context)
 
-        def _handle_failed_validation(self, crt, msg, delete_ocsp=True):
+        def _handle_failed_validation(self, context, msg, delete_ocsp=True):
             LOG.critical(msg)
-            # Unschedule any scheduled actions for crt
-            context = ScheduleContext(
+            # Unschedule any scheduled actions for context
+            schedule_context = ScheduleContext(
                 ScheduleAction(ScheduleAction.REMOVE),
-                crt
+                context
             )
-            self.sched_queue.put(context)
+            self.sched_queue.put(schedule_context)
             if delete_ocsp:
                 LOG.info(
                     "Deleting any OCSP staple: \"%s\" if it exists.",
-                    crt.filename
+                    context.filename
                 )
                 try:
-                    os.remove("{}.ocsp".format(crt.filename))
+                    os.remove("{}.ocsp".format(context.filename))
                 except IOError:
                     pass
 

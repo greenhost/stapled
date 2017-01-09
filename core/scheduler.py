@@ -16,7 +16,7 @@ This module defines the following objects:
 
  - :scheduler:`Scheduler` - An object that is capable of scheduling and
     unscheduling actions defined by :scheduler:`ScheduleAction` with a
-    :models:`CertFile` object and optional time, wrapped in
+    :models:`CertContext` object and optional time, wrapped in
     :scheduler:`ScheduleContext`.
 
     ..Note: Only use :scheduler:`SchedulerThreaded` unless you are testing.
@@ -25,7 +25,7 @@ This module defines the following objects:
     A threaded :scheduler:`Scheduler` - which doesn't mean multi threading, it
     will just run in its own thread. This is the normal way to use this class.
  - :scheduler:`ScheduleContext`
-    A context that takes a :scheduler:`ScheduleAction`, a :models:`CertFile`
+    A context that takes a :scheduler:`ScheduleAction`, a :models:`CertContext`
     object and a time for scheduling a renewal.
  - :scheduler:`ScheduleAction`
     actions:
@@ -70,14 +70,14 @@ class ScheduleContext(object):
     Context that can be created and passed from any thread to the scheduler
     thread, given it has a reference to the `daemon.sched_queue` object.
     """
-    def __init__(self, actions, crt_obj, sched_time=None):
+    def __init__(self, actions, context, sched_time=None):
         """
         Initialise a scheduler.Context to add to the `daemon.sched_queue`
         :param scheduler.ScheduleAction action: ADD or REMOVE an object
-        :param str crt_obj: A :models:`CertFile` object
+        :param str context: A :models:`CertContext` object
         """
         self.actions = actions
-        self.crt = crt_obj
+        self.context = context
         if sched_time is None:
             raise ValueError(
                 "Can't schedule an action without a scheduled time."
@@ -169,14 +169,14 @@ def _scheduler_factory(threaded=True):
 
                     if mask | ScheduleAction.ADD.value == mask:
                         self._schedule_renewal(
-                            context.crt, context.sched_time
+                            context.context, context.sched_time
                         )
 
                     if mask | ScheduleAction.REMOVE.value == mask:
-                        self._unschedule_renewal(context.crt)
+                        self._unschedule_renewal(context.context)
 
                     if mask | ScheduleAction.IGNORE.value == mask:
-                        self.ignore_list.append(context.crt)
+                        self.ignore_list.append(context.context)
 
                     self.sched_queue.task_done()
                 except queue.Empty:
@@ -197,16 +197,16 @@ def _scheduler_factory(threaded=True):
                 # Only scheduled before or at now, default
                 todo = [x for x in self.schedule if x <= now]
             for sched_time in todo:
-                crts = self.schedule.pop(sched_time)
+                contexts = self.schedule.pop(sched_time)
                 # actions is a list so 2 actions can be scheduled
                 # simultaneously
-                for crt in crts:
+                for context in contexts:
                     LOG.info(
-                        "Adding %s back to the renew queue.", crt.filename
+                        "Adding %s back to the renew queue.", context.filename
                     )
                     # Remove from reverse indexed dict
-                    del self.scheduled[crt.filename]
-                    self.renew_queue.put(crt)
+                    del self.scheduled[context.filename]
+                    self.renew_queue.put(context)
                     late = datetime.datetime.now() - sched_time
                     if late.seconds < 1:
                         late = ''
@@ -218,54 +218,54 @@ def _scheduler_factory(threaded=True):
                         )
                     LOG.debug(
                         "Queued refresh for %s at %s%s",
-                        crt.filename,
+                        context.filename,
                         now.strftime('%Y-%m-%d %H:%M:%S'),
                         late
                     )
 
-        def _schedule_renewal(self, crt_obj, sched_time):
+        def _schedule_renewal(self, context, sched_time):
             """
             Run scheduled actions after sched_time seconds.
-            :param str crt_obj: A :models:`CertFile` object
+            :param str context: A :models:`CertContext` object
             :param int sched_time: Amount of seconds to wait before adding
                 the certificate back to the renewal queue
             """
-            if crt_obj.filename in self.scheduled:
+            if context.filename in self.scheduled:
                 LOG.warn(
                     "OCSP staple for %s was already scheduled to be renewed, "
                     "unscheduling.",
-                    crt_obj.filename
+                    context.filename
                 )
-                self._unschedule_renewal(crt_obj.filename)
+                self._unschedule_renewal(context.filename)
 
             # Schedule task
-            self.scheduled[crt_obj.filename] = sched_time
+            self.scheduled[context.filename] = sched_time
             if sched_time in self.schedule:
-                self.schedule[sched_time].append(crt_obj)
+                self.schedule[sched_time].append(context)
             else:
-                self.schedule[sched_time] = [crt_obj]
+                self.schedule[sched_time] = [context]
 
             LOG.info(
                 "Scheduled a renewal for %s at %s",
-                crt_obj.filename,
+                context.filename,
                 sched_time.strftime('%Y-%m-%d %H:%M:%S')
             )
 
-        def _unschedule_renewal(self, crt_obj):
+        def _unschedule_renewal(self, context):
             """
             Run scheduled actions after sched_time seconds.
-            :param str crt_obj: A :models:`CertFile` object
+            :param str context: A :models:`CertContext` object
             :param int sched_time: Amount of seconds to wait before adding
                 the certificate back to the renewal queue
             """
             try:
                 # Find out when it was scheduled
-                sched_time = self.scheduled.pop(crt_obj.filename)
+                sched_time = self.scheduled.pop(context.filename)
                 # There can be more than one action scheduled in the same time
                 # slot so we need to filter out any value that is not our
                 # target and leave it
                 slot = self.schedule[sched_time]
-                slot[:] = [x for x in slot if x is not crt_obj]
+                slot[:] = [x for x in slot if x is not context]
             except KeyError:
                 LOG.warn("Can't unschedule, %s wasn't scheduled for renewal")
 

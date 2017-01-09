@@ -16,7 +16,7 @@ import threading
 import time
 import logging
 import os
-from core.models import CertFile
+from core.certcontext import CertContext
 
 LOG = logging.getLogger()
 
@@ -73,12 +73,11 @@ def _cert_finder_factory(threaded=True):
             :ignore_list array optional: List of files to ignore.
             """
             self.last_refresh = None
-            self.files = {}
             self.cli_args = kwargs.pop('cli_args', ())
             self.directories = kwargs.pop('directories', None)
             self.parse_queue = kwargs.pop('parse_queue', None)
             self.ignore_list = kwargs.pop('ignore_list', [])
-            self.cert_list = kwargs.pop('cert_list', None)
+            self.contexts = kwargs.pop('contexts', None)
             self.refresh_interval = kwargs.pop('refresh_interval', 10)
             self.file_extensions = kwargs.pop(
                 'file_extensions', FILE_EXTENSIONS_DEFAULT
@@ -109,9 +108,10 @@ def _cert_finder_factory(threaded=True):
                     "You need to pass a queue where found certificates can be "
                     "queued for parsing."
                 )
-            if self.cert_list is None:
+            if self.contexts is None:
                 raise ValueError(
-                    "You need to pass a dict for certificate data to be kept."
+                    "You need to pass a dict for certificate contexts to be "
+                    "kept."
                 )
             LOG.info("Scanning directories: %s", ", ".join(self.directories))
             self.refresh()
@@ -163,11 +163,11 @@ def _cert_finder_factory(threaded=True):
                         ext = os.path.splitext(filename)[1].lstrip(".")
                         if ext in self.file_extensions:
                             filename = os.path.join(path, filename)
-                            if filename not in self.files and \
+                            if filename not in self.contexts and \
                                     filename not in self.ignore_list:
-                                new_cert = CertFile(filename)
-                                self.files[filename] = new_cert
-                                self.parse_queue.put(new_cert)
+                                context = CertContext(filename)
+                                self.contexts[filename] = context
+                                self.parse_queue.put(context)
             except OSError as err:
                 LOG.error(
                     "Can't read directory: %s, reason: %s.",
@@ -185,7 +185,7 @@ def _cert_finder_factory(threaded=True):
 
             Deleted files are removed from the found files list.
             """
-            for filename, cert_file in self.files.items():
+            for filename, cert_file in self.contexts.items():
                 # purge certs that no longer exist in the cert dirs
                 if not os.path.exists(filename):
                     if filename in self.cert_list:
@@ -197,7 +197,7 @@ def _cert_finder_factory(threaded=True):
                     continue
                 # purge and re-add files that have changed
                 if os.path.getmtime(filename) > cert_file.modtime:
-                    new_cert = CertFile(filename)
+                    new_cert = CertContext(filename)
                     if new_cert.hash != cert_file.hash:
                         LOG.info(
                             "File \"%s\" was changed, adding it to the "
