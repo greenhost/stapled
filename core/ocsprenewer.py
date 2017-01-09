@@ -5,8 +5,13 @@
 
 import threading
 import logging
+import datetime
 import os
-from models import CertFile, OCSPRenewError, CertValidationError
+from core.scheduler import ScheduleContext
+from core.scheduler import ScheduleAction
+from models import CertFile
+from models import OCSPRenewError
+from models import CertValidationError
 
 LOG = logging.getLogger()
 
@@ -33,8 +38,10 @@ def _ocsp_renewer_factory(threaded=True):
         """
 
         def __init__(self, *args, **kwargs):
+            self.cli_args = kwargs.pop('cli_args', ())
             self.renew_queue = kwargs.pop('renew_queue', None)
             self.cert_list = kwargs.pop('cert_list', None)
+            self.sched_queue = kwargs.pop('sched_queue', None)
             if base_object is threading.Thread:
                 self.threaded = True
                 super(_OCSPRenewer, self).__init__()
@@ -56,6 +63,11 @@ def _ocsp_renewer_factory(threaded=True):
                     "You need to pass a queue where parsed certificates can "
                     "be retrieved from for renewing."
                 )
+            if self.sched_queue is None:
+                raise ValueError(
+                    "You need to pass a queue where certificates can be added "
+                    "for scheduling the OCSP staple renewal."
+                )
             if self.cert_list is None:
                 raise ValueError(
                     "You need to pass a dict for certificate data to be kept."
@@ -74,13 +86,24 @@ def _ocsp_renewer_factory(threaded=True):
                 # Keep cached record of parsed crt
                 self.cert_list[crt.filename] = crt
                 self.renew_queue.task_done()
-                self.schedule_renew(crt)
+
+                # self.schedule_renew(crt)
+                # DEBUG scheduling, schedule 30 seconds in the future.
+                self.schedule_renew(
+                    crt,
+                    datetime.datetime.now()+datetime.timedelta(seconds=10)
+                )
 
         def _handle_failed_validation(
                 self, crt, msg, delete_ocsp=True, ignore=False):
-            if ignore:
-                self.ignore_list.append(crt.filename)
             LOG.critical(msg)
+            if ignore:
+                # Unschedule any scheduled actions for crt and ignore it
+                context = ScheduleContext(
+                    ScheduleAction(ScheduleAction.REMOVE_AND_IGNORE),
+                    crt
+                )
+                self.sched_queue.put(context)
             if delete_ocsp:
                 LOG.info(
                     "Deleting any OCSP staple: \"%s.ocsp\" if it exists.",
@@ -93,8 +116,7 @@ def _ocsp_renewer_factory(threaded=True):
                         "Can't delete OCSP staple, maybe it doesn't exist."
                     )
 
-        @classmethod
-        def schedule_renew(crt, sched_time=None):
+        def schedule_renew(self, crt, sched_time=None):
             """
                 Schedule to renew this certificate's OCSP staple in
                 `sched_time` seconds.
@@ -103,9 +125,21 @@ def _ocsp_renewer_factory(threaded=True):
                     None to calculate it automatically.
                 :param int shed_time: Amount of seconds to wait for renewal or
                     None to calculate it automatically.
+                :raises ValueError: If crt.valid_until is None
             """
             if not sched_time:
-                sched_time = 1  # TODO: Implement a scheduling here.
+                if crt.valid_until is None:
+                    raise ValueError("crt.valid_until can't be None.")
+
+                before_sched_time = datetime.timedelta(
+                    seconds=self.cli_args.minimum_validity)
+                sched_time = crt.valid_until - before_sched_time
+            context = ScheduleContext(
+                ScheduleAction(ScheduleAction.ADD),
+                crt,
+                sched_time=sched_time
+            )
+            self.sched_queue.put(context)
 
     return _OCSPRenewer
 

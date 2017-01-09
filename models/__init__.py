@@ -4,14 +4,13 @@ import hashlib
 import binascii
 import urllib
 import time
+import datetime
+from functools import lru_cache
 import requests
 import certvalidator
 import ocspbuilder
 import asn1crypto
-from functools import lru_cache
 from oscrypto import asymmetric
-from core.scheduler import Context, Action
-import datetime
 
 LOG = logging.getLogger()
 
@@ -19,10 +18,19 @@ RETRY_COUNT = 3
 
 
 class CertValidationError(Exception):
+    """
+        Gets raised when something went wrong while validating the certificate
+        chain.
+
+        .. Note: This may or may not include an OCSP staple.
+    """
     pass
 
 
 class OCSPRenewError(BaseException):
+    """
+        Gets raised when something went wrong while renewing the OCSP staple.
+    """
     pass
 
 
@@ -49,26 +57,28 @@ class OCSPResponseParser():
         return self.tbsresponse['cert_status'].name
 
     @property
-    @lru_cache(None)
-    def valid_from(self, raw=False):
-        if raw:
-            return self.tbsresponse['this_update']
-
-        return datetime.datetime.strptime(
-                str(self.tbsresponse['this_update']),
-                "%Y%m%d%H%M%SZ"
-            )
+    def valid_from_raw(self):
+        return self.tbsresponse['this_update']
 
     @property
-    @lru_cache(None)
-    def valid_until(self, raw=False):
-        if raw:
-            return self.tbsresponse['next_update']
+    def valid_until_raw(self):
+        return self.tbsresponse['next_update']
 
+    @property
+    @lru_cache(1)
+    def valid_from(self):
         return datetime.datetime.strptime(
-                str(self.tbsresponse['next_update']),
-                "%Y%m%d%H%M%SZ"
-            )
+            str(self.tbsresponse['this_update']),
+            "%Y%m%d%H%M%SZ"
+        )
+
+    @property
+    @lru_cache(1)
+    def valid_until(self):
+        return datetime.datetime.strptime(
+            str(self.tbsresponse['next_update']),
+            "%Y%m%d%H%M%SZ"
+        )
 
 
 class CertFile(object):
@@ -201,10 +211,10 @@ class CertFile(object):
                         "Certificate {} was revoked!".format(self.filename)
                     )
                 else:
-                    LOG.info("Can't get status for {} from {}".format(
-                            self.filename,
-                            url
-                        )
+                    LOG.info(
+                        "Can't get status for %s from %s",
+                        self.filename,
+                        url
                     )
             except urllib.error.URLError as err:
                 LOG.error("Connection problem: %s", err)
@@ -352,7 +362,7 @@ class CertFile(object):
         ocsp_request = builder.build()
         return ocsp_request.dump(True)
 
-    def __repr__(self):
+    def __str__(self):
         """
             When we refer to this object without calling a method or specifying
             an attribute we want to get the file name returned.

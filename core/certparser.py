@@ -7,6 +7,8 @@ import threading
 import logging
 import os
 from models import CertValidationError
+from core.scheduler import ScheduleContext
+from core.scheduler import ScheduleAction
 
 LOG = logging.getLogger()
 
@@ -33,6 +35,7 @@ def _cert_parser_factory(threaded=True):
         """
 
         def __init__(self, *args, **kwargs):
+            self.cli_args = kwargs.pop('cli_args', ())
             self.ignore_list = kwargs.pop('ignore_list', [])
             self.parse_queue = kwargs.pop('parse_queue', None)
             self.renew_queue = kwargs.pop('renew_queue', None)
@@ -83,8 +86,13 @@ def _cert_parser_factory(threaded=True):
                 self.renew_queue.put(crt)
 
         def _handle_failed_validation(self, crt, msg, delete_ocsp=True):
-            self.ignore_list.append(crt.filename)
-            LOG.error(msg)
+            LOG.critical(msg)
+            # Unschedule any scheduled actions for crt
+            context = ScheduleContext(
+                ScheduleAction(ScheduleAction.REMOVE),
+                crt
+            )
+            self.sched_queue.put(context)
             if delete_ocsp:
                 LOG.info(
                     "Deleting any OCSP staple: \"%s\" if it exists.",

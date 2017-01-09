@@ -35,6 +35,7 @@ def run(args):
     threads_list = []
     for tid in range(0, renewal_threads):
         thread = ocsprenewer.OCSPRenewerThreaded(
+            cli_args=args,
             renew_queue=renew_queue,
             ignore_list=ignore_list,
             cert_list=cert_list,
@@ -47,7 +48,8 @@ def run(args):
     # For some reason you can't start multiple parser threads because of
     # some issue with an underlying crypto library that will start throwing
     # exceptions: TODO: figure out wtf..
-    parser_threads = certparser.CertParserThreaded(
+    certparser.CertParserThreaded(
+        cli_args=args,
         directories=directories,
         parse_queue=parse_queue,
         renew_queue=renew_queue,
@@ -55,7 +57,8 @@ def run(args):
     )
 
     # Start certificate finding thread
-    finder_thread = certfinder.CertFinderThreaded(
+    certfinder.CertFinderThreaded(
+        cli_args=args,
         directories=directories,
         parse_queue=parse_queue,
         refresh_interval=refresh_interval,
@@ -66,9 +69,9 @@ def run(args):
     )
 
     # Scheduler thread
-    scheduler_thread = scheduler.SchedulerThreaded(
+    scheduler.SchedulerThreaded(
+        cli_args=args,
         ignore_list=ignore_list,
         sched_queue=sched_queue,
         renew_queue=renew_queue,
-        cert_list=cert_list
     )

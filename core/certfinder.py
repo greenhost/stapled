@@ -75,6 +75,7 @@ def _cert_finder_factory(threaded=True):
             """
             self.last_refresh = None
             self.files = {}
+            self.cli_args = kwargs.pop('cli_args', ())
             self.directories = kwargs.pop('directories', None)
             self.parse_queue = kwargs.pop('parse_queue', None)
             self.ignore_list = kwargs.pop('ignore_list', [])
@@ -215,17 +216,11 @@ def _cert_finder_factory(threaded=True):
                 `self._find_new_certs()` functions and sets a next iteration of
                 itself if wanted.
             """
-
             self.last_refresh = time.time()
             LOG.info("Updating current cache..")
             self._update_cached_certs()
             LOG.info("Adding new certificates to cache..")
             self._find_new_certs()
-
-            LOG.debug(
-                "Queue info: %s items in parse queue.",
-                self.parse_queue.qsize()
-            )
 
     return _CertFinder
 
