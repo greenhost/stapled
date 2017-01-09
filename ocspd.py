@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 """
-    This is the main script that starts the OCSP Staple daemon which indexes
-    your certificate directories and requests staples for all certificates
-    in them. They will be saved as `certificatename.pem.staple` in the
-    directories that are being indexed.
+This is the main script that starts the OCSP Staple daemon which indexes
+your certificate directories and requests staples for all certificates
+in them. They will be saved as `certificatename.pem.staple` in the
+directories that are being indexed.
 
-    This is meant as a helper daemon for HAProxy which doesn't do OCSP stapling
-    out of the box, even though it can serve staple files, which is what we use
-    to our benefit.
+This is meant as a helper daemon for HAProxy which doesn't do OCSP stapling
+out of the box, even though it can serve staple files, which is what we use
+to our benefit.
 
-    Type ocsp.py -h for all command line arguments.
+Type ocsp.py -h for all command line arguments.
 
-    This module collects the command line arguments and detaches the process
-    from the user's context if `-d` (daemon mode) is specified, then spawns a
-    bunch of threads for:
-     - Indexing certificates in the given directories.
-     - Parsing certificate files and determining validity, then requesting a
-       staple if valid.
-     - Renewing staples for certificates from the queue. This process requires
-       a connection to the CA of that issued the certificate and is blocking. It
-       is therefore heavily threaded. This is also the only process you can
-       select the amount of threads for with a command line argument.
+This module collects the command line arguments and detaches the process
+from the user's context if `-d` (daemon mode) is specified, then spawns a
+bunch of threads for:
+ - Indexing certificates in the given directories.
+ - Parsing certificate files and determining validity, then requesting a
+   staple if valid.
+ - Renewing staples for certificates from the queue. This process requires
+   a connection to the CA of that issued the certificate and is blocking. It
+   is therefore heavily threaded. This is also the only process you can
+   select the amount of threads for with a command line argument.
 """
 
 import argparse
@@ -41,7 +41,7 @@ LOG = logging.getLogger()
 
 def init():
     """
-        Parse arguments
+    Parse arguments
     """
     parser = argparse.ArgumentParser(
         description=(

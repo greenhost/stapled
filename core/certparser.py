@@ -1,6 +1,6 @@
 """
-    This module parses certificate in a queue so the data contained in the
-    certificate can be used to request OCSP responses.
+This module parses certificate in a queue so the data contained in the
+certificate can be used to request OCSP responses.
 """
 
 import threading
@@ -15,11 +15,10 @@ LOG = logging.getLogger()
 
 def _cert_parser_factory(threaded=True):
     """
-        Returns a threaded or non-threaded class (not an instance) of
-            CertParser
+    Returns a threaded or non-threaded class (not an instance) of CertParser
 
-        :param bool threaded: Should the returned class be threaded?
-        :return class: _CertParser class threaded if threaded argument == True
+    :param bool threaded: Should the returned class be threaded?
+    :return class: _CertParser class threaded if threaded argument == True
     """
 
     if threaded:
@@ -29,9 +28,9 @@ def _cert_parser_factory(threaded=True):
 
     class _CertParser(base_object):
         """
-            This object takes tasks from a queue, the tasks contain certificate
-            files that have to be pared to extract the certificate chain and
-            the server certificate.
+        This object takes tasks from a queue, the tasks contain certificate
+        files that have to be pared to extract the certificate chain and the
+        server certificate.
         """
 
         def __init__(self, *args, **kwargs):
@@ -53,8 +52,7 @@ def _cert_parser_factory(threaded=True):
 
         def run(self, *args, **kwargs):
             """
-                Start the thread if threaded, otherwise just run the same
-                process.
+            Start the thread if threaded, otherwise just run the same process.
             """
             if self.parse_queue is None:
                 raise ValueError(

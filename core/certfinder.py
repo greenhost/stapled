@@ -1,15 +1,15 @@
 """
-    This module locates certificate files in the given directory.
-    It then keeps track of the following:
+This module locates certificate files in the given directory. It then keeps
+track of the following:
 
-      - If cert is found for the first time (thus also when the daemon is
-        started), the cert is added to a queue to be analysed. The following is
-        then recorded:
-         - File modification time.
-         - Hash of the file.
-      - If a cert is found a second time, the modification time is compared to
-        the recorded modification time. If it differs, the hash is compared, if
-        it too differs, the file is added to the queue for analysis.
+  - If cert is found for the first time (thus also when the daemon is started),
+    the cert is added to a queue to be analysed. The following is then
+    recorded:
+     - File modification time.
+     - Hash of the file.
+  - If a cert is found a second time, the modification time is compared to the
+    recorded modification time. If it differs, the hash is compared, if it too
+    differs, the file is added to the queue for analysis.
 """
 
 import threading
@@ -25,11 +25,10 @@ FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
 
 def _cert_finder_factory(threaded=True):
     """
-        Returns a threaded or non-threaded class (not an instance) of
-            CertFinder
+    Returns a threaded or non-threaded class (not an instance) of CertFinder
 
-        :param bool threaded: Should the returned class be threaded?
-        :return class: _CertFinder class threaded if threaded argument == True
+    :param bool threaded: Should the returned class be threaded?
+    :return class: _CertFinder class threaded if threaded argument == True
     """
 
     if threaded:
@@ -39,39 +38,39 @@ def _cert_finder_factory(threaded=True):
 
     class _CertFinder(base_object):
         """
-            This object can be used to index directories and search for
-            certificate files. When found they will be added to the supplied
-            queue for further processing.
+        This object can be used to index directories and search for
+        certificate files. When found they will be added to the supplied
+        queue for further processing.
 
-            If this class is run in threaded mode, it will start a
-            threading.Timer to re-run self.refresh after n seconds (10 seconds
-            by default), if it is not threaded, it will sleep(n) instead.
+        If this class is run in threaded mode, it will start a
+        threading.Timer to re-run self.refresh after n seconds (10 seconds
+        by default), if it is not threaded, it will sleep(n) instead.
 
-            Pass `refresh_interval=None` if you want to run it only once (e.g.
-            for testing)
+        Pass `refresh_interval=None` if you want to run it only once (e.g.
+        for testing)
         """
 
         def __init__(self, *args, **kwargs):
             """
-                The object can either be started threaded or non-threaded.
-                If it is running in threaded mode we need to initialise the
-                super class first.
-                :param tuple *args: Any positional arguments passed to the
-                    threaded object
-                :param dict **kwargs: Any keyword arguments passed to the
-                    threaded object
+            The object can either be started threaded or non-threaded.
+            If it is running in threaded mode we need to initialise the
+            super class first.
+            :param tuple *args: Any positional arguments passed to the
+                threaded object
+            :param dict **kwargs: Any keyword arguments passed to the
+                threaded object
 
-                Currently supported keyword arguments:
+            Currently supported keyword arguments:
 
-                 :directories iterator required: The directories to index.
-                 :parse_queue Queue required: The queue to add found certs to
-                    for parsing.
-                 :refresh_interval int optional: The minimum amount of time (s)
-                    between indexing runs, defaults to 10 seconds. Set to None
-                    to run only once.
-                :file_extensions array optional: An array containing the file
-                    extensions of files to check for certificate content.
-                :ignore_list array optional: List of files to ignore.
+             :directories iterator required: The directories to index.
+             :parse_queue Queue required: The queue to add found certs to
+                for parsing.
+             :refresh_interval int optional: The minimum amount of time (s)
+                between indexing runs, defaults to 10 seconds. Set to None
+                to run only once.
+            :file_extensions array optional: An array containing the file
+                extensions of files to check for certificate content.
+            :ignore_list array optional: List of files to ignore.
             """
             self.last_refresh = None
             self.files = {}
@@ -98,8 +97,8 @@ def _cert_finder_factory(threaded=True):
 
         def run(self, *args, **kwargs):
             """
-                Start the thread if threaded, otherwise just run the same
-                process.
+            Start the thread if threaded, otherwise just run the same
+            process.
             """
             if self.directories is None:
                 raise ValueError(
@@ -149,13 +148,13 @@ def _cert_finder_factory(threaded=True):
 
         def _find_new_certs(self):
             """
-                Locate certificates that were not found before.
-                The list of files is volatile so every time the process is
-                killed files need to be indexed again (thus files are
-                considered new).
+            Locate certificates that were not found before.
+            The list of files is volatile so every time the process is
+            killed files need to be indexed again (thus files are
+            considered new).
 
-                New files are added to the `parse_queue` for further
-                processing.
+            New files are added to the `parse_queue` for further
+            processing.
             """
             try:
                 for path in self.directories:
@@ -177,14 +176,14 @@ def _cert_finder_factory(threaded=True):
 
         def _update_cached_certs(self):
             """
-                Loop through the list of files that were already found and
-                check whether they were deleted or changed.
+            Loop through the list of files that were already found and check
+            whether they were deleted or changed.
 
-                Changed files are added to the `parse_queue` for further
-                processing. This makes sure only changed files are processed
-                by the CPU intensive processes.
+            Changed files are added to the `parse_queue` for further
+            processing. This makes sure only changed files are processed by the
+            CPU intensive processes.
 
-                Deleted files are removed from the found files list.
+            Deleted files are removed from the found files list.
             """
             for filename, cert_file in self.files.items():
                 # purge certs that no longer exist in the cert dirs
@@ -212,8 +211,8 @@ def _cert_finder_factory(threaded=True):
 
         def refresh(self):
             """
-                Wraps up the internal `self._update_cached_certs()` and
-                `self._find_new_certs()` functions.
+            Wraps up the internal `self._update_cached_certs()` and
+            `self._find_new_certs()` functions.
             """
             self.last_refresh = time.time()
             LOG.info("Updating current cache..")

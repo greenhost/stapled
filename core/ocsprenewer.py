@@ -1,6 +1,6 @@
 """
-    This module parses certificate in a queue so the data contained in the
-    certificate can be used to request OCSP responses.
+This module parses certificate in a queue so the data contained in the
+certificate can be used to request OCSP responses.
 """
 
 import threading
@@ -17,11 +17,11 @@ LOG = logging.getLogger()
 
 def _ocsp_renewer_factory(threaded=True):
     """
-        Returns a threaded or non-threaded class (not an instance) of
-            OCSPRenewer
+    Returns a threaded or non-threaded class (not an instance) of
+        OCSPRenewer
 
-        :param bool threaded: Should the returned class be threaded?
-        :return class: OCSPRenewer class threaded if threaded argument == True
+    :param bool threaded: Should the returned class be threaded?
+    :return class: OCSPRenewer class threaded if threaded argument == True
     """
 
     if threaded:
@@ -31,9 +31,9 @@ def _ocsp_renewer_factory(threaded=True):
 
     class _OCSPRenewer(base_object):
         """
-            This object takes tasks from a queue, the tasks contain certificate
-            files that have to be pared to extract the certificate chain and
-            the server certificate.
+        This object takes tasks from a queue, the tasks contain certificate
+        files that have to be pared to extract the certificate chain and the
+        server certificate.
         """
 
         def __init__(self, *args, **kwargs):
@@ -54,8 +54,7 @@ def _ocsp_renewer_factory(threaded=True):
 
         def run(self, *args, **kwargs):
             """
-                Start the thread if threaded, otherwise just run the same
-                process.
+            Start the thread if threaded, otherwise just run the same process.
             """
             if self.renew_queue is None:
                 raise ValueError(
@@ -88,10 +87,10 @@ def _ocsp_renewer_factory(threaded=True):
 
                 self.schedule_renew(crt)
                 # DEBUG scheduling, schedule 10 seconds in the future.
-                #self.schedule_renew(
-                #    crt,
-                #    datetime.datetime.now()+datetime.timedelta(seconds=10)
-                #)
+                # self.schedule_renew(
+                #     crt,
+                #     datetime.datetime.now()+datetime.timedelta(seconds=10)
+                # )
 
         def _handle_failed_validation(
                 self, crt, msg, delete_ocsp=True, ignore=False):
@@ -117,14 +116,14 @@ def _ocsp_renewer_factory(threaded=True):
 
         def schedule_renew(self, crt, sched_time=None):
             """
-                Schedule to renew this certificate's OCSP staple in
-                `sched_time` seconds.
+            Schedule to renew this certificate's OCSP staple in `sched_time`
+            seconds.
 
-                :param models.certificates.CertFile crt: CertFile instance
-                    None to calculate it automatically.
-                :param int shed_time: Amount of seconds to wait for renewal or
-                    None to calculate it automatically.
-                :raises ValueError: If crt.valid_until is None
+            :param models.certificates.CertFile crt: CertFile instance None to
+                calculate it automatically.
+            :param int shed_time: Amount of seconds to wait for renewal or None
+                to calculate it automatically.
+            :raises ValueError: If crt.valid_until is None
             """
             if not sched_time:
                 if crt.valid_until is None:

@@ -1,40 +1,39 @@
 """
-    This is a task specific (as opposed to general purpose) scheduler. It does
-    best effort scheduling and execution of expired items in the order they
-    are added. This also means that there is no guarantee the tasks will be
-    executed on time every time, in fact they will always be late, even if
-    just by milliseconds. If you need it to be done on time, you schedule it
-    early, but remember that it will still be best effort.
+This is a task specific (as opposed to general purpose) scheduler. It does best
+effort scheduling and execution of expired items in the order they are added.
+This also means that there is no guarantee the tasks will be executed on time
+every time, in fact they will always be late, even if just by milliseconds. If
+you need it to be done on time, you schedule it early, but remember that it
+will still be best effort.
 
-    The way this scheduler is supposed to be used is to schedule OCSP staple
-    renewal requests *n* seconds before the last one expires, where *n* is
-    usually as few hours (2 default). If the action fails, it should be
-    rescheduled to be run again a few times between the first attempt and the
-    expiration of the current OCSP staple.
+The way this scheduler is supposed to be used is to schedule OCSP staple
+renewal requests *n* seconds before the last one expires, where *n* is usually
+as few hours (2 default). If the action fails, it should be rescheduled to be
+run again a few times between the first attempt and the expiration of the
+current OCSP staple.
 
-    This module defines the following objects:
+This module defines the following objects:
 
-     - :scheduler:`Scheduler` - An object that is capable of scheduling and
-        unscheduling actions defined by :scheduler:`ScheduleAction` with
-        a :models:`CertFile` object and optional time, wrapped in
-        :scheduler:`ScheduleContext`.
+ - :scheduler:`Scheduler` - An object that is capable of scheduling and
+    unscheduling actions defined by :scheduler:`ScheduleAction` with a
+    :models:`CertFile` object and optional time, wrapped in
+    :scheduler:`ScheduleContext`.
 
-        ..Note: Only use :scheduler:`SchedulerThreaded` unless you are testing.
+    ..Note: Only use :scheduler:`SchedulerThreaded` unless you are testing.
 
-     - :scheduler:`SchedulerThreaded`
-        A threaded :scheduler:`Scheduler` - which doesn't mean multi threading,
-        it will just run in its own thread. This is the normal way to use this
-        class.
-     - :scheduler:`ScheduleContext`
-        A context that takes a :scheduler:`ScheduleAction`, a
-        :models:`CertFile` object and a time for scheduling a renewal.
-     - :scheduler:`ScheduleAction`
-        actions:
-         - `ADD`: Add a scheduled renewal
-         - `REMOVE`: Remove a scheduled renewal
-         - `IGNORE`: Ignore this file in the future.
-         - `REMOVE_AND_IGNORE`: Remove a scheduled renewal and ignore this
-            file in the future
+ - :scheduler:`SchedulerThreaded`
+    A threaded :scheduler:`Scheduler` - which doesn't mean multi threading, it
+    will just run in its own thread. This is the normal way to use this class.
+ - :scheduler:`ScheduleContext`
+    A context that takes a :scheduler:`ScheduleAction`, a :models:`CertFile`
+    object and a time for scheduling a renewal.
+ - :scheduler:`ScheduleAction`
+    actions:
+     - `ADD`: Add a scheduled renewal
+     - `REMOVE`: Remove a scheduled renewal
+     - `IGNORE`: Ignore this file in the future.
+     - `REMOVE_AND_IGNORE`: Remove a scheduled renewal and ignore this file in
+       the future
 
 """
 import threading
@@ -49,18 +48,16 @@ LOG = logging.getLogger()
 @unique
 class ScheduleAction(Enum):
     """
-        Enum of possible schedling actions for the scheduling context.
+    Enum of possible schedling actions for the scheduling context.
 
-        Enum values ar bitmaps for allowing multiple actions to be chosen at
-        once.
-        I.e.: REMOVE_AND_IGNORE has value: # b0110
-        b0110 | b0100 == b0100 (IGNORE)
-        b0110 | b0010 == b0010 (REMOVE)
-        So both of these evaluate to true and runs the corresponding
-        actions
+    Enum values ar bitmaps for allowing multiple actions to be chosen at once.
+    I.e.: REMOVE_AND_IGNORE has value: # b0110
+    b0110 | b0100 == b0100 (IGNORE)
+    b0110 | b0010 == b0010 (REMOVE)
+    So both of these evaluate to true and runs the corresponding actions
 
-        :ADD: Add a certificate to the schedule for renewal.
-        :REMOVE: Remove a certificate from the schedule and delete its data.
+    :ADD: Add a certificate to the schedule for renewal.
+    :REMOVE: Remove a certificate from the schedule and delete its data.
     """
     ADD = 0b0001
     REMOVE = 0b0010
@@ -70,14 +67,14 @@ class ScheduleAction(Enum):
 
 class ScheduleContext(object):
     """
-        Context that can be created and passed from any thread to the scheduler
-        thread, given it has a reference to the `daemon.sched_queue` object.
+    Context that can be created and passed from any thread to the scheduler
+    thread, given it has a reference to the `daemon.sched_queue` object.
     """
     def __init__(self, actions, crt_obj, sched_time=None):
         """
-            Initialise a scheduler.Context to add to the `daemon.sched_queue`
-            :param scheduler.ScheduleAction action: ADD or REMOVE an object
-            :param str crt_obj: A :models:`CertFile` object
+        Initialise a scheduler.Context to add to the `daemon.sched_queue`
+        :param scheduler.ScheduleAction action: ADD or REMOVE an object
+        :param str crt_obj: A :models:`CertFile` object
         """
         self.actions = actions
         self.crt = crt_obj
@@ -90,11 +87,10 @@ class ScheduleContext(object):
 
 def _scheduler_factory(threaded=True):
     """
-        Returns a threaded or non-threaded class (not an instance) of
-            Scheduler
+    Returns a threaded or non-threaded class (not an instance) of Scheduler
 
-        :param bool threaded: Should the returned class be threaded?
-        :return class: _Scheduler class threaded if threaded argument == True
+    :param bool threaded: Should the returned class be threaded?
+    :return class: _Scheduler class threaded if threaded argument == True
     """
 
     if threaded:
@@ -104,18 +100,17 @@ def _scheduler_factory(threaded=True):
 
     class _Scheduler(base_object):
         """
-            Renewal of OCSP staples can be scheduled with this object.
-            It will also manage all the data going in and out of the
-            certificate cache in `daemon.crt_list`. For example, if a
-            certificate is deleted from the schedule, the cache will also be
-            deleted.
+        Renewal of OCSP staples can be scheduled with this object. It will also
+        manage all the data going in and out of the certificate cache in
+        `daemon.crt_list`. For example, if a certificate is deleted from the
+        schedule, the cache will also be deleted.
         """
         def __init__(self, *args, **kwargs):
             """
-                Initialise the Scheduler.
-                :param tuple *args: Arguments for the Scheduler initialisation
-                :param dict **kwargs: Keyword arguments for the Scheduler
-                    initialisation
+            Initialise the Scheduler.
+            :param tuple *args: Arguments for the Scheduler initialisation
+            :param dict **kwargs: Keyword arguments for the Scheduler
+                initialisation
             """
             self.cli_args = kwargs.pop('cli_args', ())
             self.ignore_list = kwargs.pop('ignore_list', [])
@@ -142,11 +137,10 @@ def _scheduler_factory(threaded=True):
 
         def run(self, *args, **kwargs):
             """
-                Start the thread if threaded, otherwise just run the same
-                process.
-                :param tuple *args: Arguments for the Scheduler initialisation
-                :param dict **kwargs: Keyword arguments for the Scheduler
-                    initialisation
+            Start the thread if threaded, otherwise just run the same process.
+            :param tuple *args: Arguments for the Scheduler initialisation
+            :param dict **kwargs: Keyword arguments for the Scheduler
+                initialisation
             """
             if self.renew_queue is None:
                 raise ValueError(
@@ -191,9 +185,9 @@ def _scheduler_factory(threaded=True):
 
         def run_tasks(self, all_tasks=False):
             """
-                Runs all scheduled tasks that have a scheduled time < now.
+            Runs all scheduled tasks that have a scheduled time < now.
 
-                :param bool all_tasks: Ignore scheduling times, just run all.
+            :param bool all_tasks: Ignore scheduling times, just run all.
             """
             now = datetime.datetime.now()
             # Take a copy of all sched_time keys
@@ -231,10 +225,10 @@ def _scheduler_factory(threaded=True):
 
         def _schedule_renewal(self, crt_obj, sched_time):
             """
-                Run scheduled actions after sched_time seconds.
-                :param str crt_obj: A :models:`CertFile` object
-                :param int sched_time: Amount of seconds to wait before adding
-                    the certificate back to the renewal queue
+            Run scheduled actions after sched_time seconds.
+            :param str crt_obj: A :models:`CertFile` object
+            :param int sched_time: Amount of seconds to wait before adding
+                the certificate back to the renewal queue
             """
             if crt_obj.filename in self.scheduled:
                 LOG.warn(
@@ -259,10 +253,10 @@ def _scheduler_factory(threaded=True):
 
         def _unschedule_renewal(self, crt_obj):
             """
-                Run scheduled actions after sched_time seconds.
-                :param str crt_obj: A :models:`CertFile` object
-                :param int sched_time: Amount of seconds to wait before adding
-                    the certificate back to the renewal queue
+            Run scheduled actions after sched_time seconds.
+            :param str crt_obj: A :models:`CertFile` object
+            :param int sched_time: Amount of seconds to wait before adding
+                the certificate back to the renewal queue
             """
             try:
                 # Find out when it was scheduled
