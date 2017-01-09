@@ -9,9 +9,8 @@ import datetime
 import os
 from core.scheduler import ScheduleContext
 from core.scheduler import ScheduleAction
-from models import CertFile
-from models import OCSPRenewError
-from models import CertValidationError
+from core.models import OCSPRenewError
+from core.models import CertValidationError
 
 LOG = logging.getLogger()
 

@@ -6,7 +6,7 @@
 import threading
 import logging
 import os
-from models import CertValidationError
+from core.models import CertValidationError
 from core.scheduler import ScheduleContext
 from core.scheduler import ScheduleAction
 

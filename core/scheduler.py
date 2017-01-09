@@ -41,8 +41,6 @@ import threading
 import logging
 import datetime
 import queue
-import itertools
-import time
 from enum import Enum, unique
 
 LOG = logging.getLogger()
