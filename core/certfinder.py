@@ -169,7 +169,7 @@ def _cert_finder_factory(threaded=True):
                                 self.contexts[filename] = context
                                 self.parse_queue.put(context)
             except OSError as err:
-                LOG.error(
+                LOG.critical(
                     "Can't read directory: %s, reason: %s.",
                     path, err
                 )

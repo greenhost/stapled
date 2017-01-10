@@ -278,12 +278,9 @@ class CertContext(object):
             )
             LOG.info("Certificate chain for \"%s\" validated.", self.filename)
             return chain
-        except certvalidator.errors.PathBuildingError:
-            raise CertValidationError(
-                "Failed to validate certificate path for \"{}\", will not "
-                "try to parse it again.".format(self.filename)
-            )
-        except certvalidator.errors.PathValidationError:
+        except (
+                certvalidator.errors.PathBuildingError,
+                certvalidator.errors.PathValidationError):
             raise CertValidationError(
                 "Failed to validate certificate path for \"{}\", will not "
                 "try to parse it again.".format(self.filename)
