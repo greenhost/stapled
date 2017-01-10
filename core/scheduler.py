@@ -15,11 +15,11 @@ current OCSP staple.
 This module defines the following objects:
 
  - :scheduler:`Scheduler` - An object that is capable of scheduling and
-    unscheduling actions defined by :scheduler:`ScheduleAction` with a
-    :models:`CertContext` object and optional time, wrapped in
-    :scheduler:`ScheduleContext`.
+   unscheduling actions defined by :scheduler:`ScheduleAction` with a
+   :models:`CertContext` object and optional time, wrapped in
+   :scheduler:`ScheduleContext`.
 
-    ..Note: Only use :scheduler:`SchedulerThreaded` unless you are testing.
+    .. Note:: Only use :scheduler:`SchedulerThreaded` unless you are testing.
 
  - :scheduler:`SchedulerThreaded`
     A threaded :scheduler:`Scheduler` - which doesn't mean multi threading, it

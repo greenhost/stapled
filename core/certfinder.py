@@ -5,11 +5,14 @@ track of the following:
   - If cert is found for the first time (thus also when the daemon is started),
     the cert is added to a queue to be analysed. The following is then
     recorded:
+
      - File modification time.
      - Hash of the file.
+
   - If a cert is found a second time, the modification time is compared to the
     recorded modification time. If it differs, the hash is compared, if it too
     differs, the file is added to the queue for analysis.
+
 """
 
 import threading
