@@ -37,16 +37,19 @@ class CertFinderThread(threading.Thread):
 
     def __init__(self, *args, **kwargs):
         """
-            Initialise the threads arguments and its parent
-            :py:`threading.Thread`
+            Initialise the thread's arguments and its parent
+            :py:`threading.Thread`.
 
             Currently supported keyword arguments:
 
-            :contexts dict required:
-             :directories iterator required: The directories to index.
-             :parse_queue Queue required: The queue to add found certs to
+            :cli_args argparse.Namespace: The parsed CLI arguments namespace.
+            :contexts dict required: The cache of parsed certificates with OCSP
+                data if it was already been requested by the
+                :class:`core.ocsprenewer.OCSPRenewerThread`.
+            :directories iterator required: The directories to index.
+            :parse_queue Queue required: The queue to add found certs to
                 for parsing.
-             :refresh_interval int optional: The minimum amount of time (s)
+            :refresh_interval int optional: The minimum amount of time (s)
                 between indexing runs, defaults to 10 seconds. Set to None
                 to run only once.
             :file_extensions array optional: An array containing the file
@@ -66,15 +69,12 @@ class CertFinderThread(threading.Thread):
 
         assert self.cli_args is not None, \
             "You need to pass a argparser.NameSpace with CLI arguments."
-
         assert self.contexts is not None, \
             "Contexts dict for keeping certificate contexts should be passed."
-
         assert self.directories is not None, \
             "At least one directory should be passed for indexing."
-
         assert self.parse_queue is not None, \
-            "A parsing queue for found certificates should be passed."
+            "A parsing queue where found certificates should be passed."
 
         super(CertFinderThread, self).__init__(*args, **kwargs)
 

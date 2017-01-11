@@ -31,7 +31,7 @@ import daemon
 import core.daemon
 from core import certfinder
 
-LOGFORMAT = '%(threadName)-8s [%(levelname)s] %(message)s'
+LOGFORMAT = '%(threadName)-10s [%(levelname)s] %(message)s'
 
 logging.basicConfig(
     level=logging.DEBUG,

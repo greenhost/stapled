@@ -85,192 +85,177 @@ class ScheduleContext(object):
         self.sched_time = sched_time
 
 
-def _scheduler_factory(threaded=True):
+class SchedulerThread(threading.Thread):
     """
-    Returns a threaded or non-threaded class (not an instance) of Scheduler
-
-    :param bool threaded: Should the returned class be threaded?
-    :return class: _Scheduler class threaded if threaded argument == True
+    Renewal of OCSP staples can be scheduled with this object. It will also
+    manage all the data going in and out of the certificate cache in
+    `daemon.crt_list`. For example, if a certificate is deleted from the
+    schedule, the cache will also be deleted.
     """
-
-    if threaded:
-        base_object = threading.Thread
-    else:
-        base_object = object
-
-    class _Scheduler(base_object):
+    def __init__(self, *args, **kwargs):
         """
-        Renewal of OCSP staples can be scheduled with this object. It will also
-        manage all the data going in and out of the certificate cache in
-        `daemon.crt_list`. For example, if a certificate is deleted from the
-        schedule, the cache will also be deleted.
+        Initialise the thread's arguments and its parent
+        :py:`threading.Thread`.
+
+        Currently supported keyword arguments:
+        :cli_args argparse.Namespace: The parsed CLI arguments namespace.
+        :renew_queue Queue required: The queue where parsed certificates can be
+            added for OCSP staple renewal.
+        :sched_queue Queue required: The queue where scheduled OCSP renewals
+            can be found.
+        :ignore_list array optional: List of files to ignore.
         """
-        def __init__(self, *args, **kwargs):
-            """
-            Initialise the Scheduler.
-            :param tuple *args: Arguments for the Scheduler initialisation
-            :param dict **kwargs: Keyword arguments for the Scheduler
-                initialisation
-            """
-            self.cli_args = kwargs.pop('cli_args', ())
-            self.ignore_list = kwargs.pop('ignore_list', [])
-            self.sched_queue = kwargs.pop('sched_queue', None)
-            self.renew_queue = kwargs.pop('renew_queue', None)
-            # Keeping the tasks both in normal and reverse order to allow quick
-            # unscheduling
-            # The schedule contains items indexed by time
-            self.schedule = {}
-            # The scheduled are a list of actions indexed by file name
-            self.scheduled = {}
+        self.cli_args = kwargs.pop('cli_args', None)
+        self.renew_queue = kwargs.pop('renew_queue', None)
+        self.sched_queue = kwargs.pop('sched_queue', None)
+        self.ignore_list = kwargs.pop('ignore_list', [])
 
-            if base_object is threading.Thread:
-                self.threaded = True
-                super(_Scheduler, self).__init__()
-                # tid = kwargs.pop('tid', 0)
-                # self.name = "ocsp-parser-{}".format(tid)
-                self.name = "ocsp-scheduler"
-                self.daemon = False
-                self.start()
-            else:
-                self.threaded = False
-                self.run(*args, **kwargs)
+        assert self.cli_args is not None, \
+            "You need to pass a argparser.NameSpace with CLI arguments."
+        assert self.renew_queue is not None, \
+            "A renew queue for parsed certificates should be passed."
+        assert self.sched_queue is not None, \
+            "A queue for getting scheduled staple renewals should be passed."
 
-        def run(self, *args, **kwargs):
-            """
-            Start the thread if threaded, otherwise just run the same process.
-            :param tuple *args: Arguments for the Scheduler initialisation
-            :param dict **kwargs: Keyword arguments for the Scheduler
-                initialisation
-            """
-            if self.renew_queue is None:
-                raise ValueError(
-                    "You need to pass a queue where cached certificates can "
-                    "be pushed again for OCSP staple renewing."
-                )
-            if self.sched_queue is None:
-                raise ValueError(
-                    "You need to pass a queue where certificates can be added "
-                    "for scheduling the OCSP staple renewal."
-                )
+        # Keeping the tasks both in normal and reverse order to allow quick
+        # unscheduling
+        # The schedule contains items indexed by time
+        self.schedule = {}
+        # The scheduled are a list of actions indexed by file name
+        self.scheduled = {}
 
-            LOG.info("Started a scheduler thread.")
-            while True:
-                try:
-                    context = self.sched_queue.get(block=True, timeout=.1)
-                    # The following is a series of OR operators for bitwise
-                    # comparison. This way we can assign an action to each bit
-                    # in the Action Enum.
-                    # I.e.: REMOVE_AND_IGNORE has value: # b0110
-                    # b0110 | b0100 == b0100 (IGNORE)
-                    # b0110 | b0010 == b0010 (REMOVE)
-                    # So both of these evaluate to true and runs the
-                    # corresponding actions
-                    mask = context.actions.value
+        super(SchedulerThread, self).__init__(*args, **kwargs)
 
-                    if mask | ScheduleAction.ADD.value == mask:
-                        self._schedule_renewal(
-                            context.context, context.sched_time
-                        )
-
-                    if mask | ScheduleAction.REMOVE.value == mask:
-                        self._unschedule_renewal(context.context)
-
-                    if mask | ScheduleAction.IGNORE.value == mask:
-                        self.ignore_list.append(context.context)
-
-                    self.sched_queue.task_done()
-                except queue.Empty:
-                    pass
-                self.run_tasks()
-
-        def run_tasks(self, all_tasks=False):
-            """
-            Runs all scheduled tasks that have a scheduled time < now.
-
-            :param bool all_tasks: Ignore scheduling times, just run all.
-            """
-            now = datetime.datetime.now()
-            # Take a copy of all sched_time keys
-            if all_tasks:
-                todo = [x for x in self.schedule]
-            else:
-                # Only scheduled before or at now, default
-                todo = [x for x in self.schedule if x <= now]
-            for sched_time in todo:
-                contexts = self.schedule.pop(sched_time)
-                # actions is a list so 2 actions can be scheduled
-                # simultaneously
-                for context in contexts:
-                    LOG.info(
-                        "Adding %s back to the renew queue.", context.filename
-                    )
-                    # Remove from reverse indexed dict
-                    del self.scheduled[context.filename]
-                    self.renew_queue.put(context)
-                    late = datetime.datetime.now() - sched_time
-                    if late.seconds < 1:
-                        late = ''
-                    elif 1 < late.seconds < 59:  # between 1 and 59 seconds
-                        late = " {} seconds late".format(late.seconds)
-                    else:
-                        late = " {} late".format(
-                            late.strftime('%Y-%m-%d %H:%M:%S')
-                        )
-                    LOG.debug(
-                        "Queued refresh for %s at %s%s",
-                        context.filename,
-                        now.strftime('%Y-%m-%d %H:%M:%S'),
-                        late
-                    )
-
-        def _schedule_renewal(self, context, sched_time):
-            """
-            Run scheduled actions after sched_time seconds.
-            :param str context: A :models:`CertContext` object
-            :param int sched_time: Amount of seconds to wait before adding
-                the certificate back to the renewal queue
-            """
-            if context.filename in self.scheduled:
-                LOG.warn(
-                    "OCSP staple for %s was already scheduled to be renewed, "
-                    "unscheduling.",
-                    context.filename
-                )
-                self._unschedule_renewal(context.filename)
-
-            # Schedule task
-            self.scheduled[context.filename] = sched_time
-            if sched_time in self.schedule:
-                self.schedule[sched_time].append(context)
-            else:
-                self.schedule[sched_time] = [context]
-
-            LOG.info(
-                "Scheduled a renewal for %s at %s",
-                context.filename,
-                sched_time.strftime('%Y-%m-%d %H:%M:%S')
+    def run(self, *args, **kwargs):
+        """
+        Start the thread if threaded, otherwise just run the same process.
+        :param tuple *args: Arguments for the Scheduler initialisation
+        :param dict **kwargs: Keyword arguments for the Scheduler
+            initialisation
+        """
+        if self.renew_queue is None:
+            raise ValueError(
+                "You need to pass a queue where cached certificates can "
+                "be pushed again for OCSP staple renewing."
+            )
+        if self.sched_queue is None:
+            raise ValueError(
+                "You need to pass a queue where certificates can be added "
+                "for scheduling the OCSP staple renewal."
             )
 
-        def _unschedule_renewal(self, context):
-            """
-            Run scheduled actions after sched_time seconds.
-            :param str context: A :models:`CertContext` object
-            :param int sched_time: Amount of seconds to wait before adding
-                the certificate back to the renewal queue
-            """
+        LOG.info("Started a scheduler thread.")
+        while True:
             try:
-                # Find out when it was scheduled
-                sched_time = self.scheduled.pop(context.filename)
-                # There can be more than one action scheduled in the same time
-                # slot so we need to filter out any value that is not our
-                # target and leave it
-                slot = self.schedule[sched_time]
-                slot[:] = [x for x in slot if x is not context]
-            except KeyError:
-                LOG.warn("Can't unschedule, %s wasn't scheduled for renewal")
+                context = self.sched_queue.get(block=True, timeout=.1)
+                # The following is a series of OR operators for bitwise
+                # comparison. This way we can assign an action to each bit
+                # in the Action Enum.
+                # I.e.: REMOVE_AND_IGNORE has value: # b0110
+                # b0110 | b0100 == b0100 (IGNORE)
+                # b0110 | b0010 == b0010 (REMOVE)
+                # So both of these evaluate to true and runs the
+                # corresponding actions
+                mask = context.actions.value
 
-    return _Scheduler
+                if mask | ScheduleAction.ADD.value == mask:
+                    self._schedule_renewal(
+                        context.context, context.sched_time
+                    )
 
-# Create the objects for a threaded and a non-threaded Scheduler
-SchedulerThreaded = _scheduler_factory()
-Scheduler = _scheduler_factory(threaded=False)
+                if mask | ScheduleAction.REMOVE.value == mask:
+                    self._unschedule_renewal(context.context)
+
+                if mask | ScheduleAction.IGNORE.value == mask:
+                    self.ignore_list.append(context.context)
+
+                self.sched_queue.task_done()
+            except queue.Empty:
+                pass
+            self.run_tasks()
+
+    def run_tasks(self, all_tasks=False):
+        """
+        Runs all scheduled tasks that have a scheduled time < now.
+
+        :param bool all_tasks: Ignore scheduling times, just run all.
+        """
+        now = datetime.datetime.now()
+        # Take a copy of all sched_time keys
+        if all_tasks:
+            todo = [x for x in self.schedule]
+        else:
+            # Only scheduled before or at now, default
+            todo = [x for x in self.schedule if x <= now]
+        for sched_time in todo:
+            contexts = self.schedule.pop(sched_time)
+            # actions is a list so 2 actions can be scheduled
+            # simultaneously
+            for context in contexts:
+                LOG.info(
+                    "Adding %s back to the renew queue.", context.filename
+                )
+                # Remove from reverse indexed dict
+                del self.scheduled[context.filename]
+                self.renew_queue.put(context)
+                late = datetime.datetime.now() - sched_time
+                if late.seconds < 1:
+                    late = ''
+                elif 1 < late.seconds < 59:  # between 1 and 59 seconds
+                    late = " {} seconds late".format(late.seconds)
+                else:
+                    late = " {} late".format(
+                        late.strftime('%Y-%m-%d %H:%M:%S')
+                    )
+                LOG.debug(
+                    "Queued refresh for %s at %s%s",
+                    context.filename,
+                    now.strftime('%Y-%m-%d %H:%M:%S'),
+                    late
+                )
+
+    def _schedule_renewal(self, context, sched_time):
+        """
+        Run scheduled actions after sched_time seconds.
+        :param str context: A :models:`CertContext` object
+        :param int sched_time: Amount of seconds to wait before adding
+            the certificate back to the renewal queue
+        """
+        if context.filename in self.scheduled:
+            LOG.warn(
+                "OCSP staple for %s was already scheduled to be renewed, "
+                "unscheduling.",
+                context.filename
+            )
+            self._unschedule_renewal(context.filename)
+
+        # Schedule task
+        self.scheduled[context.filename] = sched_time
+        if sched_time in self.schedule:
+            self.schedule[sched_time].append(context)
+        else:
+            self.schedule[sched_time] = [context]
+
+        LOG.info(
+            "Scheduled a renewal for %s at %s",
+            context.filename,
+            sched_time.strftime('%Y-%m-%d %H:%M:%S')
+        )
+
+    def _unschedule_renewal(self, context):
+        """
+        Run scheduled actions after sched_time seconds.
+        :param str context: A :models:`CertContext` object
+        :param int sched_time: Amount of seconds to wait before adding
+            the certificate back to the renewal queue
+        """
+        try:
+            # Find out when it was scheduled
+            sched_time = self.scheduled.pop(context.filename)
+            # There can be more than one action scheduled in the same time
+            # slot so we need to filter out any value that is not our
+            # target and leave it
+            slot = self.schedule[sched_time]
+            slot[:] = [x for x in slot if x is not context]
+        except KeyError:
+            LOG.warn("Can't unschedule, %s wasn't scheduled for renewal")
