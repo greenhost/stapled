@@ -57,16 +57,18 @@ def run(args):
     )
 
     # Start certificate finding thread
-    certfinder.CertFinderThreaded(
+    finder = certfinder.CertFinderThread(
         cli_args=args,
         directories=directories,
         parse_queue=parse_queue,
         refresh_interval=refresh_interval,
         file_extensions=file_extensions,
         ignore_list=ignore_list,
-        sched_queue=sched_queue,
         contexts=contexts
     )
+    finder.daemon = False
+    finder.name = "finder"
+    finder.start()
 
     # Scheduler thread
     scheduler.SchedulerThreaded(

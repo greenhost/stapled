@@ -23,45 +23,26 @@ LOG = logging.getLogger()
 FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
 
 
-def _cert_finder_factory(threaded=True):
+class CertFinderThread(threading.Thread):
     """
     Returns a threaded or non-threaded class (not an instance) of CertFinder
 
-    :param bool threaded: Should the returned class be threaded?
-    :return class: _CertFinder class threaded if threaded argument == True
+    If this class is run in threaded mode, it will start a threading.Timer to
+    re-run self.refresh after n seconds (10 seconds by default), if it is not
+    threaded, it will sleep(n) instead.
+
+    Pass `refresh_interval=None` if you want to run it only once (e.g. for
+    testing)
     """
 
-    if threaded:
-        base_object = threading.Thread
-    else:
-        base_object = object
-
-    class _CertFinder(base_object):
+    def __init__(self, *args, **kwargs):
         """
-        This object can be used to index directories and search for
-        certificate files. When found they will be added to the supplied
-        queue for further processing.
-
-        If this class is run in threaded mode, it will start a
-        threading.Timer to re-run self.refresh after n seconds (10 seconds
-        by default), if it is not threaded, it will sleep(n) instead.
-
-        Pass `refresh_interval=None` if you want to run it only once (e.g.
-        for testing)
-        """
-
-        def __init__(self, *args, **kwargs):
-            """
-            The object can either be started threaded or non-threaded.
-            If it is running in threaded mode we need to initialise the
-            super class first.
-            :param tuple *args: Any positional arguments passed to the
-                threaded object
-            :param dict **kwargs: Any keyword arguments passed to the
-                threaded object
+            Initialise the threads arguments and its parent
+            :py:`threading.Thread`
 
             Currently supported keyword arguments:
 
+            :contexts dict required:
              :directories iterator required: The directories to index.
              :parse_queue Queue required: The queue to add found certs to
                 for parsing.
@@ -71,157 +52,136 @@ def _cert_finder_factory(threaded=True):
             :file_extensions array optional: An array containing the file
                 extensions of files to check for certificate content.
             :ignore_list array optional: List of files to ignore.
-            """
-            self.last_refresh = None
-            self.cli_args = kwargs.pop('cli_args', ())
-            self.directories = kwargs.pop('directories', None)
-            self.parse_queue = kwargs.pop('parse_queue', None)
-            self.ignore_list = kwargs.pop('ignore_list', [])
-            self.contexts = kwargs.pop('contexts', None)
-            self.refresh_interval = kwargs.pop('refresh_interval', 10)
-            self.file_extensions = kwargs.pop(
-                'file_extensions', FILE_EXTENSIONS_DEFAULT
-            )
-            if base_object is threading.Thread:
-                super(_CertFinder, self).__init__()
-                self.threaded = True
-                # tid = kwargs.pop('tid', 0)
-                # self.name = "cert-finder-{}".format(tid)
-                self.name = "cert-finder"
-                self.daemon = False
-                self.start()
+        """
+        self.cli_args = kwargs.pop('cli_args', None)
+        self.contexts = kwargs.pop('contexts', None)
+        self.directories = kwargs.pop('directories', None)
+        self.parse_queue = kwargs.pop('parse_queue', None)
+        self.refresh_interval = kwargs.pop('refresh_interval', 10)
+        self.file_extensions = kwargs.pop(
+            'file_extensions', FILE_EXTENSIONS_DEFAULT
+        )
+        self.ignore_list = kwargs.pop('ignore_list', [])
+        self.last_refresh = None
+
+        assert self.cli_args is not None, \
+            "You need to pass a argparser.NameSpace with CLI arguments."
+
+        assert self.contexts is not None, \
+            "Contexts dict for keeping certificate contexts should be passed."
+
+        assert self.directories is not None, \
+            "At least one directory should be passed for indexing."
+
+        assert self.parse_queue is not None, \
+            "A parsing queue for found certificates should be passed."
+
+        super(CertFinderThread, self).__init__(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        """
+        Start the certificate finder thread.
+        """
+
+        LOG.info("Scanning directories: %s", ", ".join(self.directories))
+        self.refresh()
+        while True:
+            if self.refresh_interval is None:
+                # Stop refreshing if it is not wanted.
+                return
+
+            # Schedule the next refresh run..
+            since_last = time.time() - self.last_refresh
+            # Check if the last refresh took longer than the interval..
+            if since_last > self.refresh_interval:
+                # It did so start right now..
+                LOG.info(
+                    "Starting a new refresh immediately because the last "
+                    "refresh took %0.3f seconds while the minimum "
+                    "interval is %d seconds.",
+                    since_last,
+                    self.refresh_interval
+                )
+                self.refresh()
             else:
-                self.threaded = False
-                self.run(*args, **kwargs)
+                # Wait the remaining time before refreshing again..
+                LOG.info(
+                    "Scheduling a new refresh in %0.2f seconds because "
+                    "the last refresh took %0.2f seconds while the "
+                    "minimum interval is %d seconds.",
+                    self.refresh_interval - since_last,
+                    since_last,
+                    self.refresh_interval
+                )
+                time.sleep(self.refresh_interval - since_last)
+                self.refresh()
 
-        def run(self, *args, **kwargs):
-            """
-            Start the thread if threaded, otherwise just run the same
-            process.
-            """
-            if self.directories is None:
-                raise ValueError(
-                    "At least one directory should be passed for indexing."
-                )
-            if self.parse_queue is None:
-                raise ValueError(
-                    "You need to pass a queue where found certificates can be "
-                    "queued for parsing."
-                )
-            if self.contexts is None:
-                raise ValueError(
-                    "You need to pass a dict for certificate contexts to be "
-                    "kept."
-                )
-            LOG.info("Scanning directories: %s", ", ".join(self.directories))
-            self.refresh()
-            while True:
-                if self.refresh_interval is None:
-                    # Stop refreshing if it is not wanted.
-                    return
+    def _find_new_certs(self):
+        """
 
-                # Schedule the next refresh run..
-                since_last = time.time() - self.last_refresh
-                # Check if the last refresh took longer than the interval..
-                if since_last > self.refresh_interval:
-                    # It did so start right now..
+        New files are added to the `parse_queue` for further
+        processing.
+        """
+        try:
+            for path in self.directories:
+                LOG.info("Scanning directory: %s", path)
+                for filename in os.listdir(path):
+                    ext = os.path.splitext(filename)[1].lstrip(".")
+                    if ext in self.file_extensions:
+                        filename = os.path.join(path, filename)
+                        if filename not in self.contexts and \
+                                filename not in self.ignore_list:
+                            context = CertContext(filename)
+                            self.contexts[filename] = context
+                            self.parse_queue.put(context)
+        except OSError as err:
+            LOG.critical(
+                "Can't read directory: %s, reason: %s.",
+                path, err
+            )
+
+    def _update_cached_certs(self):
+        """
+        Loop through the list of files that were already found and check
+        whether they were deleted or changed.
+
+        Changed files are added to the `parse_queue` for further
+        processing. This makes sure only changed files are processed by the
+        CPU intensive processes.
+
+        Deleted files are removed from the found files list.
+        """
+        for filename, cert_file in self.contexts.items():
+            # purge certs that no longer exist in the cert dirs
+            if not os.path.exists(filename):
+                if filename in self.cert_list:
+                    del self.cert_list[filename]
+                LOG.info(
+                    "File \"%s\" was deleted, removing it from the list.",
+                    filename
+                )
+                continue
+            # purge and re-add files that have changed
+            if os.path.getmtime(filename) > cert_file.modtime:
+                new_cert = CertContext(filename)
+                if new_cert.hash != cert_file.hash:
                     LOG.info(
-                        "Starting a new refresh immediately because the last "
-                        "refresh took %0.3f seconds while the minimum "
-                        "interval is %d seconds.",
-                        since_last,
-                        self.refresh_interval
-                    )
-                    self.refresh()
-                else:
-                    # Wait the remaining time before refreshing again..
-                    LOG.info(
-                        "Scheduling a new refresh in %0.2f seconds because "
-                        "the last refresh took %0.2f seconds while the "
-                        "minimum interval is %d seconds.",
-                        self.refresh_interval - since_last,
-                        since_last,
-                        self.refresh_interval
-                    )
-                    time.sleep(self.refresh_interval - since_last)
-                    self.refresh()
-
-        def _find_new_certs(self):
-            """
-            Locate certificates that were not found before.
-            The list of files is volatile so every time the process is
-            killed files need to be indexed again (thus files are
-            considered new).
-
-            New files are added to the `parse_queue` for further
-            processing.
-            """
-            try:
-                for path in self.directories:
-                    LOG.info("Scanning directory: %s", path)
-                    for filename in os.listdir(path):
-                        ext = os.path.splitext(filename)[1].lstrip(".")
-                        if ext in self.file_extensions:
-                            filename = os.path.join(path, filename)
-                            if filename not in self.contexts and \
-                                    filename not in self.ignore_list:
-                                context = CertContext(filename)
-                                self.contexts[filename] = context
-                                self.parse_queue.put(context)
-            except OSError as err:
-                LOG.critical(
-                    "Can't read directory: %s, reason: %s.",
-                    path, err
-                )
-
-        def _update_cached_certs(self):
-            """
-            Loop through the list of files that were already found and check
-            whether they were deleted or changed.
-
-            Changed files are added to the `parse_queue` for further
-            processing. This makes sure only changed files are processed by the
-            CPU intensive processes.
-
-            Deleted files are removed from the found files list.
-            """
-            for filename, cert_file in self.contexts.items():
-                # purge certs that no longer exist in the cert dirs
-                if not os.path.exists(filename):
-                    if filename in self.cert_list:
-                        del self.cert_list[filename]
-                    LOG.info(
-                        "File \"%s\" was deleted, removing it from the list.",
+                        "File \"%s\" was changed, adding it to the "
+                        "parsing queue.",
                         filename
                     )
+                    if filename in self.cert_list:
+                        del self.cert_list[filename]
+                    self.parse_queue.put(new_cert)
                     continue
-                # purge and re-add files that have changed
-                if os.path.getmtime(filename) > cert_file.modtime:
-                    new_cert = CertContext(filename)
-                    if new_cert.hash != cert_file.hash:
-                        LOG.info(
-                            "File \"%s\" was changed, adding it to the "
-                            "parsing queue.",
-                            filename
-                        )
-                        if filename in self.cert_list:
-                            del self.cert_list[filename]
-                        self.parse_queue.put(new_cert)
-                        continue
 
-        def refresh(self):
-            """
-            Wraps up the internal `self._update_cached_certs()` and
-            `self._find_new_certs()` functions.
-            """
-            self.last_refresh = time.time()
-            LOG.info("Updating current cache..")
-            self._update_cached_certs()
-            LOG.info("Adding new certificates to cache..")
-            self._find_new_certs()
-
-    return _CertFinder
-
-# Create the objects for a threaded and a non-threaded CertFinder
-CertFinderThreaded = _cert_finder_factory()
-CertFinder = _cert_finder_factory(threaded=False)
+    def refresh(self):
+        """
+        Wraps up the internal `self._update_cached_certs()` and
+        `self._find_new_certs()` functions.
+        """
+        self.last_refresh = time.time()
+        LOG.info("Updating current cache..")
+        self._update_cached_certs()
+        LOG.info("Adding new certificates to cache..")
+        self._find_new_certs()
