@@ -1,18 +1,20 @@
 """
-This module locates certificate files in the given directory. It then keeps
-track of the following:
+This module locates certificate files in the supplied directories. It then
+keeps track of the following:
 
   - If cert is found for the first time (thus also when the daemon is started),
-    the cert is added to a queue to be analysed. The following is then
-    recorded:
+    the cert is added to the :any:`core.daemon.run.parse_queue` to be parsed.
+    The following is then recorded:
 
      - File modification time.
      - Hash of the file.
 
   - If a cert is found a second time, the modification time is compared to the
-    recorded modification time. If it differs, the hash is compared, if it too
-    differs, the file is added to the queue for analysis.
+    recorded modification time. If it differs, the hash is compared too, if it
+    too differs, the file is added to the queue for parsing again.
 
+  - When certificates are deleted from the directories, the entries are removed
+    from the central cache in :any:`core.daemon.run.contexts`.
 """
 
 import threading
@@ -28,7 +30,9 @@ FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
 
 def _cert_finder_factory(threaded=True):
     """
-    Returns a threaded or non-threaded class (not an instance) of CertFinder
+    This object can be used to index directories and search for certificate
+    files. When found they will be added to the supplied queue for further
+    processing.
 
     :param bool threaded: Should the returned class be threaded?
     :return class: _CertFinder class threaded if threaded argument == True
@@ -52,6 +56,10 @@ def _cert_finder_factory(threaded=True):
         Pass `refresh_interval=None` if you want to run it only once (e.g.
         for testing)
         """
+        Locate certificates that were not found before.
+        The list of files is volatile so every time the process is
+        killed files need to be indexed again (thus files are
+        considered new).
 
         def __init__(self, *args, **kwargs):
             """

@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 """
-This is the main script that starts the OCSP Staple daemon which indexes
-your certificate directories and requests staples for all certificates
-in them. They will be saved as `certificatename.pem.staple` in the
-directories that are being indexed.
-
-This is meant as a helper daemon for HAProxy which doesn't do OCSP stapling
-out of the box, even though it can serve staple files, which is what we use
-to our benefit.
+This is the main script that parses your command line arguments and then starts
+the OCSP Staple daemon, which indexes your certificate directories and requests
+staples for all certificates in them. They will then be saved as
+``certificatename.pem.ocsp`` in the same directories that are being indexed.
 
 Type ocsp.py -h for all command line arguments.
 
 This module collects the command line arguments and detaches the process
 from the user's context if `-d` (daemon mode) is specified, then spawns a
 bunch of threads for:
+
  - Indexing certificates in the given directories.
  - Parsing certificate files and determining validity, then requesting a
    staple if valid.
@@ -21,6 +18,11 @@ bunch of threads for:
    a connection to the CA of that issued the certificate and is blocking. It
    is therefore heavily threaded. This is also the only process you can
    select the amount of threads for with a command line argument.
+
+If the ``-d`` argument is specified, this module is responsible for starting
+the application in daemonised mode, and disconnecting the process from the
+user's process hierarchy node. In any case, it starts up the :mod:`core.daemon`
+module to bootstrap the application.
 """
 
 import argparse
@@ -41,7 +43,11 @@ LOG = logging.getLogger()
 
 def get_cli_arg_parser():
     """
-    Parse arguments
+    Make a CLI argument parser and return it. It does not parse the arguments
+    because a plain parser object is used for documentation purposes.
+
+    :return: Argument parser with all of ocspd's options configured
+    :rtype: argparse.ArgumentParser
     """
     parser = argparse.ArgumentParser(
         description=(
@@ -137,7 +143,9 @@ def get_cli_arg_parser():
 
 def init():
     """
-        Initialise the daemon
+        Configures logging and log level, then calls :func:`core.daemon.run()`
+        either in daemonised mode if the ``-d`` argument was supplied, or in
+        the current context if it wasn't supplied.
     """
     log_file_handles = []
     parser = get_cli_arg_parser()
