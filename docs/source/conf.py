@@ -37,7 +37,8 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
-    'sphinx.ext.githubpages'
+    'sphinx.ext.githubpages',
+    'sphinxarg.ext'
 ]
 
 
@@ -59,7 +60,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'ocspd'
-copyright = u'AGPL'
+copyright = "is nonsense"
 author = u'Chris Snijder (greenhost), Maarten de Waard (greenhost)'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -348,4 +349,4 @@ texinfo_documents = [
 # texinfo_no_detailmenu = False
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {'https://docs.python.org/3/': None}

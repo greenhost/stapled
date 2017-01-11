@@ -39,7 +39,7 @@ logging.basicConfig(
 )
 LOG = logging.getLogger()
 
-def init():
+def get_cli_arg_parser():
     """
     Parse arguments
     """
@@ -75,7 +75,7 @@ def init():
         '--verbose',
         action='count',
         default=0,
-        help="Print more info (default: FATAL)."
+        help="Verbose output, repeat to increase verbosity (default: CRITICAL)."
     )
 
     parser.add_argument(
@@ -133,8 +133,14 @@ def init():
         )
     )
 
-    log_file_handles = []
+    return parser
 
+def init():
+    """
+        Initialise the daemon
+    """
+    log_file_handles = []
+    parser = get_cli_arg_parser()
     args = parser.parse_args()
     args.directories = [os.path.abspath(d) for d in args.directories]
 
