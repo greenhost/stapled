@@ -14,20 +14,24 @@ current OCSP staple.
 
 This module defines the following objects:
 
- - :scheduler:`Scheduler` - An object that is capable of scheduling and
-   unscheduling actions defined by :scheduler:`ScheduleAction` with a
-   :models:`CertContext` object and optional time, wrapped in
-   :scheduler:`ScheduleContext`.
+ - :mod:`core.scheduler.Scheduler` - An object that is capable of scheduling
+   and unscheduling actions defined by :mod:`core.scheduler.ScheduleAction`
+   with a :mod:`core.certcontext.CertContext` object and optional time,
+   wrapped in :mod:`core.scheduler.ScheduleContext`.
 
-    .. Note:: Only use :scheduler:`SchedulerThreaded` unless you are testing.
+    .. Note::
+        Only use :mod:`core.scheduler.SchedulerThreaded` unless you
+        are testing.
 
- - :scheduler:`SchedulerThreaded`
-    A threaded :scheduler:`Scheduler` - which doesn't mean multi threading, it
-    will just run in its own thread. This is the normal way to use this class.
- - :scheduler:`ScheduleContext`
-    A context that takes a :scheduler:`ScheduleAction`, a :models:`CertContext`
-    object and a time for scheduling a renewal.
- - :scheduler:`ScheduleAction`
+ - :mod:`core.scheduler.SchedulerThreaded`
+   A threaded :mod:`core.scheduler.Scheduler` - which doesn't mean multi
+   threading, it will just run in its own thread. This is the normal way to
+   use this class.
+ - :mod:`core.scheduler.ScheduleContext`
+   A context that takes a :mod:`core.scheduler.ScheduleAction`, a
+   :mod:`core.certcontext.CertContext` object and a time for scheduling a
+   renewal.
+ - :mod:`core.scheduler.ScheduleAction`
     actions:
      - `ADD`: Add a scheduled renewal
      - `REMOVE`: Remove a scheduled renewal
