@@ -137,7 +137,7 @@ class CertContext(object):
         )
         retry = OCSP_REQUEST_RETRY_COUNT
         while retry > 0:
-            try
+            try:
                 # TODO: send merge request for header in ocsp fetching
                 request = requests.post(
                     url,
