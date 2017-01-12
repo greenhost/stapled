@@ -29,9 +29,9 @@ import ocspbuilder
 import asn1crypto
 from oscrypto import asymmetric
 from ocspd import OCSP_REQUEST_RETRY_COUNT
-from util.ocsp import OCSPResponseParser
 from core.exceptions import CertValidationError
 from core.exceptions import OCSPRenewError
+from util.ocsp import OCSPResponseParser
 from util.functions import pretty_base64
 
 LOG = logging.getLogger()
@@ -104,6 +104,7 @@ class CertContext(object):
             string, or when the certificate was revoked, or when all URLs
             fail
         """
+        # pylint: disable=too-many-branches
         if not self.end_entity:
             raise CertValidationError(
                 "Certificate is missing in \"{}\", can't validate "
@@ -136,7 +137,7 @@ class CertContext(object):
         )
         retry = OCSP_REQUEST_RETRY_COUNT
         while retry > 0:
-            try:
+            try
                 # TODO: send merge request for header in ocsp fetching
                 request = requests.post(
                     url,
@@ -267,7 +268,7 @@ class CertContext(object):
                     else:
                         LOG.info("Found the end entity..")
                         self.end_entity = crt
-                        self.ocsp_urls = crt.ocsp_urls
+                        self.ocsp_urls = getattr(crt, 'ocsp_urls')
         except binascii.Error:
             LOG.error(
                 "Certificate file contains errors \"%s\".",
@@ -307,13 +308,6 @@ class CertContext(object):
             )
             LOG.info("Certificate chain for \"%s\" validated.", self.filename)
             return chain
-        except (
-                certvalidator.errors.PathBuildingError,
-                certvalidator.errors.PathValidationError):
-            raise CertValidationError(
-                "Failed to validate certificate path for \"{}\", will not "
-                "try to parse it again.".format(self.filename)
-            )
         except certvalidator.errors.RevokedError:
             raise CertValidationError(
                 "Certificate \"{}\" was revoked, will not try to parse it "
@@ -323,6 +317,13 @@ class CertContext(object):
             raise CertValidationError(
                 "Certificate \"{}\" is invalid, will not try to parse it "
                 "again.".format(self.filename)
+            )
+        except (
+                certvalidator.errors.PathBuildingError,
+                certvalidator.errors.PathValidationError):
+            raise CertValidationError(
+                "Failed to validate certificate path for \"{}\", will not "
+                "try to parse it again.".format(self.filename)
             )
 
     def __str__(self):
