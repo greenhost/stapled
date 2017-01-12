@@ -4,9 +4,9 @@ from core import certfinder
 from core import ocsprenewer
 from core import certparser
 from core import scheduler
-from ocsp import QUEUE_MAX_SIZE_PARSE
-from ocsp import QUEUE_MAX_SIZE_RENEW
-from ocsp import QUEUE_MAX_SIZE_SCHED
+from ocspd import QUEUE_MAX_SIZE_PARSE
+from ocspd import QUEUE_MAX_SIZE_RENEW
+from ocspd import QUEUE_MAX_SIZE_SCHED
 
 LOG = logging.getLogger()
 

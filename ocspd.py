@@ -29,14 +29,13 @@ import logging.handlers
 import os
 import daemon
 import core.daemon
-from core import certfinder
-
 
 LOGFORMAT = '%(threadName)-10s [%(levelname)s] %(message)s'
 FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
 QUEUE_MAX_SIZE_PARSE = 0  # 0 = unlimited
 QUEUE_MAX_SIZE_RENEW = 0  # 0 = unlimited
 QUEUE_MAX_SIZE_SCHED = 0  # 0 = unlimited
+OCSP_REQUEST_RETRY_COUNT = 3
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -96,7 +95,7 @@ def init():
     parser.add_argument(
         '--file-extensions',
         type=str,
-        default=certfinder.FILE_EXTENSIONS_DEFAULT,
+        default=FILE_EXTENSIONS_DEFAULT,
         help=(
             "Files with which extensions should be scanned? Comma separated "
             "list (default: crt,pem,cer)"
@@ -143,7 +142,7 @@ def init():
     args = parser.parse_args()
     args.directories = [os.path.abspath(d) for d in args.directories]
 
-    log_level = max(min(50 - args.verbose * 10, 50), 0)
+    log_level = max(min(50 - args.verbose * 10, 50), 10)
     LOG.setLevel(log_level)
     if args.logfile:
         file_handler = logging.FileHandler(args.logfile)

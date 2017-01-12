@@ -28,10 +28,12 @@ import certvalidator
 import ocspbuilder
 import asn1crypto
 from oscrypto import asymmetric
-from ocsp import OCSP_REQUEST_RETRY_COUNT
+from ocspd import OCSP_REQUEST_RETRY_COUNT
 from util.ocsp import OCSPResponseParser
 from core.exceptions import CertValidationError
 from core.exceptions import OCSPRenewError
+from util.functions import pretty_base64
+
 LOG = logging.getLogger()
 
 
@@ -122,12 +124,12 @@ class CertContext(object):
         self.ocsp_request = ocsp_request_builder.build().dump()
 
         # This data can be posted to the OCSP URI to debug further
-        LOG.debug(
-            "Request data: %s",
-            binascii.b2a_base64(
-                self.ocsp_request
-            ).decode('ascii').replace("\n", "")
-        )
+        if LOG.getEffectiveLevel() < 20:
+            LOG.debug(
+                "Request data: \n%s",
+                pretty_base64(self.ocsp_request, line_len=75, prefix="\t")
+            )
+
         LOG.info(
             "Trying to get OCSP staple from url \"%s\"..",
             url
@@ -178,7 +180,7 @@ class CertContext(object):
 
             retry = retry - 1
             if retry > 0:
-                sleep_time = (ocsp.OCSP_REQUEST_RETRY_COUNT - retry) * 5
+                sleep_time = (OCSP_REQUEST_RETRY_COUNT - retry) * 5
                 LOG.info("Retrying in %d seconds..", sleep_time)
                 time.sleep(sleep_time)
             else:
@@ -216,12 +218,11 @@ class CertContext(object):
             Check that the OCSP response says that the status is "good".
             Also sets :mod:`core.certcontext.CertContext.valid_until`.
         """
-        LOG.debug(
-            "Response data: %s",
-            binascii.b2a_base64(
-                ocsp_staple
-            ).decode('ascii').replace("\n", "")
-        )
+        if LOG.getEffectiveLevel() < 20:
+            LOG.debug(
+                "Response data: \n%s",
+                pretty_base64(ocsp_staple, line_len=75, prefix="\t")
+            )
         if ocsp_staple == b'':
             raise OCSPRenewError(
                 "Received empty response from {} for {}".format(
@@ -260,7 +261,7 @@ class CertContext(object):
             for type_name, _, der_bytes in pem_obj:
                 if type_name == 'CERTIFICATE':
                     crt = asn1crypto.x509.Certificate.load(der_bytes)
-                    if crt.ca:
+                    if getattr(crt, 'ca'):
                         LOG.info("Found part of the chain..")
                         self.intermediates.append(crt)
                     else:

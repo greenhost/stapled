@@ -23,7 +23,7 @@ import time
 import logging
 import os
 from core.certcontext import CertContext
-from ocsp import FILE_EXTENSIONS_DEFAULT
+from ocspd import FILE_EXTENSIONS_DEFAULT
 
 LOG = logging.getLogger()
 
