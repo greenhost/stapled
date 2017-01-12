@@ -8,8 +8,14 @@ track of the following:
      - File modification time.
      - Hash of the file.
   - If a cert is found a second time, the modification time is compared to the
-    recorded modification time. If it differs, the hash is compared, if it too
-    differs, the file is added to the queue for analysis.
+    recorded modification time. If it differs, the hash is compared too, if it
+    too differs, the file is added to the queue for parsing again.
+
+  - When certificates are deleted from the directories, the entries are removed
+    from the central cache in :any:`core.daemon.run.contexts`.
+
+    The cache of parsed files is volatile so every time the process is killed
+    files need to be indexed again (thus files are considered "new").
 """
 
 import threading
@@ -17,10 +23,9 @@ import time
 import logging
 import os
 from core.certcontext import CertContext
+from ocsp import FILE_EXTENSIONS_DEFAULT
 
 LOG = logging.getLogger()
-
-FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
 
 
 class CertFinderThread(threading.Thread):

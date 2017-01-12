@@ -1,3 +1,22 @@
+"""
+This module defines the :mod:`core.certcontext.CertContext` class  which is
+used to keep track of certificates that were found by the
+:mod:`core.certfinder.CertFinder`. The context is then used by the
+:mod:`core.certparser.CertParserThread` which parses the certificate and
+validates it, then fills in some of the attributes so it can be used by the
+:mod:`core.ocsprenewer.OCSPRenewer` to generate a request for an OCSP staple,
+the request is also stored in the context. The request will then be sent, and
+if a valid OCSP staple is returned, it too is stored in the context.
+
+The logic following logic is contained within the context class:
+
+ - Parsing the certificate
+ - Validating parsed certificates and their chains
+ - Generating OCSP requests
+ - Sending OCSP requests
+ - Processing OCSP responses
+ - Validating OCSP responses with the respective certificate and its chain
+"""
 import os
 import logging
 import hashlib
@@ -9,25 +28,25 @@ import certvalidator
 import ocspbuilder
 import asn1crypto
 from oscrypto import asymmetric
+from ocsp import OCSP_REQUEST_RETRY_COUNT
 from util.ocsp import OCSPResponseParser
 from core.exceptions import CertValidationError
 from core.exceptions import OCSPRenewError
 LOG = logging.getLogger()
-
-RETRY_COUNT = 3
 
 
 class CertContext(object):
     """
     Model for certificate files.
     """
+    # pylint: disable=too-many-instance-attributes
     def __init__(self, filename):
         """
         Initialise the CertContext model object.
         """
         self.filename = filename
         self.hash = self.hashfile(filename)
-        self.modtime = self.file_modification_time(filename)
+        self.modtime = os.path.getmtime(filename)
         self.end_entity = None
         self.intermediates = []
         self.ocsp_staple = None
@@ -35,10 +54,6 @@ class CertContext(object):
         self.ocsp_urls = []
         self.chain = []
         self.valid_until = None
-
-    @staticmethod
-    def file_modification_time(filename):
-        return os.path.getmtime(filename)
 
     @staticmethod
     def hashfile(filename):
@@ -75,7 +90,7 @@ class CertContext(object):
     def renew_ocsp_staple(self, url_index=0):
         """
         Renew the OCSP staple and save it to the file path of the certificate
-        file (`certificate.pem.ocsp`)
+        file (``certificate.pem.ocsp``)
 
         :param int url_index: There can be several OCSP URLs. When the
             first URL fails, this function calls itself with the index of
@@ -99,10 +114,13 @@ class CertContext(object):
             )
         url = self.ocsp_urls[url_index]
         host = urllib.parse.urlparse(url).hostname
-        self.ocsp_request = self._build_ocsp_request(
-            self.end_entity,
-            self.chain[-2]
+        ocsp_request_builder = ocspbuilder.OCSPRequestBuilder(
+            asymmetric.load_certificate(self.end_entity),
+            asymmetric.load_certificate(self.chain[-2])
         )
+        ocsp_request_builder.nonce = False
+        self.ocsp_request = ocsp_request_builder.build().dump()
+
         # This data can be posted to the OCSP URI to debug further
         LOG.debug(
             "Request data: %s",
@@ -114,7 +132,7 @@ class CertContext(object):
             "Trying to get OCSP staple from url \"%s\"..",
             url
         )
-        retry = RETRY_COUNT
+        retry = OCSP_REQUEST_RETRY_COUNT
         while retry > 0:
             try:
                 # TODO: send merge request for header in ocsp fetching
@@ -132,55 +150,16 @@ class CertContext(object):
                 )
                 # Raise HTTP exception if any occurred
                 request.raise_for_status()
-                ocsp_staple = request.content
-                LOG.debug(
-                    "Response data: %s",
-                    binascii.b2a_base64(
-                        ocsp_staple
-                    ).decode('ascii').replace("\n", "")
-                )
-                if ocsp_staple == b'':
-                    raise OCSPRenewError(
-                        "Received empty response from {} for {}".format(
-                                url,
-                                self.filename
-                            )
-                        )
-                self.ocsp_staple = OCSPResponseParser(ocsp_staple)
-                status = self.ocsp_staple.status
-                if status == 'good':
-                    self.valid_until = self.ocsp_staple.valid_until
-                    LOG.info(
-                        "Received good response from OCSP server %s for %s, "
-                        "valid until: %s",
-                        url,
-                        self.filename,
-                        self.valid_until.strftime('%Y-%m-%d %H:%M:%S')
-                    )
-                    break  # out of retry loop
-                elif status == 'revoked':
-                    raise OCSPRenewError(
-                        "Certificate {} was revoked!".format(self.filename)
-                    )
-                else:
-                    LOG.info(
-                        "Can't get status for %s from %s",
-                        self.filename,
-                        url
-                    )
             except urllib.error.URLError as err:
                 LOG.error("Connection problem: %s", err)
-            except (requests.ConnectionError,
-                    requests.RequestException) as err:
-                LOG.warning("Connection error for %s: %s", self.filename, err)
             except (requests.Timeout,
-                    requests.ConnectTimeout,
-                    requests.ReadTimeout) as err:
+                    requests.exceptions.ConnectTimeout,
+                    requests.exceptions.ReadTimeout) as err:
                 LOG.warning("Timeout error for %s: %s", self.filename, err)
-            except requests.TooManyRedirects as err:
+            except requests.exceptions.TooManyRedirects as err:
                 LOG.warning(
                     "Too many redirects for %s: %s", self.filename, err)
-            except requests.HTTPError as err:
+            except requests.exceptions.HTTPError as err:
                 LOG.warning(
                     "Received bad HTTP status code %s from OCSP server %s for "
                     " %s: %s",
@@ -189,10 +168,17 @@ class CertContext(object):
                     self.filename,
                     err
                 )
+            except (requests.ConnectionError,
+                    requests.RequestException) as err:
+                LOG.warning("Connection error for %s: %s", self.filename, err)
+
+            ocsp_staple = request.content
+            if self.check_ocsp_response(ocsp_staple, url):
+                break  # out of retry loop
 
             retry = retry - 1
             if retry > 0:
-                sleep_time = (RETRY_COUNT - retry) * 5
+                sleep_time = (ocsp.OCSP_REQUEST_RETRY_COUNT - retry) * 5
                 LOG.info("Retrying in %d seconds..", sleep_time)
                 time.sleep(sleep_time)
             else:
@@ -224,6 +210,48 @@ class CertContext(object):
         with open(ocsp_filename, 'wb') as f_obj:
             f_obj.write(ocsp_staple)
         return True
+
+    def check_ocsp_response(self, ocsp_staple, url):
+        """
+            Check that the OCSP response says that the status is "good".
+            Also sets :mod:`core.certcontext.CertContext.valid_until`.
+        """
+        LOG.debug(
+            "Response data: %s",
+            binascii.b2a_base64(
+                ocsp_staple
+            ).decode('ascii').replace("\n", "")
+        )
+        if ocsp_staple == b'':
+            raise OCSPRenewError(
+                "Received empty response from {} for {}".format(
+                    url,
+                    self.filename
+                )
+            )
+        self.ocsp_staple = OCSPResponseParser(ocsp_staple)
+        status = self.ocsp_staple.status
+        if status == 'good':
+            self.valid_until = self.ocsp_staple.valid_until
+            LOG.info(
+                "Received good response from OCSP server %s for %s, "
+                "valid until: %s",
+                url,
+                self.filename,
+                self.valid_until.strftime('%Y-%m-%d %H:%M:%S')
+            )
+            return True
+        elif status == 'revoked':
+            raise OCSPRenewError(
+                "Certificate {} was revoked!".format(self.filename)
+            )
+        else:
+            LOG.info(
+                "Can't get status for %s from %s",
+                self.filename,
+                url
+            )
+        return False
 
     def _read_full_chain(self):
         with open(self.filename, 'rb') as f_obj:
@@ -295,19 +323,6 @@ class CertContext(object):
                 "Certificate \"{}\" is invalid, will not try to parse it "
                 "again.".format(self.filename)
             )
-
-    @staticmethod
-    def _build_ocsp_request(end_entity, ca_crt):
-        """
-        Generate an OCSP request to post to the OCSP server.
-        """
-        builder = ocspbuilder.OCSPRequestBuilder(
-            asymmetric.load_certificate(end_entity),
-            asymmetric.load_certificate(ca_crt)
-        )
-        builder.nonce = False
-        ocsp_request = builder.build()
-        return ocsp_request.dump(True)
 
     def __str__(self):
         """

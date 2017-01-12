@@ -31,7 +31,12 @@ import daemon
 import core.daemon
 from core import certfinder
 
+
 LOGFORMAT = '%(threadName)-10s [%(levelname)s] %(message)s'
+FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
+QUEUE_MAX_SIZE_PARSE = 0  # 0 = unlimited
+QUEUE_MAX_SIZE_RENEW = 0  # 0 = unlimited
+QUEUE_MAX_SIZE_SCHED = 0  # 0 = unlimited
 
 logging.basicConfig(
     level=logging.DEBUG,
