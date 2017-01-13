@@ -32,9 +32,6 @@ import core.daemon
 
 LOGFORMAT = '%(threadName)-10s [%(levelname)s] %(message)s'
 FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
-QUEUE_MAX_SIZE_PARSE = 0  # 0 = unlimited
-QUEUE_MAX_SIZE_RENEW = 0  # 0 = unlimited
-QUEUE_MAX_SIZE_SCHED = 0  # 0 = unlimited
 OCSP_REQUEST_RETRY_COUNT = 3
 
 logging.basicConfig(

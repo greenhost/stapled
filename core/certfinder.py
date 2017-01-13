@@ -24,8 +24,6 @@ import logging
 import os
 from core.certcontext import CertContext
 from core.exceptions import CertValidationError
-from core.scheduler import ScheduleContext
-from core.scheduler import ScheduleAction
 
 from ocspd import FILE_EXTENSIONS_DEFAULT
 
@@ -52,39 +50,27 @@ class CertFinderThread(threading.Thread):
 
             Currently supported keyword arguments:
 
-            :cli_args argparse.Namespace: The parsed CLI arguments namespace.
-            :contexts dict required: The cache of parsed certificates with OCSP
-                data if it was already been requested by the
-                :class:`core.ocsprenewer.OCSPRenewerThread`.
             :directories iterator required: The directories to index.
-            :parse_queue Queue required: The queue to add found certs to
-                for parsing.
             :refresh_interval int optional: The minimum amount of time (s)
                 between indexing runs, defaults to 10 seconds. Set to None
                 to run only once.
             :file_extensions array optional: An array containing the file
                 extensions of files to check for certificate content.
-            :ignore_list array optional: List of files to ignore.
         """
-        self.cli_args = kwargs.pop('cli_args', None)
-        self.contexts = kwargs.pop('contexts', None)
+        self.contexts = {}
         self.directories = kwargs.pop('directories', None)
-        self.renew_queue = kwargs.pop('renew_queue', None)
+        self.scheduler = kwargs.pop('scheduler', None)
         self.refresh_interval = kwargs.pop('refresh_interval', 10)
         self.file_extensions = kwargs.pop(
             'file_extensions', FILE_EXTENSIONS_DEFAULT
         )
-        self.ignore_list = kwargs.pop('ignore_list', [])
         self.last_refresh = None
 
-        assert self.cli_args is not None, \
-            "You need to pass a argparser.NameSpace with CLI arguments."
-        assert self.contexts is not None, \
-            "Contexts dict for keeping certificate contexts should be passed."
         assert self.directories is not None, \
             "At least one directory should be passed for indexing."
-        assert self.renew_queue is not None, \
-            "A renew queue where found and parsed certs should be passed."
+
+        assert self.scheduler is not None, \
+            "Please pass a scheduler to add tasks to."
 
         super(CertFinderThread, self).__init__(*args, **kwargs)
 

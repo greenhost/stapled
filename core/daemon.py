@@ -1,25 +1,17 @@
-import queue
 import logging
 from core import certfinder
 from core import ocsprenewer
-from core import scheduler
-from ocspd import QUEUE_MAX_SIZE_RENEW
-from ocspd import QUEUE_MAX_SIZE_SCHED
+from core import scheduling
 
 LOG = logging.getLogger()
 
 
 def run(args):
-    # pylint: disable=too-many-locals
     LOG.debug("Started with CLI args: %s", str(args))
-    renew_queue = queue.Queue(QUEUE_MAX_SIZE_RENEW)
-    sched_queue = queue.Queue(QUEUE_MAX_SIZE_SCHED)
     directories = args.directories
     file_extensions = args.file_extensions.replace(" ", "").split(",")
     renewal_threads = args.renewal_threads
     refresh_interval = args.refresh_interval
-    ignore_list = []
-    contexts = {}
 
     LOG.info(
         "Starting OCSP Stapling daemon, finding files of types: %s with "
@@ -28,15 +20,16 @@ def run(args):
         renewal_threads
     )
 
+    # Scheduler thread
+    scheduler = scheduling.SchedulerThread()
+    scheduler.daemon = False
+    scheduler.name = "scheduler"
+    scheduler.start()
+
     # Start ocsp response gathering threads
     threads_list = []
     for tid in range(0, renewal_threads):
-        thread = ocsprenewer.OCSPRenewerThread(
-            cli_args=args,
-            contexts=contexts,
-            renew_queue=renew_queue,
-            sched_queue=sched_queue
-        )
+        thread = ocsprenewer.OCSPRenewerThread(scheduler=scheduler)
         thread.daemon = False
         thread.name = "renewer-{}".format(tid)
         thread.start()
@@ -44,25 +37,11 @@ def run(args):
 
     # Start certificate finding thread
     finder = certfinder.CertFinderThread(
-        cli_args=args,
         directories=directories,
-        renew_queue=renew_queue,
         refresh_interval=refresh_interval,
         file_extensions=file_extensions,
-        ignore_list=ignore_list,
-        contexts=contexts
+        scheduler=scheduler
     )
     finder.daemon = False
     finder.name = "finder"
     finder.start()
-
-    # Scheduler thread
-    sched = scheduler.SchedulerThread(
-        cli_args=args,
-        ignore_list=ignore_list,
-        sched_queue=sched_queue,
-        renew_queue=renew_queue,
-    )
-    sched.daemon = False
-    sched.name = "scheduler"
-    sched.start()
