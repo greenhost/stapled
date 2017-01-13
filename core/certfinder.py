@@ -1,18 +1,20 @@
 """
-This module locates certificate files in the given directory. It then keeps
-track of the following:
+This module locates certificate files in the supplied directories. It then
+keeps track of the following:
 
   - If cert is found for the first time (thus also when the daemon is started),
-    the cert is added to a queue to be analysed. The following is then
-    recorded:
+    the cert is added to the :any:`core.daemon.run.parse_queue` to be parsed.
+    The following is then recorded:
+
      - File modification time.
      - Hash of the file.
+
   - If a cert is found a second time, the modification time is compared to the
     recorded modification time. If it differs, the hash is compared too, if it
-    too differs, the file is added to the queue for parsing again.
+    too differs, the file is added to the parsing queue again.
 
   - When certificates are deleted from the directories, the entries are removed
-    from the central cache in :any:`core.daemon.run.contexts`.
+    from the cache in :any:`core.certfinder.CertContext.contexts`.
 
     The cache of parsed files is volatile so every time the process is killed
     files need to be indexed again (thus files are considered "new").
@@ -32,7 +34,9 @@ LOG = logging.getLogger()
 
 class CertFinderThread(threading.Thread):
     """
-    Returns a threaded or non-threaded class (not an instance) of CertFinder
+    This object can be used to index directories and search for certificate
+    files. When found they will be added to the supplied queue for further
+    processing.
 
     If this class is run in threaded mode, it will start a threading.Timer to
     re-run self.refresh after n seconds (10 seconds by default), if it is not
@@ -45,17 +49,17 @@ class CertFinderThread(threading.Thread):
 
     def __init__(self, *args, **kwargs):
         """
-            Initialise the thread's arguments and its parent
-            :py:`threading.Thread`.
+        Initialise the thread's arguments and its parent
+        :py:`threading.Thread`.
 
-            Currently supported keyword arguments:
+        Currently supported keyword arguments:
 
-            :directories iterator required: The directories to index.
-            :refresh_interval int optional: The minimum amount of time (s)
-                between indexing runs, defaults to 10 seconds. Set to None
-                to run only once.
-            :file_extensions array optional: An array containing the file
-                extensions of files to check for certificate content.
+        :directories iterator required: The directories to index.
+        :refresh_interval int optional: The minimum amount of time (s)
+            between indexing runs, defaults to 10 seconds. Set to None
+            to run only once.
+        :file_extensions array optional: An array containing the file
+            extensions of files to check for certificate content.
         """
         self.contexts = {}
         self.directories = kwargs.pop('directories', None)
@@ -114,9 +118,7 @@ class CertFinderThread(threading.Thread):
 
     def _find_new_certs(self):
         """
-
-        New files are added to the `parse_queue` for further
-        processing.
+        New files are added to the parse action queue for further processing.
         """
         try:
             for path in self.directories:
@@ -141,8 +143,9 @@ class CertFinderThread(threading.Thread):
         Loop through the list of files that were already found and check
         whether they were deleted or changed.
 
-        Changed files are added to the `parse_queue` for further
-        processing. This makes sure only changed files are processed by the
+        Changed files are added to the parse action queue for further
+        processing.
+        This makes sure only changed files are processed by the
         CPU intensive processes.
 
         Deleted files are removed from the found files list.

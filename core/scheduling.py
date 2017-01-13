@@ -151,6 +151,8 @@ class SchedulerThread(threading.Thread):
         :param str action: Action name that refers to a scheduler queue.
         :param bool blocking: Wait until there is something to return from the
             queue
+        :raises Queue.Empty: If the underlying action queue is empty and
+            blocking is False or the timout expires
         """
         return self._queues[action].get(blocking, timeout)
 
