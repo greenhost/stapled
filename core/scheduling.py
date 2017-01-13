@@ -82,13 +82,13 @@ class SchedulerThread(threading.Thread):
         :raises Queue.Full: If the underlying action queue is full
         """
         if isinstance(actions, str):
-            actions = tuple(actions)
-
+            actions = (actions,)
         if not sched_time:
             for action in actions:
                 self._queue_action(action, context)
         else:
-            pass
+            for action in actions:
+                self._schedule_task(action, context, sched_time)
 
     def _queue_action(self, action, context):
         try:
@@ -156,12 +156,21 @@ class SchedulerThread(threading.Thread):
         """
         return self._queues[action].get(blocking, timeout)
 
+    def task_done(self, action):
+        """
+        Mark a task done on a queue, this up the queue's counter of completed
+        tasks.
+
+        :param str action: The action queue name.
+        """
+        self._queues[action].task_done()
+
     def run(self):
         """
         Start the certificate finder thread.
         """
+        LOG.info("Started a scheduler thread.")
         while True:
-            LOG.info("Started a scheduler thread.")
             self._run()
             time.sleep(1)
 

@@ -131,7 +131,7 @@ class CertFinderThread(threading.Thread):
                             context = CertContext(filename)
                             self.contexts[filename] = context
                             if self.parse_crt(context):
-                                self.renew_queue.put(context)
+                                self.scheduler.add_task("renew", context)
         except OSError as err:
             LOG.critical(
                 "Can't read directory: %s, reason: %s.",
@@ -171,7 +171,7 @@ class CertFinderThread(threading.Thread):
                     if filename in self.contexts:
                         del self.contexts[filename]
                 if self.parse_crt(new_context):
-                    self.renew_queue.put(new_context)
+                    self.scheduler.add_task("renew", new_context)
 
     def refresh(self):
         """

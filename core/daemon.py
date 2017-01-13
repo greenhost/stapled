@@ -71,12 +71,16 @@ def run(args):
     scheduler = scheduling.SchedulerThread()
     scheduler.daemon = False
     scheduler.name = "scheduler"
+    scheduler.add_queue("renew")
     scheduler.start()
 
     # Start ocsp response gathering threads
     threads_list = []
     for tid in range(0, renewal_threads):
-        thread = ocsprenewer.OCSPRenewerThread(scheduler=scheduler)
+        thread = ocsprenewer.OCSPRenewerThread(
+            minimum_validity=args.minimum_validity,
+            scheduler=scheduler
+        )
         thread.daemon = False
         thread.name = "renewer-{}".format(tid)
         thread.start()
