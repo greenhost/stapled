@@ -125,8 +125,7 @@ class CertFinderThread(threading.Thread):
                     ext = os.path.splitext(filename)[1].lstrip(".")
                     if ext in self.file_extensions:
                         filename = os.path.join(path, filename)
-                        if filename not in self.contexts and \
-                                filename not in self.ignore_list:
+                        if filename not in self.contexts:
                             context = CertContext(filename)
                             self.contexts[filename] = context
                             if self.parse_crt(context):

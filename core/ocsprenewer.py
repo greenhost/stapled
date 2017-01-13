@@ -7,8 +7,8 @@ import threading
 import logging
 import datetime
 import os
-from core.scheduler import ScheduleContext
-from core.scheduler import ScheduleAction
+from core.scheduling import ScheduleContext
+from core.scheduling import ScheduleAction
 from core.exceptions import CertValidationError
 from core.exceptions import OCSPRenewError
 

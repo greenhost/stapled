@@ -110,7 +110,7 @@ class SchedulerThread(threading.Thread):
                 "Task %s: %s was already scheduled, unscheduling.",
                 action, context
             )
-            self._unschedule_renewal(key)
+            self._unschedule_task(*key)
 
         # Schedule task
         self.scheduled[key] = sched_time
@@ -164,6 +164,9 @@ class SchedulerThread(threading.Thread):
             time.sleep(1)
 
     def run_all(self):
+        """
+            Run all tasks currently queued regardless schedule time.
+        """
         self._run(True)
 
     def _run(self, all_tasks=False):
