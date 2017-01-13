@@ -39,6 +39,7 @@ class CertFinderThread(threading.Thread):
     Pass `refresh_interval=None` if you want to run it only once (e.g. for
     testing)
     """
+    # pylint: disable=too-many-instance-attributes
 
     def __init__(self, *args, **kwargs):
         """
@@ -83,7 +84,7 @@ class CertFinderThread(threading.Thread):
 
         super(CertFinderThread, self).__init__(*args, **kwargs)
 
-    def run(self, *args, **kwargs):
+    def run(self):
         """
         Start the certificate finder thread.
         """
@@ -159,8 +160,8 @@ class CertFinderThread(threading.Thread):
         for filename, cert_file in self.contexts.items():
             # purge certs that no longer exist in the cert dirs
             if not os.path.exists(filename):
-                if filename in self.cert_list:
-                    del self.cert_list[filename]
+                if filename in self.contexts:
+                    del self.contexts[filename]
                 LOG.info(
                     "File \"%s\" was deleted, removing it from the list.",
                     filename
@@ -175,8 +176,8 @@ class CertFinderThread(threading.Thread):
                         "parsing queue.",
                         filename
                     )
-                    if filename in self.cert_list:
-                        del self.cert_list[filename]
+                    if filename in self.contexts:
+                        del self.contexts[filename]
                     self.parse_queue.put(new_cert)
                     continue
 
