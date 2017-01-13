@@ -33,6 +33,7 @@ from core.exceptions import CertValidationError
 from core.exceptions import OCSPRenewError
 from util.ocsp import OCSPResponseParser
 from util.functions import pretty_base64
+from util.functions import file_hexdigest
 
 LOG = logging.getLogger()
 
@@ -47,7 +48,14 @@ class CertContext(object):
         Initialise the CertContext model object.
         """
         self.filename = filename
-        self.hash = self.hashfile(filename)
+        try:
+            self.hash = file_hexdigest(filename)
+        except IOError as err:
+            # Catch to log the error and re-raise to handle at the appropriate
+            # level
+            LOG.error("Can't access file %s", filename)
+            raise err
+
         self.modtime = os.path.getmtime(filename)
         self.end_entity = None
         self.intermediates = []
@@ -56,22 +64,6 @@ class CertContext(object):
         self.ocsp_urls = []
         self.chain = []
         self.valid_until = None
-
-    @staticmethod
-    def hashfile(filename):
-        """
-        Return the SHA1 hash of the binary file contents.
-        """
-        sha1 = hashlib.sha1()
-        try:
-            with open(filename, 'rb') as f_obj:
-                sha1.update(f_obj.read())
-        except IOError as err:
-            # Catch to log the error and re-raise to handle at the appropriate
-            # level
-            LOG.error("Can't access file %s", filename)
-            raise err
-        return sha1.hexdigest()
 
     def parse_crt_chain(self):
         """
@@ -326,9 +318,12 @@ class CertContext(object):
                 "try to parse it again.".format(self.filename)
             )
 
-    def __str__(self):
+    def __repr__(self):
         """
-        When we refer to this object without calling a method or specifying an
-        attribute we want to get the file name returned.
+            We return the file name here because this way we can use it as a
+            short-cut when we assign this object to something.
         """
         return self.filename
+
+    def __str__(self):
+        return "<CertContext {}>".format("".join(self.filename))

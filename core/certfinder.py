@@ -23,6 +23,10 @@ import time
 import logging
 import os
 from core.certcontext import CertContext
+from core.exceptions import CertValidationError
+from core.scheduler import ScheduleContext
+from core.scheduler import ScheduleAction
+
 from ocspd import FILE_EXTENSIONS_DEFAULT
 
 LOG = logging.getLogger()
@@ -65,7 +69,7 @@ class CertFinderThread(threading.Thread):
         self.cli_args = kwargs.pop('cli_args', None)
         self.contexts = kwargs.pop('contexts', None)
         self.directories = kwargs.pop('directories', None)
-        self.parse_queue = kwargs.pop('parse_queue', None)
+        self.renew_queue = kwargs.pop('renew_queue', None)
         self.refresh_interval = kwargs.pop('refresh_interval', 10)
         self.file_extensions = kwargs.pop(
             'file_extensions', FILE_EXTENSIONS_DEFAULT
@@ -79,8 +83,8 @@ class CertFinderThread(threading.Thread):
             "Contexts dict for keeping certificate contexts should be passed."
         assert self.directories is not None, \
             "At least one directory should be passed for indexing."
-        assert self.parse_queue is not None, \
-            "A parsing queue where found certificates should be passed."
+        assert self.renew_queue is not None, \
+            "A renew queue where found and parsed certs should be passed."
 
         super(CertFinderThread, self).__init__(*args, **kwargs)
 
@@ -139,7 +143,8 @@ class CertFinderThread(threading.Thread):
                                 filename not in self.ignore_list:
                             context = CertContext(filename)
                             self.contexts[filename] = context
-                            self.parse_queue.put(context)
+                            if self.parse_crt(context):
+                                self.renew_queue.put(context)
         except OSError as err:
             LOG.critical(
                 "Can't read directory: %s, reason: %s.",
@@ -157,7 +162,7 @@ class CertFinderThread(threading.Thread):
 
         Deleted files are removed from the found files list.
         """
-        for filename, cert_file in self.contexts.items():
+        for filename, context in self.contexts.items():
             # purge certs that no longer exist in the cert dirs
             if not os.path.exists(filename):
                 if filename in self.contexts:
@@ -166,11 +171,10 @@ class CertFinderThread(threading.Thread):
                     "File \"%s\" was deleted, removing it from the list.",
                     filename
                 )
-                continue
-            # purge and re-add files that have changed
-            if os.path.getmtime(filename) > cert_file.modtime:
-                new_cert = CertContext(filename)
-                if new_cert.hash != cert_file.hash:
+            elif os.path.getmtime(filename) > context.modtime:
+                # purge and re-add files that have changed
+                new_context = CertContext(filename)
+                if new_context.hash != context.hash:
                     LOG.info(
                         "File \"%s\" was changed, adding it to the "
                         "parsing queue.",
@@ -178,8 +182,8 @@ class CertFinderThread(threading.Thread):
                     )
                     if filename in self.contexts:
                         del self.contexts[filename]
-                    self.parse_queue.put(new_cert)
-                    continue
+                if self.parse_crt(new_context):
+                    self.renew_queue.put(new_context)
 
     def refresh(self):
         """
@@ -191,3 +195,38 @@ class CertFinderThread(threading.Thread):
         self._update_cached_certs()
         LOG.info("Adding new certificates to cache..")
         self._find_new_certs()
+
+    def parse_crt(self, context):
+        LOG.info("Parsing file \"%s\"..", context.filename)
+        try:
+            context.parse_crt_chain()
+            return True
+        except CertValidationError as err:
+            self._handle_failed_validation(context, err)
+        # except KeyError as err:
+        #     self._handle_failed_validation(
+        #         context,
+        #         "KeyError {}, processing file \"{}\"".format(
+        #             err, context.filename
+        #         )
+        #     )
+        return False
+
+    def _handle_failed_validation(self, context, msg, delete_ocsp=True):
+        LOG.critical(msg)
+        # Unschedule any scheduled actions for context
+        schedule_context = ScheduleContext(
+            ScheduleAction(ScheduleAction.REMOVE),
+            context
+        )
+        ScheduleAction(ScheduleAction.REMOVE_AND_IGNORE)
+        self.sched_queue.put(schedule_context)
+        if delete_ocsp:
+            LOG.info(
+                "Deleting any OCSP staple: \"%s\" if it exists.",
+                context.filename
+            )
+            try:
+                os.remove("{}.ocsp".format(context.filename))
+            except IOError:
+                pass

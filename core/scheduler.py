@@ -70,6 +70,7 @@ class ScheduleContext(object):
     Context that can be created and passed from any thread to the scheduler
     thread, given it has a reference to the `daemon.sched_queue` object.
     """
+    # pylint: disable=too-few-public-methods
     def __init__(self, actions, context, sched_time=None):
         """
         Initialise a scheduler.Context to add to the `daemon.sched_queue`
@@ -83,6 +84,18 @@ class ScheduleContext(object):
                 "Can't schedule an action without a scheduled time."
             )
         self.sched_time = sched_time
+
+    def __repr__(self):
+        return "ScheduleContext({!r}, {!r}, {!r})".format(
+            self.actions, self.context, self.sched_time)
+
+    def __str__(self):
+        fmt_str = "<ScheduleContext action: {} for: {} at: {}>"
+        if self.sched_time:
+            return fmt_str.format(self.actions, self.context, self.sched_time)
+
+        return fmt_str.format(
+            self.actions, self.context, self.sched_time, "now")
 
 
 class SchedulerThread(threading.Thread):
@@ -126,7 +139,7 @@ class SchedulerThread(threading.Thread):
 
         super(SchedulerThread, self).__init__(*args, **kwargs)
 
-    def run(self, *args, **kwargs):
+    def run(self):
         """
         Start the thread if threaded, otherwise just run the same process.
         :param tuple *args: Arguments for the Scheduler initialisation
@@ -148,6 +161,7 @@ class SchedulerThread(threading.Thread):
         while True:
             try:
                 context = self.sched_queue.get(block=True, timeout=.1)
+                print(context)
                 # The following is a series of OR operators for bitwise
                 # comparison. This way we can assign an action to each bit
                 # in the Action Enum.
@@ -222,7 +236,7 @@ class SchedulerThread(threading.Thread):
             the certificate back to the renewal queue
         """
         if context.filename in self.scheduled:
-            LOG.warn(
+            LOG.warning(
                 "OCSP staple for %s was already scheduled to be renewed, "
                 "unscheduling.",
                 context.filename
@@ -258,4 +272,4 @@ class SchedulerThread(threading.Thread):
             slot = self.schedule[sched_time]
             slot[:] = [x for x in slot if x is not context]
         except KeyError:
-            LOG.warn("Can't unschedule, %s wasn't scheduled for renewal")
+            LOG.warning("Can't unschedule, %s wasn't scheduled for renewal")

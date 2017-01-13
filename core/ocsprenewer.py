@@ -49,11 +49,11 @@ class OCSPRenewerThread(threading.Thread):
         assert self.renew_queue is not None, \
             "A renew queue for parsed certificates should be passed."
         assert self.sched_queue is not None, \
-            "A queue for scheduling OCSP staple renewals shoudl be passed."
+            "A queue for scheduling OCSP staple renewals should be passed."
 
         super(OCSPRenewerThread, self).__init__(*args, **kwargs)
 
-    def run(self, *args, **kwargs):
+    def run(self):
         """
         Start the thread if threaded, otherwise just run the same process.
         """
