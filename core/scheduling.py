@@ -1,30 +1,23 @@
 """
-This is a task specific (as opposed to general purpose) scheduler. It does best
-effort scheduling and execution of expired items in the order they are added.
-This also means that there is no guarantee the tasks will be executed on time
-every time, in fact they will always be late, even if just by milliseconds. If
-you need it to be done on time, you schedule it early, but remember that it
-will still be best effort.
+This is a general purpose scheduler. It does best effort scheduling and
+execution of expired items in the order they are added. This also means that
+there is no guarantee the tasks will be executed on time every time, in fact
+they will always be late, even if just by milliseconds. If you need it to be
+done on time, you schedule it early, but remember that it will still be best
+effort.
 
-The way this scheduler is supposed to be used is to schedule OCSP staple
-renewal requests *n* seconds before the last one expires, where *n* is usually
-as few hours (2 default). If the action fails, it should be rescheduled to be
-run again a few times between the first attempt and the expiration of the
-current OCSP staple.
+The way this scheduler is supposed to be used is to add a scheduling queue,
+then you can add tasks to the queue to either be put in a task queue ASAP or
+at or an absolute time in the future. The queue should be consumed by a worker
+thread.
 
 This module defines the following objects:
 
- - :scheduler:`Scheduler` - An object that is capable of scheduling and
-    unscheduling actions defined by :scheduler:`ScheduleAction` with a
-    :models:`CertContext` object and optional time, wrapped in
-    :scheduler:`ScheduleContext`.
-
-    ..Note: Only use :scheduler:`SchedulerThreaded` unless you are testing.
-
- - :scheduler:`SchedulerThreaded`
-    A threaded :scheduler:`Scheduler` - which doesn't mean multi threading, it
-    will just run in its own thread. This is the normal way to use this class.
-
+ - :scheduler:`SchedulerThread` - An object that is capable of scheduling and
+    unscheduling actions that you can define with, you should add contexts to
+    the schedule with an optional time. The context should to have a proper
+    ``__repr__()`` defined since the scheduler relies on it to be a unique
+    identifier.
 """
 import threading
 import logging
@@ -37,10 +30,15 @@ LOG = logging.getLogger()
 
 class SchedulerThread(threading.Thread):
     """
-    Renewal of OCSP staples can be scheduled with this object. It will also
-    manage all the data going in and out of the certificate cache in
-    `daemon.crt_list`. For example, if a certificate is deleted from the
-    schedule, the cache will also be deleted.
+    This object can be used to schedule actions for contexts.
+
+    The context can be whatever you define as long as the ``__repr__()`` will
+    return something that is unique among your actions. When the scheduled time
+    has passed, the context will be added back to the action queue, where it
+    can be consumed by a worker thread. When a task is scheduled you can choose
+    to have it added to the action queue ASAP or at a specified absolute point
+    in time. If you add it at a time in the past, it will be added to the
+    action queue the first time the scheduler checks expired actions times.
     """
     def __init__(self, *args, **kwargs):
         """
