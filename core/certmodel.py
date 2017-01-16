@@ -1,10 +1,10 @@
 """
-This module defines the :mod:`core.certmodel.CertModel` class  which is
+This module defines the :class:`core.certmodel.CertModel` class  which is
 used to keep track of certificates that were found by the
-:mod:`core.certfinder.CertFinder`. The context is then used by the
-:mod:`core.certparser.CertParserThread` which parses the certificate and
+:class:`core.certfinder.CertFinder`. The context is then used by the
+:class:`core.certparser.CertParserThread` which parses the certificate and
 validates it, then fills in some of the attributes so it can be used by the
-:mod:`core.ocsprenewer.OCSPRenewer` to generate a request for an OCSP staple,
+:class:`core.ocsprenewer.OCSPRenewer` to generate a request for an OCSP staple,
 the request is also stored in the context. The request will then be sent, and
 if a valid OCSP staple is returned, it too is stored in the context.
 
@@ -190,7 +190,7 @@ class CertModel(object):
     def _check_ocsp_response(self, ocsp_staple, url):
         """
             Check that the OCSP response says that the status is "good".
-            Also sets :mod:`core.certmodel.CertModel.ocsp_staple.valid_until`.
+            Also sets :attr:`core.certmodel.CertModel.ocsp_staple.valid_until`.
         """
         if LOG.getEffectiveLevel() < 20:
             LOG.debug(
@@ -304,8 +304,8 @@ class CertModel(object):
         """
         Generate an OCSP request or return an already cached request.
         :return bytes: A binary representation of a
-            :mod:`asn1crypto.ocsp.OCSPRequest` which is in turn represented by
-            a :mod:`asn1crypto.core.Sequence`.
+            :class:`asn1crypto.ocsp.OCSPRequest` which is in turn represented
+            by a :class:`asn1crypto.core.Sequence`.
         """
         ocsp_request_builder = ocspbuilder.OCSPRequestBuilder(
             asymmetric.load_certificate(self.end_entity),
@@ -319,7 +319,6 @@ class CertModel(object):
                 "Request data: \n%s",
                 pretty_base64(ocsp_request, line_len=75, prefix="\t")
             )
-            print(ocsp_request)
         return ocsp_request
 
     def __repr__(self):

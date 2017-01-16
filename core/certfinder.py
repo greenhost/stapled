@@ -3,7 +3,7 @@ This module locates certificate files in the supplied directories. It then
 keeps track of the following:
 
   - If cert is found for the first time (thus also when the daemon is started),
-    the cert is added to the :any:`core.daemon.run.parse_queue` to be parsed.
+    the cert is added to the :meth:`core.daemon.run.parse_queue` to be parsed.
     The following is then recorded:
 
      - File modification time.
@@ -14,7 +14,7 @@ keeps track of the following:
     too differs, the file is added to the parsing queue again.
 
   - When certificates are deleted from the directories, the entries are removed
-    from the cache in :any:`core.certfinder.CertContext.contexts`.
+    from the cache in :attr:`core.certfinder.CertContext.contexts`.
 
     The cache of parsed files is volatile so every time the process is killed
     files need to be indexed again (thus files are considered "new").

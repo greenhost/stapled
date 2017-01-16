@@ -1,7 +1,7 @@
 """
 This module bootstraps the ocspd process by starting threads for:
 
-  - 1x :class:`core.scheduling.SchedulerThread`
+ - 1x :class:`core.scheduling.SchedulerThread`
 
         Can be used to create action queues that where tasks can be added that
         are either added to the action queue immediately or at a set time in
@@ -11,31 +11,31 @@ This module bootstraps the ocspd process by starting threads for:
 
         - Finds certificate files in the specified directories at regular
           intervals.
-        - Removes deleted certificates from the object's cache in
-          :any:`core.certfinder.CertFinder.contexts`.
-        - Parses certificates queued in
-          :any:`core.certfinder.CertFinder.contexts`.
-        - Caches the parsed certificates in
-          :any:`core.certfinder.CertFinder.contexts`.
+        - Parses certificates and caches parsed certificates in
+          :attr:`core.certfinder.CertFinder.contexts`.
+        - Removes deleted certificates from the context cache in
+          :attr:`core.certfinder.CertFinder.contexts`.
         - Add the parsed certificate to the the renew action queue of the
           scheduler for requesting or renewing the OCSP staple.
 
  - 2x (or more depending on the ``-t`` CLI argument)
    :class:`core.ocsprenewer.OCSPRenewerThreaded`
 
-        - Gets renewal tasks from renew action queue of the scheduler.
-        - Validates the certificate chains.
-        - Renews the OCSP staples.
-        - Validates the certificate chains again but this time including the
-          OCSP staple.
-        - Writes the OCSP staple to disk.
-        - Schedules a renewal at a configurable time before the expiration of
-          the OCSP staple.
+        - Gets tasks from the scheduler in :attr:`self.scheduler` which is a
+          :class:`core.scheduling.Scheduler` object passed by this module.
+        - For each task:
+            - Validates the certificate chains.
+            - Renews the OCSP staples.
+            - Validates the certificate chains again but this time including
+              the OCSP staple.
+            - Writes the OCSP staple to disk.
+            - Schedules a renewal at a configurable time before the expiration
+              of the OCSP staple.
 
-    The main reason for spawning multiple threads for this is that the request
-    is a blocking action that also takes relatively long to complete. If any of
-    these request stall for long, the entire daemon doesn't stop working until
-    it is no longer stalled.
+    The main reason for spawning multiple threads for this is that the OCSP
+    request is a blocking action that also takes relatively long to complete.
+    If any of these request stall for long, the entire daemon doesn't stop
+    working until it is no longer stalled.
 
 """
 import logging

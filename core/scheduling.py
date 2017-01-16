@@ -77,9 +77,10 @@ class SchedulerThread(threading.Thread):
         Add a task to be executed either ASAP, or at a specific time
 
         :param tuple | str: An action corresponding to an existing queue
-        :param :mod:`certmodel.CertModel` context: Certificate context
-        :param datetime.datetime sched_time: Absolute time to execute the task
-        :raises Queue.Full: If the underlying action queue is full
+        :param :class:`certmodel.CertModel` context: Certificate context
+        :param :obj:`datetime.datetime` sched_time: Absolute time to execute
+            the task
+        :raises :exc:`Queue.Full`: If the underlying action queue is full
         """
         if isinstance(actions, str):
             actions = (actions,)
@@ -128,7 +129,7 @@ class SchedulerThread(threading.Thread):
         Remove a task from the queue.
 
         :param tuple | str: An action corresponding to an existing queue
-        :param :mod:`certmodel.CertModel` context: Certificate context
+        :param :class:`certmodel.CertModel` context: Certificate context
         :return array|bool: Boolean True for successfully cancelled task or an
             array of booleans for an array of tasks
         """
