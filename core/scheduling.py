@@ -77,18 +77,18 @@ class SchedulerThread(threading.Thread):
         Add a task to be executed either ASAP, or at a specific time
 
         :param tuple | str: An action corresponding to an existing queue
-        :param :mod:`certcontext.CertContext` context: Certificate context
+        :param :mod:`certmodel.CertModel` context: Certificate context
         :param datetime.datetime sched_time: Absolute time to execute the task
         :raises Queue.Full: If the underlying action queue is full
         """
         if isinstance(actions, str):
-            actions = tuple(actions)
-
+            actions = (actions,)
         if not sched_time:
             for action in actions:
                 self._queue_action(action, context)
         else:
-            pass
+            for action in actions:
+                self._schedule_task(action, context, sched_time)
 
     def _queue_action(self, action, context):
         try:
@@ -110,7 +110,7 @@ class SchedulerThread(threading.Thread):
                 "Task %s: %s was already scheduled, unscheduling.",
                 action, context
             )
-            self._unschedule_renewal(key)
+            self._unschedule_task(*key)
 
         # Schedule task
         self.scheduled[key] = sched_time
@@ -122,6 +122,19 @@ class SchedulerThread(threading.Thread):
         LOG.info(
             "Scheduled %s: %s at %s",
             action, context, sched_time.strftime('%Y-%m-%d %H:%M:%S'))
+
+    def cancel_task(self, actions, context, sched_time=None):
+        """
+        Remove a task from the queue.
+
+        :param tuple | str: An action corresponding to an existing queue
+        :param :mod:`certmodel.CertModel` context: Certificate context
+        :return array|bool: Boolean True for successfully cancelled task or an
+            array of booleans for an array of tasks
+        """
+        if isinstance(actions, str):
+            return self._unschedule_task(actions, context)
+        return [self._unschedule_task(a, context) for a in actions]
 
     def _unschedule_task(self, action, context):
         """
@@ -136,10 +149,12 @@ class SchedulerThread(threading.Thread):
             # and leave it
             slot = self.schedule[sched_time]
             slot[:] = [x for x in slot if x != (action, context)]
+            return True
         except KeyError:
             LOG.warning(
                 "Can't unschedule, %s wasn't scheduled for %s",
                 context, action)
+            return False
 
     def get_task(self, action, blocking=True, timeout=None):
         """
@@ -151,19 +166,33 @@ class SchedulerThread(threading.Thread):
         :param str action: Action name that refers to a scheduler queue.
         :param bool blocking: Wait until there is something to return from the
             queue
+        :raises Queue.Empty: If the underlying action queue is empty and
+            blocking is False or the timout expires
         """
         return self._queues[action].get(blocking, timeout)
+
+    def task_done(self, action):
+        """
+        Mark a task done on a queue, this up the queue's counter of completed
+        tasks.
+
+        :param str action: The action queue name.
+        """
+        self._queues[action].task_done()
 
     def run(self):
         """
         Start the certificate finder thread.
         """
+        LOG.info("Started a scheduler thread.")
         while True:
-            LOG.info("Started a scheduler thread.")
             self._run()
             time.sleep(1)
 
     def run_all(self):
+        """
+            Run all tasks currently queued regardless schedule time.
+        """
         self._run(True)
 
     def _run(self, all_tasks=False):

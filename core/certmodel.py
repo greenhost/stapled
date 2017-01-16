@@ -1,5 +1,5 @@
 """
-This module defines the :mod:`core.certcontext.CertContext` class  which is
+This module defines the :mod:`core.certmodel.CertModel` class  which is
 used to keep track of certificates that were found by the
 :mod:`core.certfinder.CertFinder`. The context is then used by the
 :mod:`core.certparser.CertParserThread` which parses the certificate and
@@ -19,7 +19,6 @@ The logic following logic is contained within the context class:
 """
 import os
 import logging
-import hashlib
 import binascii
 import urllib
 import time
@@ -38,14 +37,14 @@ from util.functions import file_hexdigest
 LOG = logging.getLogger()
 
 
-class CertContext(object):
+class CertModel(object):
     """
     Model for certificate files.
     """
     # pylint: disable=too-many-instance-attributes
     def __init__(self, filename):
         """
-        Initialise the CertContext model object.
+        Initialise the CertModel model object.
         """
         self.filename = filename
         try:
@@ -209,7 +208,7 @@ class CertContext(object):
     def check_ocsp_response(self, ocsp_staple, url):
         """
             Check that the OCSP response says that the status is "good".
-            Also sets :mod:`core.certcontext.CertContext.valid_until`.
+            Also sets :mod:`core.certmodel.CertModel.valid_until`.
         """
         if LOG.getEffectiveLevel() < 20:
             LOG.debug(
@@ -326,4 +325,4 @@ class CertContext(object):
         return self.filename
 
     def __str__(self):
-        return "<CertContext {}>".format("".join(self.filename))
+        return "<CertModel {}>".format("".join(self.filename))
