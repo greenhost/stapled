@@ -125,13 +125,27 @@ class CertFinderThread(threading.Thread):
                 LOG.info("Scanning directory: %s", path)
                 for filename in os.listdir(path):
                     ext = os.path.splitext(filename)[1].lstrip(".")
-                    if ext in self.file_extensions:
-                        filename = os.path.join(path, filename)
-                        if filename not in self.contexts:
-                            context = CertModel(filename)
-                            self.contexts[filename] = context
-                            if self.parse_crt(context):
-                                self.scheduler.add_task("renew", context)
+                    if ext not in self.file_extensions:
+                        continue
+                    filename = os.path.join(path, filename)
+                    if filename in self.contexts:
+                        continue
+                    try:
+                        LOG.info("Parsing file \"%s\"..", filename)
+                        context = CertModel(filename)
+                    except CertValidationError as err:
+                        self._handle_failed_validation(context, err)
+                    # This is for certvalidator, which is currently not in
+                    # use.
+                    # except KeyError as err:
+                    #     self._handle_failed_validation(
+                    #         context,
+                    #         "KeyError {}, processing file \"{}\"".format(
+                    #             err, context.filename
+                    #         )
+                    #     )
+                    self.contexts[filename] = context
+                    self.scheduler.add_task("renew", context)
         except OSError as err:
             LOG.critical(
                 "Can't read directory: %s, reason: %s.",
@@ -150,28 +164,48 @@ class CertFinderThread(threading.Thread):
 
         Deleted files are removed from the found files list.
         """
+        def del_context(filename):
+            """
+                Delete context in a thread safe manner, if another thread
+                deleted it, we should ignore the KeyError.
+            """
+            try:
+                del self.contexts[filename]
+            except KeyError:
+                pass
+
         for filename, context in self.contexts.items():
             # purge certs that no longer exist in the cert dirs
             if not os.path.exists(filename):
-                if filename in self.contexts:
-                    del self.contexts[filename]
+                del_context(filename)
                 LOG.info(
                     "File \"%s\" was deleted, removing it from the list.",
                     filename
                 )
             elif os.path.getmtime(filename) > context.modtime:
                 # purge and re-add files that have changed
-                new_context = CertModel(filename)
+                LOG.info("File \"%s\" changed, parsing it again.", filename)
+                try:
+                    new_context = CertModel(filename)
+                except CertValidationError as err:
+                    self._handle_failed_validation(context, err)
+                # This is for certvalidator, which is currently not in
+                # use.
+                # except KeyError as err:
+                #     self._handle_failed_validation(
+                #         context,
+                #         "KeyError {}, processing file \"{}\"".format(
+                #             err, context.filename
+                #         )
+                #     )
                 if new_context.hash != context.hash:
+                    del_context(filename)
+                    self.scheduler.add_task("renew", new_context)
+                else:
                     LOG.info(
-                        "File \"%s\" was changed, adding it to the "
-                        "parsing queue.",
+                        "Ignoring change in \"%s\" hash didn't change",
                         filename
                     )
-                    if filename in self.contexts:
-                        del self.contexts[filename]
-                if self.parse_crt(new_context):
-                    self.scheduler.add_task("renew", new_context)
 
     def refresh(self):
         """
@@ -183,23 +217,6 @@ class CertFinderThread(threading.Thread):
         self._update_cached_certs()
         LOG.info("Adding new certificates to cache..")
         self._find_new_certs()
-
-    def parse_crt(self, context):
-        LOG.info("Parsing file \"%s\"..", context.filename)
-        try:
-            context.parse_crt_chain()
-            return True
-        except CertValidationError as err:
-            self._handle_failed_validation(context, err)
-        # This is for certvalidator, which is currently not in use.
-        # except KeyError as err:
-        #     self._handle_failed_validation(
-        #         context,
-        #         "KeyError {}, processing file \"{}\"".format(
-        #             err, context.filename
-        #         )
-        #     )
-        return False
 
     def _handle_failed_validation(self, context, msg, delete_ocsp=True):
         LOG.critical(msg)

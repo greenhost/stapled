@@ -93,10 +93,11 @@ class OCSPRenewerThread(threading.Thread):
         :raises ValueError: If context.valid_until is None
         """
         if not sched_time:
-            if context.valid_until is None:
-                raise ValueError("context.valid_until can't be None.")
+            if context.ocsp_staple.valid_until is None:
+                raise ValueError(
+                    "context.ocsp_response.valid_until can't be None.")
             before_sched_time = datetime.timedelta(
                 seconds=self.minimum_validity)
-            sched_time = context.valid_until - before_sched_time
+            sched_time = context.ocsp_staple.valid_until - before_sched_time
 
         self.scheduler.add_task("renew", context, sched_time)

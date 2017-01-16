@@ -33,6 +33,7 @@ from core.exceptions import OCSPRenewError
 from util.ocsp import OCSPResponseParser
 from util.functions import pretty_base64
 from util.functions import file_hexdigest
+from util.cache import cache
 
 LOG = logging.getLogger()
 
@@ -44,7 +45,11 @@ class CertModel(object):
     # pylint: disable=too-many-instance-attributes
     def __init__(self, filename):
         """
-        Initialise the CertModel model object.
+        Initialise the CertModel model object, extract the certificate
+        (end_entity) and the chain (intermediates). Validates the certificate
+
+        chain.
+        :raises CertValidationError: When the certificate chain is invalid.
         """
         self.filename = filename
         try:
@@ -59,18 +64,8 @@ class CertModel(object):
         self.end_entity = None
         self.intermediates = []
         self.ocsp_staple = None
-        self.ocsp_request = None
         self.ocsp_urls = []
         self.chain = []
-        self.valid_until = None
-
-    def parse_crt_chain(self):
-        """
-        Extract the certificate (end_entity) and the chain (intermediates).
-        Validates the certificate chain.
-
-        :raises CertValidationError: When the certificate chain is invalid.
-        """
         try:
             self._read_full_chain()
             self.chain = self._validate_cert()
@@ -106,22 +101,9 @@ class CertModel(object):
                 "Certificate chain is missing in \"{}\", can't validate "
                 "without it.".format(self.filename)
             )
+
         url = self.ocsp_urls[url_index]
         host = urllib.parse.urlparse(url).hostname
-        ocsp_request_builder = ocspbuilder.OCSPRequestBuilder(
-            asymmetric.load_certificate(self.end_entity),
-            asymmetric.load_certificate(self.chain[-2])
-        )
-        ocsp_request_builder.nonce = False
-        self.ocsp_request = ocsp_request_builder.build().dump()
-
-        # This data can be posted to the OCSP URI to debug further
-        if LOG.getEffectiveLevel() < 20:
-            LOG.debug(
-                "Request data: \n%s",
-                pretty_base64(self.ocsp_request, line_len=75, prefix="\t")
-            )
-
         LOG.info(
             "Trying to get OCSP staple from url \"%s\"..",
             url
@@ -167,7 +149,7 @@ class CertModel(object):
                 LOG.warning("Connection error for %s: %s", self.filename, err)
 
             ocsp_staple = request.content
-            if self.check_ocsp_response(ocsp_staple, url):
+            if self._check_ocsp_response(ocsp_staple, url):
                 break  # out of retry loop
 
             retry = retry - 1
@@ -205,10 +187,10 @@ class CertModel(object):
             f_obj.write(ocsp_staple)
         return True
 
-    def check_ocsp_response(self, ocsp_staple, url):
+    def _check_ocsp_response(self, ocsp_staple, url):
         """
             Check that the OCSP response says that the status is "good".
-            Also sets :mod:`core.certmodel.CertModel.valid_until`.
+            Also sets :mod:`core.certmodel.CertModel.ocsp_staple.valid_until`.
         """
         if LOG.getEffectiveLevel() < 20:
             LOG.debug(
@@ -225,13 +207,12 @@ class CertModel(object):
         self.ocsp_staple = OCSPResponseParser(ocsp_staple)
         status = self.ocsp_staple.status
         if status == 'good':
-            self.valid_until = self.ocsp_staple.valid_until
             LOG.info(
                 "Received good response from OCSP server %s for %s, "
                 "valid until: %s",
                 url,
                 self.filename,
-                self.valid_until.strftime('%Y-%m-%d %H:%M:%S')
+                self.ocsp_staple.valid_until.strftime('%Y-%m-%d %H:%M:%S')
             )
             return True
         elif status == 'revoked':
@@ -316,6 +297,23 @@ class CertModel(object):
                 "Failed to validate certificate path for \"{}\", will not "
                 "try to parse it again.".format(self.filename)
             )
+
+    @property
+    @cache
+    def ocsp_request(self):
+        ocsp_request_builder = ocspbuilder.OCSPRequestBuilder(
+            asymmetric.load_certificate(self.end_entity),
+            asymmetric.load_certificate(self.chain[-2])
+        )
+        ocsp_request_builder.nonce = False
+        ocsp_request = ocsp_request_builder.build().dump()
+        # This data can be posted to the OCSP URI to debug further
+        if LOG.getEffectiveLevel() < 20:
+            LOG.debug(
+                "Request data: \n%s",
+                pretty_base64(ocsp_request, line_len=75, prefix="\t")
+            )
+        return ocsp_request
 
     def __repr__(self):
         """

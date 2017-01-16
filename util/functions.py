@@ -3,8 +3,8 @@ Just a module containing some useful auxiliary functions.
 """
 
 import binascii
-import os
 import hashlib
+
 
 def pretty_base64(data, line_len=79, prefix="", suffix="\n"):
     """
