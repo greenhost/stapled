@@ -22,7 +22,7 @@ import threading
 import time
 import logging
 import os
-from core.certcontext import CertContext
+from core.certmodel import CertModel
 from core.exceptions import CertValidationError
 
 from ocspd import FILE_EXTENSIONS_DEFAULT
@@ -127,7 +127,7 @@ class CertFinderThread(threading.Thread):
                         filename = os.path.join(path, filename)
                         if filename not in self.contexts and \
                                 filename not in self.ignore_list:
-                            context = CertContext(filename)
+                            context = CertModel(filename)
                             self.contexts[filename] = context
                             if self.parse_crt(context):
                                 self.renew_queue.put(context)
@@ -159,7 +159,7 @@ class CertFinderThread(threading.Thread):
                 )
             elif os.path.getmtime(filename) > context.modtime:
                 # purge and re-add files that have changed
-                new_context = CertContext(filename)
+                new_context = CertModel(filename)
                 if new_context.hash != context.hash:
                     LOG.info(
                         "File \"%s\" was changed, adding it to the "

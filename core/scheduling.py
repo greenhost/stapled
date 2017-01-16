@@ -77,7 +77,7 @@ class SchedulerThread(threading.Thread):
         Add a task to be executed either ASAP, or at a specific time
 
         :param tuple | str: An action corresponding to an existing queue
-        :param :mod:`certcontext.CertContext` context: Certificate context
+        :param :mod:`certmodel.CertModel` context: Certificate context
         :param datetime.datetime sched_time: Absolute time to execute the task
         :raises Queue.Full: If the underlying action queue is full
         """

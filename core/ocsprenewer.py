@@ -120,7 +120,7 @@ class OCSPRenewerThread(threading.Thread):
         Schedule to renew this certificate's OCSP staple in `sched_time`
         seconds.
 
-        :param models.certificates.CertContext context: CertContext
+        :param models.certificates.CertModel context: CertModel
             instance None to calculate it automatically.
         :param int shed_time: Amount of seconds to wait for renewal or None
             to calculate it automatically.
