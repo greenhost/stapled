@@ -49,19 +49,12 @@ class OCSPAdder(threading.Thread):
             "The OCSPAdder needs a socket_path"
 
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        super(OCSPAdder, self).__init__(*args, **kwargs)
-
-    def __enter__(self):
-        """
-        The socket is opened by using "with: " on this object and automatically
-        closed by self.__exit__(). This connects to HAProxy and asks for a
-        prompt. The connection will stay open as long as this thread runs.
-        """
         self.sock.connect(self.socket_path)
         # Open the socket and ask for a prompt
         self.sock.sendall(("prompt\n").encode())
+        super(OCSPAdder, self).__init__(*args, **kwargs)
 
-    def __exit__(self, exception_type, exception_value, exception_trace):
+    def __del__(self):
         """
         Close the socket on exit.
         """
