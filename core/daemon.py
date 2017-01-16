@@ -19,7 +19,7 @@ This module bootstraps the ocspd process by starting threads for:
           scheduler for requesting or renewing the OCSP staple.
 
  - 2x (or more depending on the ``-t`` CLI argument)
-   :class:`core.ocsprenewer.OCSPRenewerThreaded`
+   :class:`core.ocsprenewer.OCSPRenewerThread`
 
         - Gets tasks from the scheduler in :attr:`self.scheduler` which is a
           :class:`core.scheduling.Scheduler` object passed by this module.
@@ -36,6 +36,11 @@ This module bootstraps the ocspd process by starting threads for:
     request is a blocking action that also takes relatively long to complete.
     If any of these request stall for long, the entire daemon doesn't stop
     working until it is no longer stalled.
+
+ - 1x :class:`core.ocspadder.OCSPAdder` **(optional)**
+
+        Takes tasks ``haproxy-add`` from the scheduler and communicates OCSP
+        staple updates to HAProxy through a HAProxy socket.
 
 """
 import logging

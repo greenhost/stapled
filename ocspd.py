@@ -5,10 +5,10 @@ the OCSP Staple daemon, which indexes your certificate directories and requests
 staples for all certificates in them. They will then be saved as
 ``certificatename.pem.ocsp`` in the same directories that are being indexed.
 
-Type ocsp.py -h for all command line arguments.
+Type ``ocsp.py -h`` for all command line arguments.
 
 This module collects the command line arguments and detaches the process
-from the user's context if `-d` (daemon mode) is specified, then spawns a
+from the user's context if ``-d`` (daemon mode) is specified, then spawns a
 bunch of threads for:
 
  - Indexing certificates in the given directories.
@@ -18,6 +18,8 @@ bunch of threads for:
    a connection to the CA of that issued the certificate and is blocking. It
    is therefore heavily threaded. This is also the only process you can
    select the amount of threads for with a command line argument.
+ - Optionally, a thread for adding the gathered OCSP staples to a running
+   HAProxy instance through a HAProxy socket.
 
 If the ``-d`` argument is specified, this module is responsible for starting
 the application in daemonised mode, and disconnecting the process from the
@@ -32,8 +34,15 @@ import os
 import daemon
 import core.daemon
 
+#: :attr:`logging.format` format string (default:
+#: ``%(threadName)-10s [%(levelname)s] %(message)s``)
 LOGFORMAT = '%(threadName)-10s [%(levelname)s] %(message)s'
+
+#: The extensions the daemon will try to parse as certificate files
+#: (default:``crt,pem,cer``)
 FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
+
+#: The amount of OSCP request retry attempts before giving up (default:``3``).
 OCSP_REQUEST_RETRY_COUNT = 3
 
 logging.basicConfig(

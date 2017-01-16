@@ -7,17 +7,17 @@ done on time, you schedule it early, but remember that it will still be best
 effort.
 
 The way this scheduler is supposed to be used is to add a scheduling queue,
-then you can add tasks to the queue to either be put in a task queue ASAP or
+then you can add tasks to the queue to either be put in a task queue ASAP, or
 at or an absolute time in the future. The queue should be consumed by a worker
 thread.
 
 This module defines the following objects:
 
- - :scheduler:`SchedulerThread` - An object that is capable of scheduling and
-    unscheduling actions that you can define with, you should add contexts to
-    the schedule with an optional time. The context should to have a proper
-    ``__repr__()`` defined since the scheduler relies on it to be a unique
-    identifier.
+ - :class:`core.scheduling.SchedulerThread`
+    An object that is capable of scheduling and unscheduling actions that you
+    can define with, you should add contexts to the schedule with an optional
+    time. The context should to have a proper ``__repr__()`` defined since the
+    scheduler relies on it to be a unique identifier.
 """
 import threading
 import logging
@@ -33,24 +33,23 @@ class SchedulerThread(threading.Thread):
     This object can be used to schedule actions for contexts.
 
     The context can be whatever you define as long as the ``__repr__()`` will
-    return something that is unique among your actions. When the scheduled time
-    has passed, the context will be added back to the action queue, where it
-    can be consumed by a worker thread. When a task is scheduled you can choose
-    to have it added to the action queue ASAP or at a specified absolute point
-    in time. If you add it at a time in the past, it will be added to the
-    action queue the first time the scheduler checks expired actions times.
+    return something that is unique among your contexts. When the scheduled
+    time has *passed*, the context will be added back to the action queue,
+    where it can be consumed by a worker thread. When a task is scheduled you
+    can choose to have it added to the action queue ASAP or at a specified
+    absolute point in time. If you add it at a time in the past, it will be
+    added to the action queue the first time the scheduler checks expired
+    actions times.
     """
     def __init__(self, *args, **kwargs):
         """
         Initialise the thread's arguments and its parent
-        :py:`threading.Thread`.
+        :class:`threading.Thread`.
 
-        Currently supported keyword arguments:
-        :renew_queue Queue required: The queue where parsed certificates can be
-            added for OCSP staple renewal.
-        :sched_queue Queue required: The queue where scheduled OCSP renewals
-            can be found.
-        :ignore_list array optional: List of files to ignore.
+        :kwarg iterable queues: A list, tuple or any iterable that returns
+            strings that should be the names of queues.
+        :raises KeyError: If the queue name is already taken (only when queues
+            kwarg is used).
         """
         self._queues = {}
 
@@ -61,26 +60,38 @@ class SchedulerThread(threading.Thread):
         # The scheduled are a list of actions indexed by file name
         self.scheduled = {}
 
+        queues = kwargs.pop('queues', None)
+        if queues:
+            for _queue in queues:
+                self.add_queue(_queue)
+
         super(SchedulerThread, self).__init__(*args, **kwargs)
 
     def add_queue(self, action, max_size=0):
         """
         Add a scheduled queue to the scheduler.
-        :param str action: A unique name that is used by worker threads
-        :param int max_size: Maximum queue depth, default=0 (unlimited)
+
+        :param str action: A unique name that is used by worker threads.
+        :param int max_size: Maximum queue depth, default=0 (unlimited).
+        :raises KeyError: If the queue name is already taken..
         """
-        assert action not in self._queues, "This queue already exists."
+        if action in self._queues:
+            raise KeyError("This queue is already taken.")
         self._queues[action] = queue.Queue(max_size)
 
     def add_task(self, actions, context, sched_time=None):
         """
-        Add a task to be executed either ASAP, or at a specific time
+        Add a task to be executed either ASAP, or at a specific time.
+        Set ``sched_time`` to None if you want your task executed ASAP.
 
-        :param tuple | str: An action corresponding to an existing queue
-        :param :class:`certmodel.CertModel` context: Certificate context
-        :param :obj:`datetime.datetime` sched_time: Absolute time to execute
-            the task
-        :raises :exc:`Queue.Full`: If the underlying action queue is full
+        If the context is not unique, all the current task with the same action
+        will be cancelled before scheduling the new task.
+
+        :param tuple|str actions: An action corresponding to an existing queue.
+        :param certmodel.CertModel context: Certificate context.
+        :param datetime.datetime sched_time: Absolute time to execute
+            the task.
+        :raises Queue.Full: If the underlying action queue is full.
         """
         if isinstance(actions, str):
             actions = (actions,)
@@ -99,11 +110,15 @@ class SchedulerThread(threading.Thread):
 
     def _schedule_task(self, action, context, sched_time):
         """
-        Run scheduled actions after sched_time seconds.
+        Run scheduled actions after ``sched_time`` seconds.
+
+        If the context is not unique, all the current task with the same action
+        will be cancelled before scheduling the new task.
+
         :param object context: A context that will be added to the queue at the
-            set time
+            set time.
         :param int sched_time: Amount of seconds to wait before adding
-            the certificate back to the renewal queue
+            the certificate back to the renewal queue.
         """
         key = (action, repr(context))
         if key in self.scheduled:
@@ -128,10 +143,10 @@ class SchedulerThread(threading.Thread):
         """
         Remove a task from the queue.
 
-        :param tuple | str: An action corresponding to an existing queue
-        :param :class:`certmodel.CertModel` context: Certificate context
+        :param tuple|str actions: An action corresponding to an existing queue.
+        :param certmodel.CertModel context: Certificate context.
         :return array|bool: Boolean True for successfully cancelled task or an
-            array of booleans for an array of tasks
+            array of booleans for an array of tasks.
         """
         if isinstance(actions, str):
             return self._unschedule_task(actions, context)
@@ -139,8 +154,10 @@ class SchedulerThread(threading.Thread):
 
     def _unschedule_task(self, action, context):
         """
-        Run scheduled actions after sched_time seconds.
-        :param object context: A context that will be removed from the queue
+        Remove a task from the queue.
+
+        :param object context: A context that will be removed from the queue.
+        :param certmodel.CertModel context: Certificate context.
         """
         try:
             # Find out when it was scheduled
@@ -159,18 +176,19 @@ class SchedulerThread(threading.Thread):
 
     def get_task(self, action, blocking=True, timeout=None):
         """
-        Initialise a scheduler.Context to add to the `daemon.sched_queue`
-
-        NOTE: Not sure in which context this will run, might break if this
-            halts the thread!
+        Get a task from the action queue ``action``.
 
         :param str action: Action name that refers to a scheduler queue.
         :param bool blocking: Wait until there is something to return from the
-            queue
+            queue.
         :raises Queue.Empty: If the underlying action queue is empty and
-            blocking is False or the timout expires
+            blocking is False or the timout expires.
+        :raises KeyError: If the action does not exist.
         """
-        return self._queues[action].get(blocking, timeout)
+        try:
+            return self._queues[action].get(blocking, timeout)
+        except KeyError:
+            raise KeyError("Queue \"{}\" does not exist.".format(action))
 
     def task_done(self, action):
         """
@@ -179,7 +197,10 @@ class SchedulerThread(threading.Thread):
 
         :param str action: The action queue name.
         """
-        self._queues[action].task_done()
+        try:
+            return self._queues[action].task_done()
+        except KeyError:
+            raise KeyError("Queue \"{}\" does not exist.".format(action))
 
     def run(self):
         """
@@ -192,7 +213,7 @@ class SchedulerThread(threading.Thread):
 
     def run_all(self):
         """
-            Run all tasks currently queued regardless schedule time.
+        Run all tasks currently queued regardless schedule time.
         """
         self._run(True)
 

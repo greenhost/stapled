@@ -23,11 +23,13 @@ class OCSPRenewerThread(threading.Thread):
     def __init__(self, *args, **kwargs):
         """
         Initialise the thread's arguments and its parent
-        :py:`threading.Thread`.
+        :class:`threading.Thread`.
 
         Currently supported keyword arguments:
-        :minimum_validity int: The amount of seconds the OCSP staple is still
-            valid for, before starting to attempt to request a new OCSP staple.
+
+        :kwarg int minimum_validity: The amount of seconds the OCSP staple is
+            still valid for, before starting to attempt to request a new OCSP
+            staple **(required)**.
         """
         self.minimum_validity = kwargs.pop('minimum_validity', None)
         self.scheduler = kwargs.pop('scheduler', None)
@@ -83,14 +85,14 @@ class OCSPRenewerThread(threading.Thread):
 
     def schedule_renew(self, context, sched_time=None):
         """
-        Schedule to renew this certificate's OCSP staple in `sched_time`
+        Schedule to renew this certificate's OCSP staple in ``sched_time``
         seconds.
 
-        :param models.certificates.CertModel context: CertModel
+        :param core.certmodel.CertModel context: CertModel
             instance None to calculate it automatically.
         :param int shed_time: Amount of seconds to wait for renewal or None
             to calculate it automatically.
-        :raises ValueError: If context.valid_until is None
+        :raises ValueError: If ``context.ocsp_staple.valid_until`` is None
         """
         if not sched_time:
             if context.ocsp_staple.valid_until is None:

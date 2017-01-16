@@ -11,10 +11,14 @@ class cache(dict):
     def __init__(self, function):
         self.function = function
         super(cache, self).__init__()
+        self.__doc__ = function.__doc__
 
     def __call__(self, *args, **kwargs):
-        return self[args, tuple(kwargs.items())]
+        return self.wrapper(*args, **kwargs)
 
     def __missing__(self, key):
         result = self[key] = self.function(*key[0], **dict(key[1]))
         return result
+
+    def wrapper(self, *args, **kwargs):
+        return self[args, tuple(kwargs.items())]

@@ -1,21 +1,19 @@
 """
-This module defines the :class:`core.certmodel.CertModel` class  which is
-used to keep track of certificates that were found by the
-:class:`core.certfinder.CertFinder`. The context is then used by the
-:class:`core.certparser.CertParserThread` which parses the certificate and
-validates it, then fills in some of the attributes so it can be used by the
-:class:`core.ocsprenewer.OCSPRenewer` to generate a request for an OCSP staple,
-the request is also stored in the context. The request will then be sent, and
-if a valid OCSP staple is returned, it too is stored in the context.
+This module defines the :class:`core.certmodel.CertModel` class which is
+used to keep track of certificates that were found, parsed and validated by the
+:class:`core.certfinder.CertFinder`, which add the context to a scheduled so
+the :class:`core.ocsprenewer.OCSPRenewer` can generate a request for an OCSP
+staple, and get a response from an OCSP server. Both the request and the
+response are then stored in the context.
 
-The logic following logic is contained within the context class:
+The following logic is contained within the context class:
 
- - Parsing the certificate
- - Validating parsed certificates and their chains
- - Generating OCSP requests
- - Sending OCSP requests
- - Processing OCSP responses
- - Validating OCSP responses with the respective certificate and its chain
+ - Parsing the certificate.
+ - Validating parsed certificates and their chains.
+ - Generating OCSP requests.
+ - Sending OCSP requests.
+ - Processing OCSP responses.
+ - Validating OCSP responses with the respective certificate and its chain.
 """
 import os
 import logging
@@ -26,8 +24,8 @@ import requests
 import certvalidator
 import ocspbuilder
 import asn1crypto
+import ocspd
 from oscrypto import asymmetric
-from ocspd import OCSP_REQUEST_RETRY_COUNT
 from core.exceptions import CertValidationError
 from core.exceptions import OCSPRenewError
 from util.ocsp import OCSPResponseParser
@@ -46,10 +44,11 @@ class CertModel(object):
     def __init__(self, filename):
         """
         Initialise the CertModel model object, extract the certificate
-        (end_entity) and the chain (intermediates). Validates the certificate
+        (*end_entity*) and the chain (*intermediates*). Validates the
+        certificate chain.
 
-        chain.
-        :raises CertValidationError: When the certificate chain is invalid.
+        :raises core.exceptions.CertValidationError: When the certificate
+            chain is invalid.
         """
         self.filename = filename
         try:
@@ -77,20 +76,24 @@ class CertModel(object):
 
     def renew_ocsp_staple(self, url_index=0):
         """
-        Renew the OCSP staple and save it to the file path of the certificate
-        file (``certificate.pem.ocsp``)
+        Renew the OCSP staple, validate it and save it to the file path of the
+        certificate file (``certificate.pem.ocsp``).
+
+        .. Note:: This method handles a lot of exceptions, some of then are
+            non-fatal and might lead to retries. When they are fatal, a log
+            message of level :const:`logging.logLevel.ERROR` is written and an
+            one of the exceptions documented below is raised. This makes error
+            handling at higher levels easier.
 
         :param int url_index: There can be several OCSP URLs. When the
             first URL fails, this function calls itself with the index of
             the next.
 
-        :raises CertValidationError: when there is no end_entity or
-            certificate chain is missing.
-        :raises OCSPRenewError: when the ocsp staple is an empty byte
-            string, or when the certificate was revoked, or when all URLs
-            fail
+        :raises CertValidationError: when there is no end_entity or certificate
+            chain is missing.
+        :raises OCSPRenewError: when the ocsp staple is an empty byte string,
+            or when the certificate was revoked, or when all URLs fail.
         """
-        # pylint: disable=too-many-branches
         if not self.end_entity:
             raise CertValidationError(
                 "Certificate is missing in \"{}\", can't validate "
@@ -108,7 +111,7 @@ class CertModel(object):
             "Trying to get OCSP staple from url \"%s\"..",
             url
         )
-        retry = OCSP_REQUEST_RETRY_COUNT
+        retry = ocspd.OCSP_REQUEST_RETRY_COUNT
         while retry > 0:
             try:
                 # TODO: send merge request for header in ocsp fetching
@@ -154,7 +157,7 @@ class CertModel(object):
 
             retry = retry - 1
             if retry > 0:
-                sleep_time = (OCSP_REQUEST_RETRY_COUNT - retry) * 5
+                sleep_time = (ocspd.OCSP_REQUEST_RETRY_COUNT - retry) * 5
                 LOG.info("Retrying in %d seconds..", sleep_time)
                 time.sleep(sleep_time)
             else:
@@ -189,7 +192,7 @@ class CertModel(object):
 
     def _check_ocsp_response(self, ocsp_staple, url):
         """
-            Check that the OCSP response says that the status is "good".
+            Check that the OCSP response says that the status is ``good``.
             Also sets :attr:`core.certmodel.CertModel.ocsp_staple.valid_until`.
         """
         if LOG.getEffectiveLevel() < 20:
@@ -228,6 +231,20 @@ class CertModel(object):
         return False
 
     def _read_full_chain(self):
+        """
+        Reads binary data from file in :attr:`self.filename` and parses the
+        content. The server certificate a.k.a. *end_entity* is put in
+        :attr:`self.end_entity`, anything else that has a CA extension is added
+        to :attr:`self.intermediates`.
+
+        .. Note:: At this point it is not clear yet which of the intermediates
+            is the root and which are actual intermediates.
+
+        If anything goes wrong the exceptions are handled and the call will
+        fail silently, leading to exceptions being raised by any subsequent
+        call to methods that require the values that this method should have
+        set.
+        """
         with open(self.filename, 'rb') as f_obj:
             pem_obj = asn1crypto.pem.unarmor(f_obj.read(), multiple=True)
         try:
@@ -258,6 +275,21 @@ class CertModel(object):
             )
 
     def _validate_cert(self):
+        """
+        Validates the certificate and its chain, including the OCSP staple if
+        there is one in :attr:`self.ocsp_staple`.
+
+        :return array: Validated certificate chain.
+        :raises CertValidationError: If there is any problem with the
+            certificate chain and/or the staple, e.g. certificate is revoked,
+            chain is incomplete or invalid (i.e. wrong intermediate with
+            server certificate), certificate is simply invalid, etc.
+
+        .. Note:: At this point it becomes known what the role of the
+            certiticates in the chain is. With the exception of the root, which
+            is usually not kept with the intermediates and the certificate
+            because ever client has its own copy of it.
+        """
         try:
             if self.ocsp_staple is None:
                 LOG.info("Validating without OCSP staple.")
@@ -303,6 +335,7 @@ class CertModel(object):
     def ocsp_request(self):
         """
         Generate an OCSP request or return an already cached request.
+
         :return bytes: A binary representation of a
             :class:`asn1crypto.ocsp.OCSPRequest` which is in turn represented
             by a :class:`asn1crypto.core.Sequence`.
@@ -323,10 +356,15 @@ class CertModel(object):
 
     def __repr__(self):
         """
-            We return the file name here because this way we can use it as a
-            short-cut when we assign this object to something.
+        We return the file name here because this way we can use it as a
+        short-cut when we assign this object to something.
         """
         return self.filename
 
     def __str__(self):
+        """
+        Return a formatted string representation of the object containing:
+        ``"<CertModel {}>".format("".join(self.filename))``
+        so it's clear it's an object and which file it concerns.
+        """
         return "<CertModel {}>".format("".join(self.filename))

@@ -10,37 +10,49 @@ Source code
 
 ocspd
 -----
-
 .. automodule:: ocspd
    :members:
 
-
 core.daemon
 -----------
-
 .. automodule:: core.daemon
    :members:
 
 core.certfinder
 ---------------
-
 .. automodule:: core.certfinder
-      :members:
 
-..
-   .. autoclass:: CertFinder
+   .. autoclass:: CertFinderThread
       :members:
-   .. automodule:: core.certparser
+      :special-members:
+      :private-members:
+
+core.ocsprenewer
+----------------
+.. automodule:: core.ocsprenewer
+
+   .. autoclass:: OCSPRenewerThread
       :members:
-   .. automodule:: core.ocsprenewer
+      :special-members:
+      :private-members:
+
+core.certmodel
+--------------
+.. automodule:: core.certmodel
+
+   .. autoclass:: CertModel
       :members:
-   .. automodule:: core.certcontext
-      :members:
-   .. autoclass:: CertContext
-      :members:
-   core.scheduler
-   ##############
-   .. automodule:: core.scheduler
-      :members:
-   .. automodule:: core.exceptions
-      :members:
+      :special-members:
+      :private-members:
+
+core.scheduling
+--------------
+.. automodule:: core.scheduling
+   :members:
+   :special-members:
+   :private-members:
+
+core.exceptions
+---------------
+.. automodule:: core.exceptions
+   :members:

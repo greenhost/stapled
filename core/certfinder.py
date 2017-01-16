@@ -1,17 +1,20 @@
 """
-This module locates certificate files in the supplied directories. It then
-keeps track of the following:
+This module locates certificate files in the supplied directories and parses
+them. It then keeps track of the following:
 
   - If cert is found for the first time (thus also when the daemon is started),
-    the cert is added to the :meth:`core.daemon.run.parse_queue` to be parsed.
-    The following is then recorded:
+    the cert is added to the :attr:`core.certfinder.CertFinder.scheduler`
+    so an OCSP request can be done by one of the
+    :class:`core.ocsprenewer.OCSPRenewerThread` instances. The following is
+    then recorded:
 
      - File modification time.
      - Hash of the file.
 
   - If a cert is found a second time, the modification time is compared to the
     recorded modification time. If it differs, the hash is compared too, if it
-    too differs, the file is added to the parsing queue again.
+    too differs, the file is added to the scheduler for renewal again, removing
+    any scheduled actions for the old file in the process.
 
   - When certificates are deleted from the directories, the entries are removed
     from the cache in :attr:`core.certfinder.CertContext.contexts`.
@@ -24,10 +27,10 @@ import threading
 import time
 import logging
 import os
+import ocspd
 from core.certmodel import CertModel
 from core.exceptions import CertValidationError
 
-from ocspd import FILE_EXTENSIONS_DEFAULT
 
 LOG = logging.getLogger()
 
@@ -35,38 +38,34 @@ LOG = logging.getLogger()
 class CertFinderThread(threading.Thread):
     """
     This object can be used to index directories and search for certificate
-    files. When found they will be added to the supplied queue for further
-    processing.
+    files. When found they will be added to the supplied scheduler so the
+    :class:`core.ocsprenewer.OCSPRenewerThread` instances can request an OCSP
+    staple for them.
 
-    If this class is run in threaded mode, it will start a threading.Timer to
-    re-run self.refresh after n seconds (10 seconds by default), if it is not
-    threaded, it will sleep(n) instead.
-
-    Pass `refresh_interval=None` if you want to run it only once (e.g. for
+    Pass ``refresh_interval=None`` if you want to run it only once (e.g. for
     testing)
     """
-    # pylint: disable=too-many-instance-attributes
 
     def __init__(self, *args, **kwargs):
         """
         Initialise the thread's arguments and its parent
-        :py:`threading.Thread`.
+        :class:`threading.Thread`.
 
         Currently supported keyword arguments:
 
-        :directories iterator required: The directories to index.
-        :refresh_interval int optional: The minimum amount of time (s)
-            between indexing runs, defaults to 10 seconds. Set to None
-            to run only once.
-        :file_extensions array optional: An array containing the file
-            extensions of files to check for certificate content.
+        :kwarg iter directories: The directories to index **(required)**.
+        :kwarg int refresh_interval: The minimum amount of time (s)
+            between indexing runs, defaults to 10 seconds. Set to None to run
+            only once **(optional)**.
+        :kwarg array file_extensions: An array containing the file extensions
+            of files to check for certificate content **(optional)**.
         """
         self.contexts = {}
         self.directories = kwargs.pop('directories', None)
         self.scheduler = kwargs.pop('scheduler', None)
         self.refresh_interval = kwargs.pop('refresh_interval', 10)
         self.file_extensions = kwargs.pop(
-            'file_extensions', FILE_EXTENSIONS_DEFAULT
+            'file_extensions', ocspd.FILE_EXTENSIONS_DEFAULT
         )
         self.last_refresh = None
 
@@ -85,11 +84,12 @@ class CertFinderThread(threading.Thread):
 
         LOG.info("Scanning directories: %s", ", ".join(self.directories))
         self.refresh()
-        while True:
-            if self.refresh_interval is None:
-                # Stop refreshing if it is not wanted.
-                return
 
+        if self.refresh_interval is None:
+            # Stop refreshing if it is not wanted.
+            return
+
+        while True:
             # Schedule the next refresh run..
             since_last = time.time() - self.last_refresh
             # Check if the last refresh took longer than the interval..
@@ -116,9 +116,24 @@ class CertFinderThread(threading.Thread):
                 time.sleep(self.refresh_interval - since_last)
                 self.refresh()
 
+    def refresh(self):
+        """
+        Wraps up the internal :meth:`CertFinder._update_cached_certs()` and
+        :meth:`CertFinder._find_new_certs()` functions.
+
+        ..  Note:: This method is automatically called by
+            :meth:`CertFinder.run()`
+        """
+        self.last_refresh = time.time()
+        LOG.info("Updating current cache..")
+        self._update_cached_certs()
+        LOG.info("Adding new certificates to cache..")
+        self._find_new_certs()
+
     def _find_new_certs(self):
         """
-        New files are added to the parse action queue for further processing.
+        Locate new files and add parse them, if they are valid, schedule an
+        OCSP renewal action.
         """
         try:
             for path in self.directories:
@@ -157,12 +172,14 @@ class CertFinderThread(threading.Thread):
         Loop through the list of files that were already found and check
         whether they were deleted or changed.
 
-        Changed files are added to the parse action queue for further
-        processing.
-        This makes sure only changed files are processed by the
-        CPU intensive processes.
+        If a file was modified since it was last seen, a SHA1 hash value of
+        the old file is compared with a SHA1 hash of the new file. Only if the
+        hash is different, the changed file is added to the scheduler to get a
+        new OCSP staple. This makes sure only changed files are processed by
+        the CPU intensive processes.
 
-        Deleted files are removed from the found files list.
+        Deleted files are removed from the context cache in
+        :attr:`core.certfinder.CertFinder.contexts`.
         """
         def del_context(filename):
             """
@@ -206,17 +223,6 @@ class CertFinderThread(threading.Thread):
                         "Ignoring change in \"%s\" hash didn't change",
                         filename
                     )
-
-    def refresh(self):
-        """
-        Wraps up the internal `self._update_cached_certs()` and
-        `self._find_new_certs()` functions.
-        """
-        self.last_refresh = time.time()
-        LOG.info("Updating current cache..")
-        self._update_cached_certs()
-        LOG.info("Adding new certificates to cache..")
-        self._find_new_certs()
 
     def _handle_failed_validation(self, context, msg, delete_ocsp=True):
         LOG.critical(msg)
