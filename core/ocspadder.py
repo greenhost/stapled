@@ -25,9 +25,16 @@ class OCSPAdder(threading.Thread):
     """
 
     def __init__(self, *args, **kwargs):
-        self.socket_path = kwargs['socket_path']
-        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.command_queue = kwargs.pop('command_queue', None)
+        self.socket_path = kwargs.pop('socket_path', None)
+
+        assert self.command_queue is not None, \
+            "A queue for HAProxy commands should be passed to the OCSPAdder."
+        assert self.socket_path is not None, \
+            "The OCSPAdder needs a socket_path"
+
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+
 
     def __enter__(self):
         """
