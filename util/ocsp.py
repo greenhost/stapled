@@ -18,7 +18,7 @@ class OCSPResponseParser(object):
         """
         self.data = ocsp_data
         response = asn1crypto.ocsp.OCSPResponse.load(ocsp_data)
-        self.response = response.response_data
+        self.response = getattr(response, 'response_data')
         # SingleResponse object should be in these keys
         self.tbsresponse = self.response['responses'][0]
 

@@ -1,7 +1,7 @@
 """
     Simple lightweight caching class without dependencies or fancy features.
 """
-# pylint disable=invalid-name
+# pylint: disable=invalid-name
 
 
 class cache(dict):

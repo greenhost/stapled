@@ -301,6 +301,12 @@ class CertModel(object):
     @property
     @cache
     def ocsp_request(self):
+        """
+        Generate an OCSP request or return an already cached request.
+        :return bytes: A binary representation of a
+            :mod:`asn1crypto.ocsp.OCSPRequest` which is in turn represented by
+            a :mod:`asn1crypto.core.Sequence`.
+        """
         ocsp_request_builder = ocspbuilder.OCSPRequestBuilder(
             asymmetric.load_certificate(self.end_entity),
             asymmetric.load_certificate(self.chain[-2])
@@ -313,6 +319,7 @@ class CertModel(object):
                 "Request data: \n%s",
                 pretty_base64(ocsp_request, line_len=75, prefix="\t")
             )
+            print(ocsp_request)
         return ocsp_request
 
     def __repr__(self):

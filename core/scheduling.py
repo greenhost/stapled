@@ -123,7 +123,7 @@ class SchedulerThread(threading.Thread):
             "Scheduled %s: %s at %s",
             action, context, sched_time.strftime('%Y-%m-%d %H:%M:%S'))
 
-    def cancel_task(self, actions, context, sched_time=None):
+    def cancel_task(self, actions, context):
         """
         Remove a task from the queue.
 
