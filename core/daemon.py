@@ -41,6 +41,7 @@ This module bootstraps the ocspd process by starting threads for:
 import logging
 from core import certfinder
 from core import ocsprenewer
+from core import ocspadder
 from core import scheduling
 
 LOG = logging.getLogger()
@@ -72,7 +73,18 @@ def run(args):
     scheduler.daemon = False
     scheduler.name = "scheduler"
     scheduler.add_queue("renew")
+    scheduler.add_queue("proxy-add")
     scheduler.start()
+
+
+    #TODO: Set socket path intelligently
+    socket_path = '/etc/haproxy.sock'
+    proxy_adder = ocspadder.OCSPAdder(
+        socket_path=socket_path,
+        scheduler=scheduler
+    )
+    proxy_adder.name = 'proxy-adder.' + proxy_adder.socket_path
+    proxy_adder.start()
 
     # Start ocsp response gathering threads
     threads_list = []

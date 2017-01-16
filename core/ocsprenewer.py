@@ -57,6 +57,7 @@ class OCSPRenewerThread(threading.Thread):
 
             self.scheduler.task_done("renew")
             self.schedule_renew(context)
+            self.schedule_proxy_add(context)
             # DEBUG scheduling, schedule 10 seconds in the future.
             # self.schedule_renew(
             #     context,
@@ -80,6 +81,13 @@ class OCSPRenewerThread(threading.Thread):
                 LOG.debug(
                     "Can't delete OCSP staple, maybe it doesn't exist."
                 )
+
+    def schedule_proxy_add(self, context):
+        """
+        Adds the proxy-add command to the scheduler to run right now. This
+        updates the running HAProxy instance's ocsp staple by running ssl 
+        """
+        self.scheduler.add_task('proxy-add', context)
 
     def schedule_renew(self, context, sched_time=None):
         """

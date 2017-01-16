@@ -1,9 +1,16 @@
+"""
+Module for adding OCSP Staples to a running HAProxy instance
+"""
 import threading
 import logging
-
+import socket
+import errno
 from io import StringIO
 
-LOG = logging.getLogger(__name__)
+import util.functions
+
+LOG = logging.getLogger()
+SOCKET_BUFFER_SIZE = 1024
 
 class OCSPAdder(threading.Thread):
     """
@@ -24,17 +31,25 @@ class OCSPAdder(threading.Thread):
        connection.py
     """
 
+    #: The name of this task in the scheduler
+    TASK_NAME = 'proxy-add'
+
+    #: The haproxy socket command to add OCSP staples. Use string.format to add
+    #: the base64 encoded OCSP staple
+    OCSP_ADD = 'set ssl ocsp-response {}'
+
     def __init__(self, *args, **kwargs):
-        self.command_queue = kwargs.pop('command_queue', None)
+        LOG.debug("Starting OCSPAdder thread")
+        self.scheduler = kwargs.pop('scheduler', None)
         self.socket_path = kwargs.pop('socket_path', None)
 
-        assert self.command_queue is not None, \
-            "A queue for HAProxy commands should be passed to the OCSPAdder."
+        assert self.scheduler is not None, \
+            "Please pass a scheduler to get and add proxy-add tasks."
         assert self.socket_path is not None, \
             "The OCSPAdder needs a socket_path"
 
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-
+        super(OCSPAdder, self).__init__(*args, **kwargs)
 
     def __enter__(self):
         """
@@ -46,40 +61,52 @@ class OCSPAdder(threading.Thread):
         # Open the socket and ask for a prompt
         self.sock.sendall(("prompt\n").encode())
 
-    def __exit__(self):
-        sock.close()
+    def __exit__(self, exception_type, exception_value, exception_trace):
+        """
+        Close the socket on exit.
+        """
+        self.sock.close()
 
-    def run(self, *args, **kwargs):
+    def run(self):
         """
         The main loop: send any commands that enter the command queue
 
         :raises ValueError: if the command queue is empty.
         """
-        if self.command_queue is None:
-            raise ValueError(
-                "You need to pass a queue where parsed certificates can "
-                "be retrieved from for renewing."
-            )
-
         LOG.info("Started an OCSP adder thread.")
 
         while True:
-            command = self.command_queue.get()
-            LOG.debug("Sending command to HAProxy socket '%s':\n\t'%s'",
-                self.socket_path, command)
+            cert = self.scheduler.get_task(self.TASK_NAME)
+            LOG.debug(
+                "Sending staple to HAProxy socket '%s':\n\tcert:'%s'",
+                self.socket_path, cert)
             try:
-                response = self.send(command)
+                response = self.add_staple(cert)
+                if response != 'OCSP Response updated!':
+                    self._handle_failed_staple(cert, response)
             except IOError as err:
-                self._handle_failed_staple(command, err)
-            if response != 'OCSP Response updated!':
-                self._handle_failed_staple(command, response)
+                self._handle_failed_staple(cert, err)
+            self.scheduler.task_done(self.TASK_NAME)
 
-    def send(command):
+    def add_staple(self, cert):
+        """
+        Create and send the command that adds a base64 encoded OCSP staple to
+        the HAProxy
+
+        :param cert: An object that has a binary string ocsp_staple in it
+        """
+        command = self.OCSP_ADD.format(util.functions.base64(cert.ocsp_staple.data))
+        LOG.debug("Setting OCSP staple with command '%s'", command)
+        self.send(command)
+
+    def send(self, command):
         """
         Send the command through self.sock (using self.socket_path)
 
         :param str command: String with the HAProxy command. For a list of possible
-        commands, see the `haproxy documentation`_
+            commands, see the `haproxy documentation`_
+        :raises IOError if an error occurs and it's not errno.EAGAIN or
+            errno.EINTR
 
         .. _haproxy documentation:
            http://haproxy.tech-notes.net/9-2-unix-socket-commands/
@@ -89,9 +116,14 @@ class OCSPAdder(threading.Thread):
         # our response string.
         while True:
             try:
-                chunk = sock.recv(SOCKET_BUFFER_SIZE)
+                chunk = self.sock.recv(SOCKET_BUFFER_SIZE)
                 if not chunk:
-                    break;
+                    break
+            except IOError as err:
+                if err.errno not in (errno.EAGAIN, errno.EINTR):
+                    raise
+                else:
+                    break
 
         # Send command
         self.sock.sendall((command + "\n").encode())
@@ -101,7 +133,7 @@ class OCSPAdder(threading.Thread):
         # Get new response.
         while True:
             try:
-                chunk = sock.recv(SOCKET_BUFFER_SIZE)
+                chunk = self.sock.recv(SOCKET_BUFFER_SIZE)
                 if chunk:
                     d_chunk = chunk.decode('ascii')
                     if '> ' in d_chunk:
@@ -109,21 +141,22 @@ class OCSPAdder(threading.Thread):
                     buff.write(d_chunk)
                 else:
                     break
-            except IOError as e:
-                if e.errno not in (errno.EAGAIN, errno.EINTR):
-                    self._handle_failed_staple(command
+            except IOError as err:
+                if err.errno not in (errno.EAGAIN, errno.EINTR):
+                    raise
 
         response = buff.getvalue()
         buff.close()
         return response
 
-    def _handle_failed_staple(self, command, problem):
+    @staticmethod
+    def _handle_failed_staple(cert, problem):
         """
         Handles a problem.
 
-        :param str command: The command that was sent
+        :param str cert: The certificate for which a staple was sent
         :param err,str problem: Either a Python exception or a string returned by
             HAProxy.
         """
         # TODO: What to do???
-        LOG.critical("ERROR: '%s'", problem)
+        LOG.critical("ERROR: cert '%s' has problem '%s'", cert, problem)
