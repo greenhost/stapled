@@ -7,8 +7,6 @@ import threading
 import logging
 import datetime
 import os
-from core.scheduler import ScheduleContext
-from core.scheduler import ScheduleAction
 from core.exceptions import CertValidationError
 from core.exceptions import OCSPRenewError
 
@@ -28,28 +26,17 @@ class OCSPRenewerThread(threading.Thread):
         :py:`threading.Thread`.
 
         Currently supported keyword arguments:
-        :cli_args argparse.Namespace: The parsed CLI arguments namespace.
-        :contexts dict required: The cache of parsed certificates with OCSP
-                data if it was already been requested by the
-                :class:`core.ocsprenewer.OCSPRenewerThread`.
-        :renew_queue Queue required: The queue where parsed certificates can be
-            found for OCSP staple renewal.
-        :sched_queue Queue required: The queue where cached certificate objects
-            can be scheduled for OCSP renewal.
+        :minimum_validity int: The amount of seconds the OCSP staple is still
+            valid for, before starting to attempt to request a new OCSP staple.
         """
-        self.cli_args = kwargs.pop('cli_args', None)
-        self.contexts = kwargs.pop('contexts', None)
-        self.renew_queue = kwargs.pop('renew_queue', None)
-        self.sched_queue = kwargs.pop('sched_queue', None)
+        self.minimum_validity = kwargs.pop('minimum_validity', None)
+        self.scheduler = kwargs.pop('scheduler', None)
 
-        assert self.cli_args is not None, \
-            "You need to pass a argparser.NameSpace with CLI arguments."
-        assert self.contexts is not None, \
-            "Contexts dict for keeping certificate contexts should be passed."
-        assert self.renew_queue is not None, \
-            "A renew queue for parsed certificates should be passed."
-        assert self.sched_queue is not None, \
-            "A queue for scheduling OCSP staple renewals should be passed."
+        assert self.minimum_validity is not None, \
+            "You need to pass the minimum_validity."
+
+        assert self.scheduler is not None, \
+            "Please pass a scheduler to get and add renew tasks from and to."
 
         super(OCSPRenewerThread, self).__init__(*args, **kwargs)
 
@@ -57,23 +44,9 @@ class OCSPRenewerThread(threading.Thread):
         """
         Start the thread if threaded, otherwise just run the same process.
         """
-        if self.renew_queue is None:
-            raise ValueError(
-                "You need to pass a queue where parsed certificates can "
-                "be retrieved from for renewing."
-            )
-        if self.sched_queue is None:
-            raise ValueError(
-                "You need to pass a queue where certificates can be added "
-                "for scheduling the OCSP staple renewal."
-            )
-        if self.contexts is None:
-            raise ValueError(
-                "You need to pass a dict for certificate data to be kept."
-            )
         LOG.info("Started a parser thread.")
         while True:
-            context = self.renew_queue.get()
+            context = self.scheduler.get_task("renew")
             LOG.info("Renewing OCSP staple for file \"%s\"..", context)
             try:
                 context.renew_ocsp_staple()
@@ -82,9 +55,8 @@ class OCSPRenewerThread(threading.Thread):
             except CertValidationError as err:
                 self._handle_failed_validation(context, err)
 
-            # Keep list of certificate contexts
-            self.contexts[context.filename] = context
-            self.renew_queue.task_done()
+            # TODO: HOW THE F DO WE HANDLE THIS??
+            self.scheduler.task_done("renew")
 
             self.schedule_renew(context)
             # DEBUG scheduling, schedule 10 seconds in the future.
@@ -97,12 +69,8 @@ class OCSPRenewerThread(threading.Thread):
             self, context, msg, delete_ocsp=True, ignore=False):
         LOG.critical(msg)
         if ignore:
-            # Unschedule any scheduled actions for context and ignore it
-            context = ScheduleContext(
-                ScheduleAction(ScheduleAction.REMOVE_AND_IGNORE),
-                context
-            )
-            self.sched_queue.put(context)
+            # Unschedule any scheduled actions for context
+            self.scheduler.cancel_task(("renew", "proxy-add"), context)
         if delete_ocsp:
             LOG.info(
                 "Deleting any OCSP staple: \"%s.ocsp\" if it exists.",
@@ -129,13 +97,8 @@ class OCSPRenewerThread(threading.Thread):
         if not sched_time:
             if context.valid_until is None:
                 raise ValueError("context.valid_until can't be None.")
-
             before_sched_time = datetime.timedelta(
-                seconds=self.cli_args.minimum_validity)
+                seconds=self.minimum_validity)
             sched_time = context.valid_until - before_sched_time
-        schedule_context = ScheduleContext(
-            ScheduleAction(ScheduleAction.ADD),
-            context,
-            sched_time=sched_time
-        )
-        self.sched_queue.put(schedule_context)
+
+        self.scheduler.add_task("renew", context, sched_time)

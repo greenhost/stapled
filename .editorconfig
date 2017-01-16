@@ -1,0 +1,34 @@
+# See what this file does her: http://EditorConfig.org
+# For most IDE's you need to install a plugin,
+# e.g.: vim, emacs, sublime text, atom
+# Please install a editorconfig plugin in order to sync our editor settings up.
+# If everybody sticks to this; no more holy wars of tabs vs. spaces..
+
+# You can overwrite settings in any sub-directory but this is the root so this
+# should be here..
+root = true
+
+# For all files ([*]):
+[*]
+# Unix line endings
+end_of_line = lf
+# End files with an empty line
+insert_final_newline = true
+
+# Set default charset to utf-8 for these extensions:
+[*.{js,py,html,php,cson,json,xml,haml,jade,rb,sh,css,less,rst,md}]
+charset = utf-8
+
+# 4 space indentation
+[*.{py,php,html,xml,rb,less,css,markdown,rst,md},Vagrantfile]
+indent_style = space
+indent_size = 4
+
+# Tab indentation (no size specified)
+[Makefile]
+indent_style = tab
+
+# EXAMPLE Indentation override for all JS under lib directory
+#[lib/**.js]
+#indent_style = space
+#indent_size = 2
