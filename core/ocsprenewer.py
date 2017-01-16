@@ -55,9 +55,7 @@ class OCSPRenewerThread(threading.Thread):
             except CertValidationError as err:
                 self._handle_failed_validation(context, err)
 
-            # TODO: HOW THE F DO WE HANDLE THIS??
             self.scheduler.task_done("renew")
-
             self.schedule_renew(context)
             # DEBUG scheduling, schedule 10 seconds in the future.
             # self.schedule_renew(
