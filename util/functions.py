@@ -27,14 +27,14 @@ def base64(data):
     Get base64 string (1 line) from binary "data". Currently fails silently if
     data is not a bytearray or bytes object
 
-    :param (bytes, bytearray, str) data: Data to format.
+    :param (bytes, bytearray) data: Data to format.
     :return str: Empty string if this failed, otherwise the base64 encoded
         string.
     """
     if isinstance(data, (bytearray, bytes)):
         b64_data = binascii.b2a_base64(data).decode('ascii')
     else:
-        b64_data = ""
+        raise TypeError('Data passed to base64 function is of the wrong type')
 
     # Remove any new lines and carriage returns
     b64_data.replace("\n", "").replace("\r", "")
