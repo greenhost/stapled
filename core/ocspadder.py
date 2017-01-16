@@ -51,7 +51,8 @@ class OCSPAdder(threading.Thread):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.connect(self.socket_path)
         # Open the socket and ask for a prompt
-        self.sock.sendall(("prompt\n").encode())
+        result = self.send("prompt")
+        LOG.debug("Opened prompt with result: '%s'", result)
         super(OCSPAdder, self).__init__(*args, **kwargs)
 
     def __del__(self):
@@ -90,7 +91,8 @@ class OCSPAdder(threading.Thread):
         """
         command = self.OCSP_ADD.format(util.functions.base64(cert.ocsp_staple.data))
         LOG.debug("Setting OCSP staple with command '%s'", command)
-        self.send(command)
+        return self.send(command)
+        LOG.debug("OCSP staple added for certificate '%s'", cert)
 
     def send(self, command):
         """
@@ -107,16 +109,19 @@ class OCSPAdder(threading.Thread):
         # Empty buffer first, it's possible that other commands have been fired
         # to the same socket, we don't want the response to those commands in
         # our response string.
-        while True:
-            try:
-                chunk = self.sock.recv(SOCKET_BUFFER_SIZE)
-                if not chunk:
-                    break
-            except IOError as err:
-                if err.errno not in (errno.EAGAIN, errno.EINTR):
-                    raise
-                else:
-                    break
+        # TODO: This would be nice, but is tricky because the socket seems to
+        # close if the recv call times out. Otherwise the socket stays open but
+        # the recv call is blocking...
+        # while True:
+        #     try:
+        #         chunk = self.sock.recv(SOCKET_BUFFER_SIZE)
+        #         if not chunk:
+        #             break
+        #     except IOError as err:
+        #         if err.errno not in (errno.EAGAIN, errno.EINTR):
+        #             raise
+        #         else:
+        #             break
 
         # Send command
         self.sock.sendall((command + "\n").encode())
@@ -129,17 +134,21 @@ class OCSPAdder(threading.Thread):
                 chunk = self.sock.recv(SOCKET_BUFFER_SIZE)
                 if chunk:
                     d_chunk = chunk.decode('ascii')
+                    buff.write(d_chunk)
+                    # TODO: what happens if several threads are talking to
+                    # HAProxy on this socket?
                     if '> ' in d_chunk:
                         break
-                    buff.write(d_chunk)
                 else:
                     break
             except IOError as err:
                 if err.errno not in (errno.EAGAIN, errno.EINTR):
                     raise
 
-        response = buff.getvalue()
+        # Strip *all* \n, > and space characters from the end
+        response = buff.getvalue().strip('\n> ')
         buff.close()
+        LOG.debug("Received HAProxy response '%s'", response)
         return response
 
     @staticmethod

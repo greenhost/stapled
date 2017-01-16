@@ -78,12 +78,12 @@ def run(args):
 
 
     #TODO: Set socket path intelligently
-    socket_path = '/etc/haproxy.sock'
+    socket_path = '/var/run/haproxy-le-213.108.104.111.sock'
     proxy_adder = ocspadder.OCSPAdder(
         socket_path=socket_path,
         scheduler=scheduler
     )
-    proxy_adder.name = 'proxy-adder.' + proxy_adder.socket_path
+    proxy_adder.name = 'proxy-adder'
     proxy_adder.start()
 
     # Start ocsp response gathering threads
