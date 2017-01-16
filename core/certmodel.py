@@ -20,6 +20,7 @@ import logging
 import binascii
 import urllib
 import time
+import datetime
 import requests
 import certvalidator
 import ocspbuilder
@@ -73,6 +74,50 @@ class CertModel(object):
                 "Can't validate the certificate because part of the "
                 "certificate chain is missing in \"{}\"".format(self.filename)
             )
+
+    def recycle_staple(self, minimum_validity):
+        """
+        Try to find an existing staple that is still valid for more than the
+        ``minimum_validity`` period. If it is not valid for longer than the
+        ``minimum_validity`` period, but still valid, add it to the context but
+        still ask for a new one by returning ``False``.
+
+        :return bool: False if a new staple should be requested, True if the
+        current one is still valid for more than ``minimum_validity``
+        """
+        ocsp_file = "{}.ocsp".format(self.filename)
+        if not os.path.exists(ocsp_file):
+            LOG.info(
+                "File does not exist yet: %s, need to request a staple.",
+                ocsp_file
+            )
+            return False
+
+        try:
+            LOG.info("Seeing if %s is still valid..", ocsp_file)
+            with open(ocsp_file, "rb") as file:
+                staple = file.read()
+                staple = OCSPResponseParser(staple)
+                now = datetime.datetime.now()
+                until = staple.valid_until
+                if staple.status != "good" or until <= now:
+                    LOG.info("Staple has expired %s", self.filename)
+                    return False
+                self._validate_cert(staple)
+                LOG.info(
+                    "Staple %s expires %s, we can still use it.",
+                    ocsp_file,
+                    staple.valid_until.strftime('%Y-%m-%d %H:%M:%S')
+                )
+                before_sched_time = datetime.timedelta(
+                    seconds=minimum_validity)
+                self.ocsp_staple = staple
+                if until - before_sched_time > now:
+                    return True
+                return False
+        except IOError:
+            LOG.error("Can't access %s, let's schedule a renewal.", ocsp_file)
+            return False
 
     def renew_ocsp_staple(self, url_index=0):
         """
@@ -178,7 +223,7 @@ class CertModel(object):
         # If validation fails, it will raise an exception that should be
         # handled at another level.
         LOG.info("Validating staple..")
-        self._validate_cert()
+        self._validate_cert(ocsp_staple)
         # No exception was raised, so we can assume the staple is ok and write
         # it to disk.
         ocsp_filename = "{}.ocsp".format(self.filename)
@@ -274,11 +319,12 @@ class CertModel(object):
                 self.filename
             )
 
-    def _validate_cert(self):
+    def _validate_cert(self, ocsp_staple=None):
         """
         Validates the certificate and its chain, including the OCSP staple if
         there is one in :attr:`self.ocsp_staple`.
 
+        :param asn1crypto.core.Sequence ocsp_staple: Binary ocsp staple data.
         :return array: Validated certificate chain.
         :raises CertValidationError: If there is any problem with the
             certificate chain and/or the staple, e.g. certificate is revoked,
@@ -291,13 +337,13 @@ class CertModel(object):
             because ever client has its own copy of it.
         """
         try:
-            if self.ocsp_staple is None:
+            if ocsp_staple is None:
                 LOG.info("Validating without OCSP staple.")
                 context = certvalidator.ValidationContext()
             else:
                 LOG.info("Validating with OCSP staple.")
                 context = certvalidator.ValidationContext(
-                    ocsps=[self.ocsp_staple.data],
+                    ocsps=[ocsp_staple.data],
                     allow_fetching=True
                 )
             validator = certvalidator.CertificateValidator(

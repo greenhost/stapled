@@ -93,6 +93,7 @@ def run(args):
 
     # Start certificate finding thread
     finder = certfinder.CertFinderThread(
+        minimum_validity=args.minimum_validity,
         directories=directories,
         refresh_interval=refresh_interval,
         file_extensions=file_extensions,

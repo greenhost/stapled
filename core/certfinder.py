@@ -27,6 +27,7 @@ import threading
 import time
 import logging
 import os
+import datetime
 import ocspd
 from core.certmodel import CertModel
 from core.exceptions import CertValidationError
@@ -61,6 +62,7 @@ class CertFinderThread(threading.Thread):
             of files to check for certificate content **(optional)**.
         """
         self.contexts = {}
+        self.minimum_validity = kwargs.pop('minimum_validity', None)
         self.directories = kwargs.pop('directories', None)
         self.scheduler = kwargs.pop('scheduler', None)
         self.refresh_interval = kwargs.pop('refresh_interval', 10)
@@ -68,6 +70,9 @@ class CertFinderThread(threading.Thread):
             'file_extensions', ocspd.FILE_EXTENSIONS_DEFAULT
         )
         self.last_refresh = None
+
+        assert self.minimum_validity is not None, \
+            "You need to pass the minimum_validity."
 
         assert self.directories is not None, \
             "At least one directory should be passed for indexing."
@@ -145,27 +150,49 @@ class CertFinderThread(threading.Thread):
                     filename = os.path.join(path, filename)
                     if filename in self.contexts:
                         continue
-                    try:
-                        LOG.info("Parsing file \"%s\"..", filename)
-                        context = CertModel(filename)
-                    except CertValidationError as err:
-                        self._handle_failed_validation(context, err)
-                    # This is for certvalidator, which is currently not in
-                    # use.
-                    # except KeyError as err:
-                    #     self._handle_failed_validation(
-                    #         context,
-                    #         "KeyError {}, processing file \"{}\"".format(
-                    #             err, context.filename
-                    #         )
-                    #     )
-                    self.contexts[filename] = context
-                    self.scheduler.add_task("renew", context)
+                    # Parse the certificate
+                    self._parse_crt_file(filename)
         except OSError as err:
             LOG.critical(
                 "Can't read directory: %s, reason: %s.",
                 path, err
             )
+
+    def _parse_crt_file(self, filename):
+        """
+        Parse certificate and check if there is an existing OCSP staple that is
+        still valid. If so, use it, if not request a new OCSP staple. If the
+        staple is valid but not valid for longer than the ``minimum_validity``,
+        the staple is loaded but a new request is still scheduled.
+        :param str filename: Path to the certificate file.
+        """
+        try:
+            LOG.info("Parsing file \"%s\"..", filename)
+            context = CertModel(filename)
+        except CertValidationError as err:
+            self._handle_failed_validation(context, err)
+        # This is for certvalidator, which is currently not in
+        # use.
+        # except KeyError as err:
+        #     self._handle_failed_validation(
+        #         context,
+        #         "KeyError {}, processing file \"{}\"".format(
+        #             err, context.filename
+        #         )
+        #     )
+        self.contexts[filename] = context
+
+        if context.recycle_staple(self.minimum_validity):
+            try:
+                until = context.ocsp_staple.valid_until
+                sched_time = until - datetime.timedelta(
+                    seconds=self.minimum_validity)
+            except CertValidationError:
+                sched_time = None
+        else:
+            sched_time = None
+
+        self.scheduler.add_task("renew", context, sched_time)
 
     def _update_cached_certs(self):
         """
