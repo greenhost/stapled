@@ -46,7 +46,7 @@ core.certmodel
       :private-members:
 
 core.scheduling
---------------
+---------------
 .. automodule:: core.scheduling
    :members:
    :special-members:

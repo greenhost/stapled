@@ -83,7 +83,7 @@ class CertModel(object):
         still ask for a new one by returning ``False``.
 
         :return bool: False if a new staple should be requested, True if the
-        current one is still valid for more than ``minimum_validity``
+            current one is still valid for more than ``minimum_validity``
         """
         ocsp_file = "{}.ocsp".format(self.filename)
         if not os.path.exists(ocsp_file):

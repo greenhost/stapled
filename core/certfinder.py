@@ -164,6 +164,7 @@ class CertFinderThread(threading.Thread):
         still valid. If so, use it, if not request a new OCSP staple. If the
         staple is valid but not valid for longer than the ``minimum_validity``,
         the staple is loaded but a new request is still scheduled.
+
         :param str filename: Path to the certificate file.
         """
         try:
