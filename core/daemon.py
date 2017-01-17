@@ -46,6 +46,7 @@ This module bootstraps the ocspd process by starting threads for:
 import logging
 from core import certfinder
 from core import ocsprenewer
+from core import ocspadder
 from core import scheduling
 
 LOG = logging.getLogger()
@@ -61,6 +62,13 @@ def run(args):
     """
     LOG.debug("Started with CLI args: %s", str(args))
     directories = args.directories
+    sockets = args.haproxy_sockets
+    socket_paths = None
+    if sockets:
+        if len(directories) != len(sockets):
+            raise ValueError("#sockets does not equal #directories")
+        # Make a mapping from directory to socket
+        socket_paths = dict(zip(directories, sockets))
     file_extensions = args.file_extensions.replace(" ", "").split(",")
     renewal_threads = args.renewal_threads
     refresh_interval = args.refresh_interval
@@ -77,7 +85,17 @@ def run(args):
     scheduler.daemon = False
     scheduler.name = "scheduler"
     scheduler.add_queue("renew")
+    scheduler.add_queue("proxy-add")
     scheduler.start()
+
+
+    if socket_paths:
+        proxy_adder = ocspadder.OCSPAdder(
+            socket_paths=socket_paths,
+            scheduler=scheduler
+        )
+        proxy_adder.name = 'proxy-adder'
+        proxy_adder.start()
 
     # Start ocsp response gathering threads
     threads_list = []
