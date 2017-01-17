@@ -22,10 +22,11 @@ def pretty_base64(data, line_len=79, prefix="", suffix="\n"):
 
 def base64(data):
     """
-    Get base64 string (1 line) from binary "data". Currently fails silently if
-    data is not a bytearray or bytes object
+    Get base64 string (1 line) from binary "data".
 
     :param (bytes, bytearray) data: Data to format.
+    :raises TypeError: Raises an error if the data is not a bytearray of bytes
+        instance
     :return str: Empty string if this failed, otherwise the base64 encoded
         string.
     """
