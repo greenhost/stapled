@@ -53,7 +53,7 @@ class OCSPAdder(threading.Thread):
         # Open sockets and ask for a prompt to keep it open
         for key, socket_path in self.socket_paths.items():
             self.socks[key] = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.socks[key].connect(self.socket_path)
+            self.socks[key].connect(socket_path)
             result = self.send(key, "prompt")
             LOG.debug("Opened prompt with result: '%s'", result)
         super(OCSPAdder, self).__init__(*args, **kwargs)
