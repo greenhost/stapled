@@ -5,6 +5,7 @@ import threading
 import logging
 import socket
 import errno
+import os
 from io import StringIO
 
 import util.functions
@@ -15,17 +16,17 @@ SOCKET_BUFFER_SIZE = 1024
 class OCSPAdder(threading.Thread):
     """
     This class is used to add an OCSP staple to a running HAProxy instance by
-    sending it over a socket. It runs a thread that keeps 1 open socket
-    connection with self.sock. Some of the code from
-    `collectd haproxy connection`_ under the MIT license, was used for
-    inspiration
+    sending it over a socket. It runs a thread that keeps open socket
+    connections the supplied haproxy sockets. Code from `collectd haproxy
+    connection`_ under the MIT license, was used for inspiration.
 
-    :param socket_path: The path to the HAProxy socket. This can also be an
-        IP + portnumber (although that has not been tested yet)
-    :param Queue command_queue: A queue that holds commands to send trough the
-        HAProxy socket. As soon as the command_queue recieves a new command,
-        it is sent to self.socket_path.
-
+    :param dict socket_paths: A mapping from a directory (typically the directory
+        containing TLS certificates) to a HAProxy socket that serves
+        certificates from that directory. These sockets are used to communicate
+        new OCSP staples to HAProxy, so it does not have to be restarted.
+    :param Queue command_queue: A queue that holds cert models. As soon as a
+        model is received, an OCSP response is read from it and added to a
+        HAProxy socket found from self.socks[<certificate directory>].
     .. _collectd haproxy connection:
        https://github.com/wglass/collectd-haproxy/blob/master/collectd_haproxy/
        connection.py
@@ -41,25 +42,28 @@ class OCSPAdder(threading.Thread):
     def __init__(self, *args, **kwargs):
         LOG.debug("Starting OCSPAdder thread")
         self.scheduler = kwargs.pop('scheduler', None)
-        self.socket_path = kwargs.pop('socket_path', None)
+        self.socket_paths = kwargs.pop('socket_paths', None)
 
         assert self.scheduler is not None, \
             "Please pass a scheduler to get and add proxy-add tasks."
-        assert self.socket_path is not None, \
-            "The OCSPAdder needs a socket_path"
+        assert self.socket_paths is not None, \
+            "The OCSPAdder needs a socket_paths dict"
 
-        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sock.connect(self.socket_path)
-        # Open the socket and ask for a prompt
-        result = self.send("prompt")
-        LOG.debug("Opened prompt with result: '%s'", result)
+        self.socks = {}
+        # Open sockets and ask for a prompt to keep it open
+        for key, socket_path in self.socket_paths.items():
+            self.socks[key] = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self.socks[key].connect(self.socket_path)
+            result = self.send(key, "prompt")
+            LOG.debug("Opened prompt with result: '%s'", result)
         super(OCSPAdder, self).__init__(*args, **kwargs)
 
     def __del__(self):
         """
-        Close the socket on exit.
+        Close the sockets on exit.
         """
-        self.sock.close()
+        for sock in self.socks.values():
+            sock.close()
 
     def run(self):
         """
@@ -72,8 +76,7 @@ class OCSPAdder(threading.Thread):
         while True:
             cert = self.scheduler.get_task(self.TASK_NAME)
             LOG.debug(
-                "Sending staple to HAProxy socket '%s':\n\tcert:'%s'",
-                self.socket_path, cert)
+                "Sending staple for cert:'%s'", cert)
             try:
                 response = self.add_staple(cert)
                 if response != 'OCSP Response updated!':
@@ -87,17 +90,22 @@ class OCSPAdder(threading.Thread):
         Create and send the command that adds a base64 encoded OCSP staple to
         the HAProxy
 
-        :param cert: An object that has a binary string ocsp_staple in it
+        :param cert: An object that has a binary string `ocsp_staple` in it and
+            a filename `filename`.
         """
         command = self.OCSP_ADD.format(util.functions.base64(cert.ocsp_staple.data))
         LOG.debug("Setting OCSP staple with command '%s'", command)
-        return self.send(command)
+        directory = os.path.dirname(cert.filename)
+        return self.send(directory, command)
         LOG.debug("OCSP staple added for certificate '%s'", cert)
 
-    def send(self, command):
+    def send(self, socket_key, command):
         """
-        Send the command through self.sock (using self.socket_path)
+        Send the command through self.socks[socket_key] (using
+            self.socket_paths)
 
+        :param str socket_key: Identifying dictionary key of the socket. This
+            is typically the directory HAProxy serves certificates from.
         :param str command: String with the HAProxy command. For a list of possible
             commands, see the `haproxy documentation`_
         :raises IOError if an error occurs and it's not errno.EAGAIN or
@@ -114,7 +122,7 @@ class OCSPAdder(threading.Thread):
         # the recv call is blocking...
         # while True:
         #     try:
-        #         chunk = self.sock.recv(SOCKET_BUFFER_SIZE)
+        #         chunk = self.socks[socket_key].recv(SOCKET_BUFFER_SIZE)
         #         if not chunk:
         #             break
         #     except IOError as err:
@@ -124,14 +132,14 @@ class OCSPAdder(threading.Thread):
         #             break
 
         # Send command
-        self.sock.sendall((command + "\n").encode())
+        self.socks[socket_key].sendall((command + "\n").encode())
 
         buff = StringIO()
 
         # Get new response.
         while True:
             try:
-                chunk = self.sock.recv(SOCKET_BUFFER_SIZE)
+                chunk = self.socks[socket_key].recv(SOCKET_BUFFER_SIZE)
                 if chunk:
                     d_chunk = chunk.decode('ascii')
                     buff.write(d_chunk)

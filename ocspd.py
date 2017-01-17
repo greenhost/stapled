@@ -129,14 +129,37 @@ def get_cli_arg_parser():
     )
 
     parser.add_argument(
+        '-s',
+        '--haproxy-sockets',
+        type=str,
+        nargs='+',
+        # FIXME: Maybe we want to move this to the documentation and reduce the
+        # size of the help message here.
+        help=(
+            "Sockets to connect to HAProxy. Each directory you pass with "
+            "the `directory` argument, should have its own haproxy socket. "
+            "The order of the socket arguments should match the order of the "
+            "directory arguments."
+            "Example:"
+            "I have a directory `/etc/haproxy1` with certificates, and a "
+            "HAProxy that serves these certificates and has stats socket "
+            "`/etc/haproxy1/haproxy.sock`. I have another directory "
+            "`/etc/haproxy2` with certificates and another haproxy instance "
+            "that serves these and has stats socket "
+            "`/etc/haproxy2/haproxy.sock`. I would then start ocspd as "
+            "follows:"
+            "`./ocspd /etc/haproxy1 /etc/haproxy2 -s /etc/haproxy1.sock "
+            "/etc/haproxy2.sock"
+        )
+    )
+
+    parser.add_argument(
         'directories',
         type=str,
         nargs='+',
         help=(
             "Directories containing the certificates used by HAProxy. "
             "Multiple directories may be specified separated by a space. "
-            "This is a positional argument and nothing but directories may "
-            "succeed it."
         )
     )
 

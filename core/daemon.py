@@ -57,6 +57,16 @@ def run(args):
     """
     LOG.debug("Started with CLI args: %s", str(args))
     directories = args.directories
+    sockets = args.haproxy_sockets
+    if sockets:
+        if len(directories) != len(sockets):
+            raise ValueError("#sockets does not equal #directories")
+        socket_paths = {}
+        # Make a mapping from directory to socket
+        for i, directory in enumerate(directories):
+            socket_paths[directory] = sockets[i]
+    else:
+        socket_paths = False
     file_extensions = args.file_extensions.replace(" ", "").split(",")
     renewal_threads = args.renewal_threads
     refresh_interval = args.refresh_interval
@@ -77,14 +87,13 @@ def run(args):
     scheduler.start()
 
 
-    #TODO: Set socket path intelligently
-    socket_path = '/var/run/haproxy-le-213.108.104.111.sock'
-    proxy_adder = ocspadder.OCSPAdder(
-        socket_path=socket_path,
-        scheduler=scheduler
-    )
-    proxy_adder.name = 'proxy-adder'
-    proxy_adder.start()
+    if socket_paths:
+        proxy_adder = ocspadder.OCSPAdder(
+            socket_paths=socket_paths,
+            scheduler=scheduler
+        )
+        proxy_adder.name = 'proxy-adder'
+        proxy_adder.start()
 
     # Start ocsp response gathering threads
     threads_list = []
