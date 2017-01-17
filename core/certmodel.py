@@ -345,7 +345,7 @@ class CertModel(object):
                 LOG.info("Validating with OCSP staple.")
                 context = certvalidator.ValidationContext(
                     ocsps=[ocsp_staple.data],
-                    allow_fetching=True
+                    allow_fetching=False
                 )
             validator = certvalidator.CertificateValidator(
                 self.end_entity,
