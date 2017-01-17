@@ -197,7 +197,8 @@ class CertModel(object):
                 LOG.warning("Connection error for %s: %s", self.filename, err)
 
             ocsp_staple = request.content
-            if self._check_ocsp_response(ocsp_staple, url):
+            self.ocsp_staple = self._check_ocsp_response(ocsp_staple, url)
+            if self.ocsp_staple:
                 break  # out of retry loop
 
             retry = retry - 1
@@ -223,7 +224,7 @@ class CertModel(object):
         # If validation fails, it will raise an exception that should be
         # handled at another level.
         LOG.info("Validating staple..")
-        self._validate_cert(ocsp_staple)
+        self._validate_cert(self.ocsp_staple)
         # No exception was raised, so we can assume the staple is ok and write
         # it to disk.
         ocsp_filename = "{}.ocsp".format(self.filename)
@@ -252,17 +253,17 @@ class CertModel(object):
                     self.filename
                 )
             )
-        self.ocsp_staple = OCSPResponseParser(ocsp_staple)
-        status = self.ocsp_staple.status
+        ocsp_staple = OCSPResponseParser(ocsp_staple)
+        status = ocsp_staple.status
         if status == 'good':
             LOG.info(
                 "Received good response from OCSP server %s for %s, "
                 "valid until: %s",
                 url,
                 self.filename,
-                self.ocsp_staple.valid_until.strftime('%Y-%m-%d %H:%M:%S')
+                ocsp_staple.valid_until.strftime('%Y-%m-%d %H:%M:%S')
             )
-            return True
+            return ocsp_staple
         elif status == 'revoked':
             raise OCSPRenewError(
                 "Certificate {} was revoked!".format(self.filename)
@@ -273,7 +274,7 @@ class CertModel(object):
                 self.filename,
                 url
             )
-        return False
+        return None
 
     def _read_full_chain(self):
         """
