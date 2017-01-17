@@ -11,10 +11,8 @@ def pretty_base64(data, line_len=79, prefix="", suffix="\n"):
     Splits the base64 data into lines of ``line_len`` lines and can apply
     a prefix such as ``\n\t`` to align output.
 
-    :param (bytes, bytearray, str) data: Data to format.
+    :param (bytes, bytearray) data: Data to format.
     :param int line_len: Maximum length of the returned lines.
-    :param (bytes, bytearray, str) data: Data to format.
-    :param (bytes, bytearray, str) data: Data to format.
     :return str: Formatted string.
     """
     b64_data = base64(data)
