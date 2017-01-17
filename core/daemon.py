@@ -58,15 +58,12 @@ def run(args):
     LOG.debug("Started with CLI args: %s", str(args))
     directories = args.directories
     sockets = args.haproxy_sockets
+    socket_paths = None
     if sockets:
         if len(directories) != len(sockets):
             raise ValueError("#sockets does not equal #directories")
-        socket_paths = {}
         # Make a mapping from directory to socket
-        for i, directory in enumerate(directories):
-            socket_paths[directory] = sockets[i]
-    else:
-        socket_paths = False
+        socket_paths = dict(zip(directories, sockets))
     file_extensions = args.file_extensions.replace(" ", "").split(",")
     renewal_threads = args.renewal_threads
     refresh_interval = args.refresh_interval

@@ -97,7 +97,6 @@ class OCSPAdder(threading.Thread):
         LOG.debug("Setting OCSP staple with command '%s'", command)
         directory = os.path.dirname(cert.filename)
         return self.send(directory, command)
-        LOG.debug("OCSP staple added for certificate '%s'", cert)
 
     def send(self, socket_key, command):
         """
@@ -117,9 +116,11 @@ class OCSPAdder(threading.Thread):
         # Empty buffer first, it's possible that other commands have been fired
         # to the same socket, we don't want the response to those commands in
         # our response string.
-        # TODO: This would be nice, but is tricky because the socket seems to
+        # FIXME: This would be nice, but is tricky because the socket seems to
         # close if the recv call times out. Otherwise the socket stays open but
         # the recv call is blocking...
+        # If this problem occurs, the easiest way is probably to open a socket
+        # each time we want to communicate...
         # while True:
         #     try:
         #         chunk = self.socks[socket_key].recv(SOCKET_BUFFER_SIZE)
