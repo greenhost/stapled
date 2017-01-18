@@ -81,13 +81,12 @@ def run(args):
     )
 
     # Scheduler thread
-    scheduler = scheduling.SchedulerThread()
+    scheduler = scheduling.SchedulerThread(
+        queues=["renew", "proxy-add"]
+    )
     scheduler.daemon = False
     scheduler.name = "scheduler"
-    scheduler.add_queue("renew")
-    scheduler.add_queue("proxy-add")
     scheduler.start()
-
 
     if socket_paths:
         proxy_adder = ocspadder.OCSPAdder(

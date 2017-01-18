@@ -28,6 +28,43 @@ import time
 LOG = logging.getLogger()
 
 
+class ScheduledTaskContext(object):
+    """
+    A context for scheduled tasks, this context can be updated with an
+    exception count per exception type, so it can be re-scheduled if it is
+    the appropriate action.
+    """
+    def __init__(self, action, sched_time=None, name=None, **kwargs):
+        """
+        Initialise a ScheduledTaskContext with an action, optional scheduled
+        time and optional name.
+
+        :param str action: An action corresponding to an existing queue in the
+            target scheduler.
+        :param datetime.datetime sched_time: Absolute time to execute
+            the task.
+        """
+        # this will be set when it is passed to a scheduler automatically.
+        self.scheduler = None
+        self.action = action
+        self.name = name
+        self.sched_time = sched_time
+
+    def reschedule(self, sched_time=None):
+        try:
+            self.scheduler.add_task(self, sched_time)
+        except AttributeError:
+            raise AttributeError(
+                "This context was never added to a queue before.")
+
+    def __repr__(self):
+        if self.name:
+            return "<ScheduledTaskContext {}: {}>".format(
+                self.action, self.name)
+        else:
+            return "<ScheduledTaskContext {}>".format(self.action)
+
+
 class SchedulerThread(threading.Thread):
     """
     This object can be used to schedule actions for contexts.
@@ -79,104 +116,67 @@ class SchedulerThread(threading.Thread):
             raise KeyError("This queue is already taken.")
         self._queues[action] = queue.Queue(max_size)
 
-    def add_task(self, actions, context, sched_time=None):
+    def add_task(self, ctx):
         """
         Add a task to be executed either ASAP, or at a specific time.
-        Set ``sched_time`` to None if you want your task executed ASAP.
+        Set ``ctx.sched_time`` to None if you want your task executed ASAP, set
+        it to a :obj:`datetime.datetime` object if you want to schedule it.
 
-        If the context is not unique, all the current task with the same action
-        will be cancelled before scheduling the new task.
+        If the context is not unique, the scheduled task will be cancelled
+        before scheduling the new task.
 
-        :param tuple|str actions: An action corresponding to an existing queue.
-        :param certmodel.CertModel context: Certificate context.
-        :param datetime.datetime sched_time: Absolute time to execute
-            the task.
+        :param ScheduledActionContext ctx: A context containing data for a
+            worker thread.
         :raises Queue.Full: If the underlying action queue is full.
         """
-        if isinstance(actions, str):
-            actions = (actions,)
-        if not sched_time:
-            for action in actions:
-                self._queue_action(action, context)
-        else:
-            for action in actions:
-                self._schedule_task(action, context, sched_time)
+        ctx.scheduler = self
+        if not ctx.sched_time:
+            # Run scheduled actions ASAP by adding it to the queue.
+            return self._queue_task(ctx)
 
-    def _queue_action(self, action, context):
+        if ctx in self.scheduled:
+            LOG.warning("Task %s was already scheduled, unscheduling.", ctx)
+            self.cancel_task(ctx)
+        # Run scheduled actions after ctx.sched_time seconds.
+        self.scheduled[ctx] = ctx.sched_time
+        if ctx.sched_time in self.schedule:
+            self.schedule[ctx.sched_time].append(ctx)
+        else:
+            self.schedule[ctx.sched_time] = ctx
+        LOG.info(
+            "Scheduled %s at %s",
+            ctx, ctx.sched_time.strftime('%Y-%m-%d %H:%M:%S'))
+
+    def _queue_task(self, ctx):
         try:
-            self._queues[action].put(context)
+            self._queues[ctx.action].put(ctx)
         except KeyError as key:
             raise KeyError("Queue for action {} might not exist.", key)
 
-    def _schedule_task(self, action, context, sched_time):
-        """
-        Run scheduled actions after ``sched_time`` seconds.
-
-        If the context is not unique, all the current task with the same action
-        will be cancelled before scheduling the new task.
-
-        :param object context: A context that will be added to the queue at the
-            set time.
-        :param int sched_time: Amount of seconds to wait before adding
-            the certificate back to the renewal queue.
-        """
-        key = (action, repr(context))
-        if key in self.scheduled:
-            LOG.warning(
-                "Task %s: %s was already scheduled, unscheduling.",
-                action, context
-            )
-            self._unschedule_task(*key)
-
-        # Schedule task
-        self.scheduled[key] = sched_time
-        if sched_time in self.schedule:
-            self.schedule[sched_time].append((action, context))
-        else:
-            self.schedule[sched_time] = [(action, context)]
-
-        LOG.info(
-            "Scheduled %s: %s at %s",
-            action, context, sched_time.strftime('%Y-%m-%d %H:%M:%S'))
-
-    def cancel_task(self, actions, context):
+    def cancel_task(self, ctx):
         """
         Remove a task from the queue.
 
-        :param tuple|str actions: An action corresponding to an existing queue.
-        :param certmodel.CertModel context: Certificate context.
-        :return array|bool: Boolean True for successfully cancelled task or an
-            array of booleans for an array of tasks.
-        """
-        if isinstance(actions, str):
-            return self._unschedule_task(actions, context)
-        return [self._unschedule_task(a, context) for a in actions]
-
-    def _unschedule_task(self, action, context):
-        """
-        Remove a task from the queue.
-
-        :param object context: A context that will be removed from the queue.
-        :param certmodel.CertModel context: Certificate context.
+        :param ScheduledActionContext ctx: A context containing data for a
+            worker thread.
+        :return bool: True for successfully cancelled task or False.
         """
         try:
             # Find out when it was scheduled
-            sched_time = self.scheduled.pop((action, repr(context)))
+            sched_time = self.scheduled.pop(ctx)
             # There can be more than one action scheduled in the same time
             # slot so we need to filter out any value that is not our target
             # and leave it
             slot = self.schedule[sched_time]
-            slot[:] = [x for x in slot if x != (action, context)]
+            slot[:] = [x for x in slot if x is ctx]
             return True
         except KeyError:
-            LOG.warning(
-                "Can't unschedule, %s wasn't scheduled for %s",
-                context, action)
+            LOG.warning("Can't unschedule, %s wasn't scheduled.", ctx)
             return False
 
     def get_task(self, action, blocking=True, timeout=None):
         """
-        Get a task from the action queue ``action``.
+        Get a task context from the action queue ``action``.
 
         :param str action: Action name that refers to a scheduler queue.
         :param bool blocking: Wait until there is something to return from the
@@ -230,12 +230,12 @@ class SchedulerThread(threading.Thread):
             todo = [x for x in self.schedule if x <= now]
         for sched_time in todo:
             items = self.schedule.pop(sched_time)
-            for action, context in items:
-                LOG.info("Adding %s to the %s queue.", context, action)
+            for ctx in items:
+                LOG.info("Adding %s to the %s queue.", ctx, ctx.action)
                 # Remove from reverse indexed dict
-                del self.scheduled[(action, repr(context))]
+                del self.scheduled[ctx]
 
-                self._queue_action(action, context)
+                self._queue_task(ctx)
                 late = datetime.datetime.now() - sched_time
                 if late.seconds < 1:
                     late = ''
@@ -246,9 +246,5 @@ class SchedulerThread(threading.Thread):
                         late.strftime('%H:%M:%S')
                     )
                 LOG.debug(
-                    "Queued %s for %s at %s%s",
-                    action,
-                    context,
-                    now.strftime('%Y-%m-%d %H:%M:%S'),
-                    late
-                )
+                    "Queued %s at %s%s",
+                    ctx, now.strftime('%Y-%m-%d %H:%M:%S'), late)
