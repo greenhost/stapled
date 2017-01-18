@@ -13,6 +13,9 @@ thread.
 
 This module defines the following objects:
 
+ - :class:`core.scheduling.ScheduledTaskContext`
+    A context that wraps around any data you want to pass to the scheduler and
+    which will be added to the action queue when the schedule time expires.
  - :class:`core.scheduling.SchedulerThread`
     An object that is capable of scheduling and unscheduling actions that you
     can define with, you should add contexts to the schedule with an optional
@@ -34,7 +37,7 @@ class ScheduledTaskContext(object):
     exception count per exception type, so it can be re-scheduled if it is
     the appropriate action.
     """
-    def __init__(self, action, sched_time=None, name=None, **kwargs):
+    def __init__(self, action, sched_time=None, name=None, **attributes):
         """
         Initialise a ScheduledTaskContext with an action, optional scheduled
         time and optional name.
@@ -43,14 +46,26 @@ class ScheduledTaskContext(object):
             target scheduler.
         :param datetime.datetime sched_time: Absolute time to execute
             the task.
+        :param str name: A name for the context instance (used in
+            ``__repr__()``)
+        :param kwargs kwargs: Any data you want to assign to the context,
+            don't assign anything with an underscore e.g. ``_attribute``.
         """
         # this will be set when it is passed to a scheduler automatically.
         self.scheduler = None
         self.action = action
         self.name = name
         self.sched_time = sched_time
+        for attr, value in attributes:
+            self.__setattr__(attr, value)
 
     def reschedule(self, sched_time=None):
+        """
+        Reschedule this context itself.
+
+        :param datetime.datetime sched_time: When should this context be added
+            back to the action queue
+        """
         try:
             self.scheduler.add_task(self, sched_time)
         except AttributeError:
@@ -119,7 +134,7 @@ class SchedulerThread(threading.Thread):
     def add_task(self, ctx):
         """
         Add a task to be executed either ASAP, or at a specific time.
-        Set ``ctx.sched_time`` to None if you want your task executed ASAP, set
+        Set ``sched_time`` to ``None`` if you want your task executed ASAP, set
         it to a :obj:`datetime.datetime` object if you want to schedule it.
 
         If the context is not unique, the scheduled task will be cancelled
