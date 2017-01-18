@@ -40,31 +40,33 @@ def ocsp_except_handle(ctx):
             with open(trace_file, "w") as file_handle:
                 traceback.print_exc(file=file_handle)
             LOG.critical(
-                "Prevented thread from being killed by an uncaught exception: "
-                "%s\nA stack trace has been saved in %s",
-                exc, trace_file
+                "Prevented thread from being killed by uncaught exception: %s\n"
+                "A stack trace has been saved in %s\n"
+                "Context %s will be dropped as a result of the exception.",
+                exc,
+                ctx,
+                trace_file
             )
-        except (IOError, PermissionError) as exc:
-            LOG.critical("Couldn't dump stack trace: %s", exc)
+        except (IOError, PermissionError) as trace_exc:
+            LOG.critical(
+                "Prevented thread from being killed by uncaught exception: %s\n"
+                "Couldn't dump stack trace to: %s reason: %s\n"
+                "Context %s will be dropped as a result of the exception.",
+                exc,
+                trace_file,
+                trace_exc,
+                ctx
+            )
 
-
-
+def delete_ocsp_for_context(ctx):
+    LOG.info("Deleting any OCSP staple: \"%s.ocsp\" if it exists.", ctx.model)
+    try:
+        ocsp_file = "{}.ocsp".format(ctx.model)
+        os.remove(ocsp_file)
+    except IOError:
+        LOG.debug(
+            "Can't delete OCSP staple %s, maybe it doesn't exist.",
+            ocsp_file
+        )
 
 #action_ctx.reschedule(3600)
-
-#def _handle_failed_validation(self, context, msg, delete_ocsp=True, ignore=False):
-#        LOG.critical(msg)
-#        if ignore:
-#            # Unschedule any scheduled actions for context
-#            self.scheduler.cancel_task(("renew", "proxy-add"), context)
-#        if delete_ocsp:
-#            LOG.info(
-#                "Deleting any OCSP staple: \"%s.ocsp\" if it exists.",
-#                context
-#            )
-#            try:
-#                os.remove("{}.ocsp".format(context))
-#            except IOError:
-#                LOG.debug(
-#                    "Can't delete OCSP staple, maybe it doesn't exist."
-#                )
