@@ -157,7 +157,7 @@ class SchedulerThread(threading.Thread):
             return self._queue_task(ctx)
 
         sched_time = ctx.sched_time
-        if isinstance(sched_time, (int, long)):
+        if isinstance(sched_time, int):
             # Convert relative time in seconds to absolute time
             sched_time = datetime.datetime.now() + \
                 datetime.timedelta(seconds=sched_time)

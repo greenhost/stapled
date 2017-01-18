@@ -51,21 +51,23 @@ class OCSPRenewerThread(threading.Thread):
             LOG.info("Renewing OCSP staple for file \"%s\"..", context)
             with ocsp_except_handle(context):
                 context.model.renew_ocsp_staple()
-
-            self.scheduler.task_done("renew")
-            self.schedule_renew(context)
-            # DEBUG scheduling, schedule 10 seconds in the future.
-            # self.schedule_renew(
-            #     context,
-            #     datetime.datetime.now()+datetime.timedelta(seconds=10)
-            # )
-            # Adds the proxy-add command to the scheduler to run right now.
-            # This updates the running HAProxy instance's ocsp staple by
-            # running `set ssl ocsp-response {}`
-            proxy_add_context = ScheduledTaskContext(
-                "proxy-add", None, context.model.filename, model=context.model
-            )
-            self.scheduler.add_task(proxy_add_context)
+                self.scheduler.task_done("renew")
+                self.schedule_renew(context)
+                # DEBUG scheduling, schedule 10 seconds in the future.
+                # self.schedule_renew(
+                #     context,
+                #     datetime.datetime.now()+datetime.timedelta(seconds=10)
+                # )
+                # Adds the proxy-add command to the scheduler to run right now.
+                # This updates the running HAProxy instance's ocsp staple by
+                # running `set ssl ocsp-response {}`
+                proxy_add_context = ScheduledTaskContext(
+                    "proxy-add",
+                    None,
+                    context.model.filename,
+                    model=context.model
+                )
+                self.scheduler.add_task(proxy_add_context)
 
     def schedule_renew(self, context, sched_time=None):
         """
