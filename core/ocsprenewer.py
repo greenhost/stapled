@@ -6,9 +6,8 @@ certificate can be used to request OCSP responses.
 import threading
 import logging
 import datetime
-import os
-from core.exceptions import CertValidationError
-from core.exceptions import OCSPRenewError
+from core.scheduling import ScheduledTaskContext
+from core.excepthandler import ocsp_except_handle
 
 LOG = logging.getLogger()
 
@@ -50,42 +49,23 @@ class OCSPRenewerThread(threading.Thread):
         while True:
             context = self.scheduler.get_task("renew")
             LOG.info("Renewing OCSP staple for file \"%s\"..", context)
-            try:
-                context.renew_ocsp_staple()
-            except OCSPRenewError as err:
-                self._handle_failed_validation(context, err)
-            except CertValidationError as err:
-                self._handle_failed_validation(context, err)
+            with ocsp_except_handle(context):
+                context.model.renew_ocsp_staple()
 
             self.scheduler.task_done("renew")
             self.schedule_renew(context)
-            # Adds the proxy-add command to the scheduler to run right now.
-            # This updates the running HAProxy instance's ocsp staple by
-            # running ssl
-            self.scheduler.add_task('proxy-add', context)
             # DEBUG scheduling, schedule 10 seconds in the future.
             # self.schedule_renew(
             #     context,
             #     datetime.datetime.now()+datetime.timedelta(seconds=10)
             # )
-
-    def _handle_failed_validation(
-            self, context, msg, delete_ocsp=True, ignore=False):
-        LOG.critical(msg)
-        if ignore:
-            # Unschedule any scheduled actions for context
-            self.scheduler.cancel_task(("renew", "proxy-add"), context)
-        if delete_ocsp:
-            LOG.info(
-                "Deleting any OCSP staple: \"%s.ocsp\" if it exists.",
-                context
+            # Adds the proxy-add command to the scheduler to run right now.
+            # This updates the running HAProxy instance's ocsp staple by
+            # running `set ssl ocsp-response {}`
+            proxy_add_context = ScheduledTaskContext(
+                "proxy-add", None, context.model.filename, model=context.model
             )
-            try:
-                os.remove("{}.ocsp".format(context))
-            except IOError:
-                LOG.debug(
-                    "Can't delete OCSP staple, maybe it doesn't exist."
-                )
+            self.scheduler.add_task(proxy_add_context)
 
     def schedule_renew(self, context, sched_time=None):
         """
@@ -99,11 +79,12 @@ class OCSPRenewerThread(threading.Thread):
         :raises ValueError: If ``context.ocsp_staple.valid_until`` is None
         """
         if not sched_time:
-            if context.ocsp_staple.valid_until is None:
+            if context.model.ocsp_staple.valid_until is None:
                 raise ValueError(
                     "context.ocsp_response.valid_until can't be None.")
             before_sched_time = datetime.timedelta(
                 seconds=self.minimum_validity)
-            sched_time = context.ocsp_staple.valid_until - before_sched_time
-
-        self.scheduler.add_task("renew", context, sched_time)
+            valid_until = context.model.ocsp_staple.valid_until
+            sched_time = valid_until - before_sched_time
+        context.sched_time = sched_time
+        self.scheduler.add_task(context)

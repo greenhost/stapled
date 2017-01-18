@@ -95,8 +95,8 @@ class CertModel(object):
 
         try:
             LOG.info("Seeing if %s is still valid..", ocsp_file)
-            with open(ocsp_file, "rb") as file:
-                staple = file.read()
+            with open(ocsp_file, "rb") as file_handle:
+                staple = file_handle.read()
                 staple = OCSPResponseParser(staple)
                 now = datetime.datetime.now()
                 until = staple.valid_until

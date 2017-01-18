@@ -7,11 +7,12 @@ import socket
 import errno
 import os
 from io import StringIO
-
+from core.excepthandler import ocsp_except_handle
 import util.functions
 
 LOG = logging.getLogger()
 SOCKET_BUFFER_SIZE = 1024
+
 
 class OCSPAdder(threading.Thread):
     """
@@ -20,12 +21,12 @@ class OCSPAdder(threading.Thread):
     connections the supplied haproxy sockets. Code from `collectd haproxy
     connection`_ under the MIT license, was used for inspiration.
 
-    :param dict socket_paths: A mapping from a directory (typically the directory
-        containing TLS certificates) to a HAProxy socket that serves
+    :param dict socket_paths: A mapping from a directory (typically the
+        directory containing TLS certificates) to a HAProxy socket that serves
         certificates from that directory. These sockets are used to communicate
         new OCSP staples to HAProxy, so it does not have to be restarted.
-    :param Queue command_queue: A queue that holds cert models. As soon as a
-        model is received, an OCSP response is read from it and added to a
+    :param Queue command_queue: A queue that holds certificate models. As soon
+        as a model is received, an OCSP response is read from it and added to a
         HAProxy socket found from self.socks[<certificate directory>].
     .. _collectd haproxy connection:
        https://github.com/wglass/collectd-haproxy/blob/master/collectd_haproxy/
@@ -74,28 +75,29 @@ class OCSPAdder(threading.Thread):
         LOG.info("Started an OCSP adder thread.")
 
         while True:
-            cert = self.scheduler.get_task(self.TASK_NAME)
-            LOG.debug(
-                "Sending staple for cert:'%s'", cert)
-            try:
-                response = self.add_staple(cert)
+            context = self.scheduler.get_task(self.TASK_NAME)
+            model = context.model
+            LOG.debug("Sending staple for cert:'%s'", model)
+
+            # Open the exception handler context to run tasks likely to fail
+            with ocsp_except_handle(context):
+                response = self.add_staple(model)
                 if response != 'OCSP Response updated!':
-                    self._handle_failed_staple(cert, response)
-            except IOError as err:
-                self._handle_failed_staple(cert, err)
+                    self._handle_failed_staple(model, response)
             self.scheduler.task_done(self.TASK_NAME)
 
-    def add_staple(self, cert):
+    def add_staple(self, model):
         """
         Create and send the command that adds a base64 encoded OCSP staple to
         the HAProxy
 
-        :param cert: An object that has a binary string `ocsp_staple` in it and
-            a filename `filename`.
+        :param model: An object that has a binary string `ocsp_staple` in it
+            and a filename `filename`.
         """
-        command = self.OCSP_ADD.format(util.functions.base64(cert.ocsp_staple.data))
+        command = self.OCSP_ADD.format(
+            util.functions.base64(model.ocsp_staple.data))
         LOG.debug("Setting OCSP staple with command '%s'", command)
-        directory = os.path.dirname(cert.filename)
+        directory = os.path.dirname(model.filename)
         return self.send(directory, command)
 
     def send(self, socket_key, command):
@@ -105,8 +107,8 @@ class OCSPAdder(threading.Thread):
 
         :param str socket_key: Identifying dictionary key of the socket. This
             is typically the directory HAProxy serves certificates from.
-        :param str command: String with the HAProxy command. For a list of possible
-            commands, see the `haproxy documentation`_
+        :param str command: String with the HAProxy command. For a list of
+            possible commands, see the `haproxy documentation`_
         :raises IOError if an error occurs and it's not errno.EAGAIN or
             errno.EINTR
 
@@ -161,13 +163,13 @@ class OCSPAdder(threading.Thread):
         return response
 
     @staticmethod
-    def _handle_failed_staple(cert, problem):
+    def _handle_failed_staple(model, problem):
         """
         Handles a problem.
 
-        :param str cert: The certificate for which a staple was sent
-        :param err,str problem: Either a Python exception or a string returned by
-            HAProxy.
+        :param str model: The certificate for which a staple was sent
+        :param err,str problem: Either a Python exception or a string returned
+            by HAProxy.
         """
         # TODO: What to do???
-        LOG.critical("ERROR: cert '%s' has problem '%s'", cert, problem)
+        LOG.critical("ERROR: cert '%s' has problem '%s'", model, problem)

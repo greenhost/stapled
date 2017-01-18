@@ -57,7 +57,7 @@ class ScheduledTaskContext(object):
         self.task = task
         self.name = name
         self.sched_time = sched_time
-        for attr, value in attributes:
+        for attr, value in attributes.items():
             if hasattr(self, attr):
                 raise AttributeError(
                     "Can't set \"{}\" it's a reserved attribute name.".format(
@@ -146,7 +146,7 @@ class SchedulerThread(threading.Thread):
         If the context is not unique, the scheduled task will be cancelled
         before scheduling the new task.
 
-        :param ScheduledActionContext ctx: A context containing data for a
+        :param ScheduledTaskContext ctx: A context containing data for a
             worker thread.
         :raises Queue.Full: If the underlying task queue is full.
         """
@@ -163,7 +163,7 @@ class SchedulerThread(threading.Thread):
         if ctx.sched_time in self.schedule:
             self.schedule[ctx.sched_time].append(ctx)
         else:
-            self.schedule[ctx.sched_time] = ctx
+            self.schedule[ctx.sched_time] = [ctx]
         LOG.info(
             "Scheduled %s at %s",
             ctx, ctx.sched_time.strftime('%Y-%m-%d %H:%M:%S'))
@@ -178,7 +178,7 @@ class SchedulerThread(threading.Thread):
         """
         Remove a task from the queue.
 
-        :param ScheduledActionContext ctx: A context containing data for a
+        :param ScheduledTaskContext ctx: A context containing data for a
             worker thread.
         :return bool: True for successfully cancelled task or False.
         """
@@ -199,7 +199,7 @@ class SchedulerThread(threading.Thread):
         """
         Get a task context from the task queue ``task``.
 
-        :param str task: Action name that refers to a scheduler queue.
+        :param str task: Task name that refers to a scheduler queue.
         :param bool blocking: Wait until there is something to return from the
             queue.
         :raises Queue.Empty: If the underlying task queue is empty and
