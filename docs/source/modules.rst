@@ -25,7 +25,7 @@ OCSP staples up-to-date. In short, these are the modules:
     staples without restarting HAProxy.
 
 This graph explains their interaction. Every arrow passes a
-:class:`~core.certmodel.CertModel` instance to the other module.
+:class:`~core.taskcontext.OCSPTaskContext` instance to the other module.
 
 .. graphviz::
 

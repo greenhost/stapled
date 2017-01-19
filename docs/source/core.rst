@@ -1,6 +1,6 @@
-===================================
-OSCP Daemon technical documentation
-===================================
+====================
+Daemon documentation
+====================
 
 .. contents:: Table of Contents
    :local:
