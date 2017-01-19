@@ -12,9 +12,9 @@ This module bootstraps the ocspd process by starting threads for:
         - Finds certificate files in the specified directories at regular
           intervals.
         - Parses certificates and caches parsed certificates in
-          :attr:`core.certfinder.CertFinder.contexts`.
+          :attr:`core.daemon.run.models`.
         - Removes deleted certificates from the context cache in
-          :attr:`core.certfinder.CertFinder.contexts`.
+          :attr:`core.daemon.run.models`.
         - Add the parsed certificate to the the renew action queue of the
           scheduler for requesting or renewing the OCSP staple.
 
@@ -45,6 +45,7 @@ This module bootstraps the ocspd process by starting threads for:
 """
 import logging
 from core import certfinder
+from core import certparser
 from core import ocsprenewer
 from core import ocspadder
 from core import scheduling
@@ -72,6 +73,7 @@ def run(args):
     file_extensions = args.file_extensions.replace(" ", "").split(",")
     renewal_threads = args.renewal_threads
     refresh_interval = args.refresh_interval
+    model_cache = {}
 
     LOG.info(
         "Starting OCSP Stapling daemon, finding files of types: %s with "
@@ -82,7 +84,7 @@ def run(args):
 
     # Scheduler thread
     scheduler = scheduling.SchedulerThread(
-        queues=["renew", "proxy-add"]
+        queues=["parse", "renew", "proxy-add"]
     )
     scheduler.daemon = False
     scheduler.name = "scheduler"
@@ -109,8 +111,18 @@ def run(args):
         threads_list.append(thread)
 
     # Start certificate finding thread
-    finder = certfinder.CertFinderThread(
+    parser = certparser.CertParserThread(
+        models=model_cache,
         minimum_validity=args.minimum_validity,
+        scheduler=scheduler
+    )
+    parser.daemon = False
+    parser.name = "parser"
+    parser.start()
+
+    # Start certificate finding thread
+    finder = certfinder.CertFinderThread(
+        models=model_cache,
         directories=directories,
         refresh_interval=refresh_interval,
         file_extensions=file_extensions,

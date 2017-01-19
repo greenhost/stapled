@@ -27,6 +27,9 @@ import ocspbuilder
 import asn1crypto
 import ocspd
 from oscrypto import asymmetric
+from core.exceptions import OCSPBadResponse
+from core.exceptions import RenewalRequirementMissing
+from core.exceptions import CertParsingError
 from core.exceptions import CertValidationError
 from core.exceptions import OCSPRenewError
 from util.ocsp import OCSPResponseParser
@@ -52,28 +55,23 @@ class CertModel(object):
             chain is invalid.
         """
         self.filename = filename
-        try:
-            self.hash = file_hexdigest(filename)
-        except IOError as err:
-            # Catch to log the error and re-raise to handle at the appropriate
-            # level
-            LOG.error("Can't access file %s", filename)
-            raise err
-
+        self.hash = file_hexdigest(filename)
         self.modtime = os.path.getmtime(filename)
         self.end_entity = None
         self.intermediates = []
         self.ocsp_staple = None
         self.ocsp_urls = []
         self.chain = []
-        try:
-            self._read_full_chain()
-            self.chain = self._validate_cert()
-        except TypeError:
-            raise CertValidationError(
-                "Can't validate the certificate because part of the "
-                "certificate chain is missing in \"{}\"".format(self.filename)
-            )
+        self.url_index = 0
+
+    def parse_crt_file(self):
+        """
+        Parse certificate, wraps the ``self_read_full_chain()`` and the
+        ``self._validate_cert() methods.
+        """
+        LOG.info("Parsing file \"%s\"..", self.filename)
+        self._read_full_chain()
+        self.chain = self._validate_cert()
 
     def recycle_staple(self, minimum_validity):
         """
@@ -97,124 +95,95 @@ class CertModel(object):
             LOG.info("Seeing if %s is still valid..", ocsp_file)
             with open(ocsp_file, "rb") as file_handle:
                 staple = file_handle.read()
-                staple = OCSPResponseParser(staple)
-                now = datetime.datetime.now()
-                until = staple.valid_until
-                if staple.status != "good" or until <= now:
-                    LOG.info("Staple has expired %s", self.filename)
-                    return False
-                self._validate_cert(staple)
-                LOG.info(
-                    "Staple %s expires %s, we can still use it.",
-                    ocsp_file,
-                    staple.valid_until.strftime('%Y-%m-%d %H:%M:%S')
-                )
-                before_sched_time = datetime.timedelta(
-                    seconds=minimum_validity)
-                self.ocsp_staple = staple
-                if until - before_sched_time > now:
-                    return True
-                return False
         except IOError:
+            # Can't access the staple file, game over.
             LOG.error("Can't access %s, let's schedule a renewal.", ocsp_file)
             return False
 
-    def renew_ocsp_staple(self, url_index=0):
+        staple = OCSPResponseParser(staple)
+        now = datetime.datetime.now()
+        until = staple.valid_until
+        if staple.status != "good" or until <= now:
+            LOG.info("Staple has expired %s", self.filename)
+            return False
+        try:
+            self._validate_cert(staple)
+            LOG.info(
+                "Staple %s expires %s, we can still use it.",
+                ocsp_file,
+                staple.valid_until.strftime('%Y-%m-%d %H:%M:%S')
+            )
+        except CertValidationError:
+            # Staple can't be validated, this is ok, we will just
+            # ignore the existing staple and replace it by a new one
+            # ASAP.
+            return False
+
+        # A valid staple file exists, let's asign it to the model.
+        self.ocsp_staple = staple
+
+        # Now check whether a renewal is still preferred due to it
+        # almost expiring.
+        sched_time = datetime.timedelta(seconds=minimum_validity)
+        if until - sched_time < now:
+            # It will expire soon
+            return False
+        # Existing staple is just fine, no action needed now, do still
+        # schedule a regular renewal before expiry!
+        return True
+
+    def renew_ocsp_staple(self):
         """
         Renew the OCSP staple, validate it and save it to the file path of the
         certificate file (``certificate.pem.ocsp``).
 
         .. Note:: This method handles a lot of exceptions, some of then are
             non-fatal and might lead to retries. When they are fatal, a log
-            message of level :const:`logging.logLevel.ERROR` is written and an
+            message of level :const:`logging.logLevel.ERROR` is written and
             one of the exceptions documented below is raised. This makes error
             handling at higher levels easier.
 
-        :param int url_index: There can be several OCSP URLs. When the
-            first URL fails, this function calls itself with the index of
-            the next.
+        .. Note:: There can be several OCSP URLs. When the first URL fails,
+            the error handler will increase the ``url_index`` and schedule a
+            new renewal.
 
-        :raises CertValidationError: when there is no end_entity or certificate
-            chain is missing.
+        :raises RenewalRequirementMissing: If a requirment for the renewal is
+            missing.
         :raises OCSPRenewError: when the ocsp staple is an empty byte string,
             or when the certificate was revoked, or when all URLs fail.
         """
         if not self.end_entity:
-            raise CertValidationError(
+            raise RenewalRequirementMissing(
                 "Certificate is missing in \"{}\", can't validate "
                 "without it.".format(self.filename)
             )
         if len(self.chain) < 1:
-            raise CertValidationError(
+            raise RenewalRequirementMissing(
                 "Certificate chain is missing in \"{}\", can't validate "
                 "without it.".format(self.filename)
             )
 
-        url = self.ocsp_urls[url_index]
+        url = self.ocsp_urls[self.url_index]
         host = urllib.parse.urlparse(url).hostname
-        LOG.info(
-            "Trying to get OCSP staple from url \"%s\"..",
-            url
+        LOG.info("Trying to get OCSP staple from url \"%s\"..", url)
+        # TODO: send merge request for header in ocsp fetching
+        request = requests.post(
+            url,
+            data=self.ocsp_request,
+            # Set 'Host' header because Let's Encrypt server might not
+            # react when it's absent
+            headers={
+                'Content-Type': 'application/ocsp-request',
+                'Accept': 'application/ocsp-response',
+                'Host': host
+            },
+            timeout=(10, 5)
         )
-        retry = ocspd.OCSP_REQUEST_RETRY_COUNT
-        while retry > 0:
-            try:
-                # TODO: send merge request for header in ocsp fetching
-                request = requests.post(
-                    url,
-                    data=self.ocsp_request,
-                    # Set 'Host' header because Let's Encrypt server might not
-                    # react when it's absent
-                    headers={
-                        'Content-Type': 'application/ocsp-request',
-                        'Accept': 'application/ocsp-response',
-                        'Host': host
-                    },
-                    timeout=(10, 5)
-                )
-                # Raise HTTP exception if any occurred
-                request.raise_for_status()
-            except urllib.error.URLError as err:
-                LOG.error("Connection problem: %s", err)
-            except (requests.Timeout,
-                    requests.exceptions.ConnectTimeout,
-                    requests.exceptions.ReadTimeout) as err:
-                LOG.warning("Timeout error for %s: %s", self.filename, err)
-            except requests.exceptions.TooManyRedirects as err:
-                LOG.warning(
-                    "Too many redirects for %s: %s", self.filename, err)
-            except requests.exceptions.HTTPError as err:
-                LOG.warning(
-                    "Received bad HTTP status code %s from OCSP server %s for "
-                    " %s: %s",
-                    request.status,
-                    url,
-                    self.filename,
-                    err
-                )
-            except (requests.ConnectionError,
-                    requests.RequestException) as err:
-                LOG.warning("Connection error for %s: %s", self.filename, err)
+        # Raise HTTP exception if any occurred
+        request.raise_for_status()
 
-            ocsp_staple = request.content
-            self.ocsp_staple = self._check_ocsp_response(ocsp_staple, url)
-            if self.ocsp_staple:
-                break  # out of retry loop
-
-            retry = retry - 1
-            if retry > 0:
-                sleep_time = (ocspd.OCSP_REQUEST_RETRY_COUNT - retry) * 5
-                LOG.info("Retrying in %d seconds..", sleep_time)
-                time.sleep(sleep_time)
-            else:
-                if url_index + 1 < len(self.ocsp_urls):
-                    return self.renew_ocsp_staple(url_index+1)
-                else:
-                    raise OCSPRenewError(
-                        "Couldn't renew OCSP staple for \"{}\"".format(
-                            self.filename
-                        )
-                    )
+        ocsp_staple = request.content
+        self.ocsp_staple = self._check_ocsp_response(ocsp_staple, url)
 
         # If we got this far it means we have a staple in self.ocsp_staple
         # We would have had an exception otherwise. So let's verify that the
@@ -228,10 +197,7 @@ class CertModel(object):
         # No exception was raised, so we can assume the staple is ok and write
         # it to disk.
         ocsp_filename = "{}.ocsp".format(self.filename)
-        LOG.info(
-            "Succesfully validated writing to file \"%s\"",
-            ocsp_filename
-        )
+        LOG.info("Succesfully validated writing to file \"%s\"", ocsp_filename)
         with open(ocsp_filename, 'wb') as f_obj:
             f_obj.write(ocsp_staple)
         return True
@@ -240,6 +206,7 @@ class CertModel(object):
         """
             Check that the OCSP response says that the status is ``good``.
             Also sets :attr:`core.certmodel.CertModel.ocsp_staple.valid_until`.
+            :raises OCSPRenewError: If an empty response is received.
         """
         if LOG.getEffectiveLevel() < 20:
             LOG.debug(
@@ -247,7 +214,7 @@ class CertModel(object):
                 pretty_base64(ocsp_staple, line_len=75, prefix="\t")
             )
         if ocsp_staple == b'':
-            raise OCSPRenewError(
+            raise OCSPBadResponse(
                 "Received empty response from {} for {}".format(
                     url,
                     self.filename
@@ -265,12 +232,12 @@ class CertModel(object):
             )
             return ocsp_staple
         elif status == 'revoked':
-            raise OCSPRenewError(
+            raise OCSPBadResponse(
                 "Certificate {} was revoked!".format(self.filename)
             )
         else:
-            LOG.info(
-                "Can't get status for %s from %s",
+            raise OCSPBadResponse(
+                "Can't get status for {} from {}",
                 self.filename,
                 url
             )
@@ -290,10 +257,12 @@ class CertModel(object):
         fail silently, leading to exceptions being raised by any subsequent
         call to methods that require the values that this method should have
         set.
+        :raises CertParsingError: If the certificate file can't be read, it
+            contains errors or parts of the chain are missing.
         """
-        with open(self.filename, 'rb') as f_obj:
-            pem_obj = asn1crypto.pem.unarmor(f_obj.read(), multiple=True)
         try:
+            with open(self.filename, 'rb') as f_obj:
+                pem_obj = asn1crypto.pem.unarmor(f_obj.read(), multiple=True)
             for type_name, _, der_bytes in pem_obj:
                 if type_name == 'CERTIFICATE':
                     crt = asn1crypto.x509.Certificate.load(der_bytes)
@@ -304,18 +273,26 @@ class CertModel(object):
                         LOG.info("Found the end entity..")
                         self.end_entity = crt
                         self.ocsp_urls = getattr(crt, 'ocsp_urls')
+        except (IOError, OSError):
+            raise CertParsingError(
+                "Can't access the certificate file \"{}\".".format(
+                    self.filename
+                )
+            )
         except binascii.Error:
-            LOG.error(
-                "Certificate file contains errors \"%s\".",
-                self.filename
+            raise CertParsingError(
+                "Certificate file contains errors \"{}\".".format(
+                    self.filename
+                )
             )
         if self.end_entity is None:
-            LOG.error(
-                "Can't find server certificate items for \"%s\".",
-                self.filename
+            raise CertParsingError(
+                "Can't find server certificate items for \"{}\".".format(
+                    self.filename
+                )
             )
         if len(self.intermediates) < 1:
-            LOG.error(
+            raise CertParsingError(
                 "Can't find the CA certificate chain items in \"%s\".",
                 self.filename
             )
