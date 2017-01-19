@@ -161,7 +161,7 @@ class CertFinderThread(threading.Thread):
                     # Schedule the certificate for parsing.
                     context = OCSPTaskContext("parse", model, None)
                     self.scheduler.add_task(context)
-            except OSError as err:
+            except (IOError, OSError) as err:
                 # If the directory is unreadable this gets printed at every
                 # refresh until the directory is readable. We catch this here
                 # so any readable directory can still be scanned.
