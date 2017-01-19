@@ -42,9 +42,6 @@ LOGFORMAT = '%(threadName)-10s [%(levelname)s] %(message)s'
 #: (default:``crt,pem,cer``)
 FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
 
-#: The amount of OSCP request retry attempts before giving up (default:``3``).
-OCSP_REQUEST_RETRY_COUNT = 3
-
 logging.basicConfig(
     level=logging.DEBUG,
     format=LOGFORMAT

@@ -9,8 +9,7 @@ import threading
 import logging
 import datetime
 from core.excepthandler import ocsp_except_handle
-from core.scheduling import ScheduledTaskContext
-
+from core.taskcontext import OCSPTaskContext
 
 LOG = logging.getLogger()
 
@@ -88,7 +87,5 @@ class CertParserThread(threading.Thread):
             sched_time = None
 
         # Schedule a renewal of the OCSP staple
-        context = ScheduledTaskContext(
-            "renew", sched_time, model.filename, model=model
-        )
+        context = OCSPTaskContext("renew", model, sched_time)
         self.scheduler.add_task(context)

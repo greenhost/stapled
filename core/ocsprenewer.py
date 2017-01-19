@@ -11,7 +11,7 @@ run ASAP.
 import threading
 import logging
 import datetime
-from core.scheduling import ScheduledTaskContext
+from core.taskcontext import OCSPTaskContext
 from core.excepthandler import ocsp_except_handle
 
 LOG = logging.getLogger()
@@ -56,24 +56,20 @@ class OCSPRenewerThread(threading.Thread):
         while True:
             context = self.scheduler.get_task("renew")
             with ocsp_except_handle(context):
-                LOG.info("Renewing OCSP staple for \"%s\"..", context.model)
-                context.model.renew_ocsp_staple()
+                model = context.model
+                LOG.info("Renewing OCSP staple for \"%s\"..", model)
+                model.renew_ocsp_staple()
                 self.scheduler.task_done("renew")
-                self.schedule_renew(context)
+                self.schedule_renew(model)
                 # DEBUG scheduling, schedule 10 seconds in the future.
                 # self.schedule_renew(context, 10)
                 # Adds the proxy-add command to the scheduler to run ASAP.
                 # This updates the running HAProxy instance's OCSP staple by
                 # running `set ssl ocsp-response {}`
-                proxy_add_context = ScheduledTaskContext(
-                    "proxy-add",
-                    None,
-                    context.model.filename,
-                    model=context.model
-                )
+                proxy_add_context = OCSPTaskContext("proxy-add", model, None)
                 self.scheduler.add_task(proxy_add_context)
 
-    def schedule_renew(self, context, sched_time=None):
+    def schedule_renew(self, model, sched_time=None):
         """
         Schedule to renew this certificate's OCSP staple in ``sched_time``
         seconds.
@@ -85,12 +81,13 @@ class OCSPRenewerThread(threading.Thread):
         :raises ValueError: If ``context.ocsp_staple.valid_until`` is None
         """
         if not sched_time:
-            if context.model.ocsp_staple.valid_until is None:
+            if model.ocsp_staple.valid_until is None:
                 raise ValueError(
                     "context.ocsp_response.valid_until can't be None.")
             before_sched_time = datetime.timedelta(
                 seconds=self.minimum_validity)
-            valid_until = context.model.ocsp_staple.valid_until
+            valid_until = model.ocsp_staple.valid_until
             sched_time = valid_until - before_sched_time
-        context.sched_time = sched_time
-        self.scheduler.add_task(context)
+        # Make a fresh task context to reset exception counters
+        new_context = OCSPTaskContext("renew", model, sched_time)
+        self.scheduler.add_task(new_context)

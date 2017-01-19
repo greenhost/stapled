@@ -30,7 +30,7 @@ import os
 import ocspd
 from core.exceptions import CertFileAccessError
 from core.excepthandler import ocsp_except_handle
-from core.scheduling import ScheduledTaskContext
+from core.taskcontext import OCSPTaskContext
 from core.certmodel import CertModel
 
 LOG = logging.getLogger()
@@ -159,9 +159,7 @@ class CertFinderThread(threading.Thread):
                     # to see if it changed.
                     self.models[filename] = model
                     # Schedule the certificate for parsing.
-                    context = ScheduledTaskContext(
-                        "parse", None, filename, model=model
-                    )
+                    context = OCSPTaskContext("parse", model, None)
                     self.scheduler.add_task(context)
             except OSError as err:
                 # If the directory is unreadable this gets printed at every
@@ -216,9 +214,7 @@ class CertFinderThread(threading.Thread):
                         LOG.info(
                             "File \"%s\" changed, parsing it again.", filename)
                         self._del_model(filename)
-                        context = ScheduledTaskContext(
-                            "parse", None, filename, model=new_model
-                        )
+                        context = OCSPTaskContext("parse", model, None)
                         self.scheduler.add_task(context)
                     else:
                         LOG.info(

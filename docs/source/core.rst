@@ -1,6 +1,6 @@
-=======================
-Technical documentation
-=======================
+===================================
+OSCP Daemon technical documentation
+===================================
 
 .. contents:: Table of Contents
    :local:
@@ -18,11 +18,29 @@ core.daemon
 .. automodule:: core.daemon
    :members:
 
+core.taskcontext
+----------------
+.. automodule:: core.taskcontext
+
+   .. autoclass:: OCSPTaskContext
+      :members:
+      :special-members:
+      :private-members:
+
 core.certfinder
 ---------------
 .. automodule:: core.certfinder
 
    .. autoclass:: CertFinderThread
+      :members:
+      :special-members:
+      :private-members:
+
+core.certparser
+---------------
+.. automodule:: core.certparser
+
+   .. autoclass:: CertParserThread
       :members:
       :special-members:
       :private-members:
@@ -45,14 +63,13 @@ core.certmodel
       :special-members:
       :private-members:
 
-core.scheduling
----------------
-.. automodule:: core.scheduling
-   :members:
-   :special-members:
-   :private-members:
-
 core.exceptions
 ---------------
 .. automodule:: core.exceptions
+   :members:
+
+core.excepthandler
+------------------
+
+.. automodule:: core.excepthandler
    :members:

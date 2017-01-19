@@ -58,8 +58,15 @@ def ocsp_except_handle(ctx=None):
         yield  # do the "with ocsp_except_handle(ctx):" code block
     except CertFileAccessError as exc:
         # Can't access the certificat file, we can try again a bit later..
-        # TODO: Reschedule scheme..
-        LOG.critical(exc)
+        err_count = ctx.set_last_exception(str(exc))
+        if err_count < 3:
+            LOG.error(exc)
+            ctx.reschedule(5 * err_count)
+        elif err_count < 6:
+            LOG.error(exc)
+            ctx.reschedule(60 * err_count)
+        else:
+            LOG.critical("{}, giving up..".format(exc))
     except OCSPBadResponse as exc:
         LOG.error(exc)
     except OCSPRenewError as exc:

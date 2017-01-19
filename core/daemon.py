@@ -48,7 +48,7 @@ from core import certfinder
 from core import certparser
 from core import ocsprenewer
 from core import ocspadder
-from core import scheduling
+import scheduling
 
 LOG = logging.getLogger()
 

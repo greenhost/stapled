@@ -13,6 +13,7 @@ Why do I need ``ocspd``?
 
     using
     core
+    scheduling
 
 
 Indices and tables
