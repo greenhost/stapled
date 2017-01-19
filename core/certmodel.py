@@ -20,7 +20,6 @@ import logging
 import binascii
 import urllib
 import datetime
-import hashlib
 import requests
 import certvalidator
 import ocspbuilder
@@ -154,10 +153,22 @@ class CertModel(object):
             the error handler will increase the ``url_index`` and schedule a
             new renewal.
 
-        :raises RenewalRequirementMissing: If a requirment for the renewal is
+        :raises RenewalRequirementMissing: A requirment for the renewal is
             missing.
-
-        TODO: document all ``requests`` raises..
+        :raises OCSPBadResponse: Response is empty, invalid or the status is
+            not "good".
+        :raises urllib.error.URLError: An OCSP url can't be opened.
+        :raises requests.Timeout: When data doesn't reach us within the
+            expected time frame.
+        :raises requests.exceptions.ConnectTimeout: A connection can't be
+            established because the server doesn't reply within the expected
+            time frame.
+        :raises requests.exceptions.ReadTimeout: Data didn't reach us within
+            the expected time frame.
+        :raises requests.exceptions.TooManyRedirects: The OCSP server redirects
+            us too many times.
+        :raises requests.exceptions.HTTPError: A HTTP error code was returned.
+        :raises requests.ConnectionError: A Connection error occurred.
         """
         if not self.end_entity:
             raise RenewalRequirementMissing(

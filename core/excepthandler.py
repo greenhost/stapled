@@ -60,9 +60,10 @@ def ocsp_except_handle(ctx=None):
         err_count = ctx.set_last_exception(str(exc))
         if err_count < 4:
             LOG.error(exc)
-            ctx.reschedule(60 * err_count)
+            ctx.reschedule(60 * err_count)  # every err_count minutes
         elif err_count < 7:
-            ctx.reschedule(err_count * 3600)
+            LOG.error(exc)
+            ctx.reschedule(3600)  # every hour
         else:
             LOG.critical("{}, giving up..".format(exc))
     except (RenewalRequirementMissing,
@@ -73,37 +74,81 @@ def ocsp_except_handle(ctx=None):
         # We can't do anything until the certificate file is changed which
         # means we should not rechedule, when the certificate file changes,
         # the certfinder will add it to the parsing queue anyway..
+        if isinstance(exc, CertValidationError):
+            # If the certificate validation failed, we probably better not
+            # serve the staple because it may make the server unavailable,
+            # while not serving it only makes things slightly slower.
+            delete_ocsp_for_context(ctx)
         LOG.critical(exc)
     except OCSPBadResponse as exc:
-        LOG.error(exc)
-    except urllib.error.URLError as err:
-        LOG.error("Connection problem: %s", err)
+        # The OCSP response is empty, invalid or the status is not "good", we
+        # can try again, maybe there's server side problem.
+        err_count = ctx.set_last_exception(str(exc))
+        if err_count < 4:
+            LOG.error(exc)
+            ctx.reschedule(60 * err_count)  # every err_count minutes
+        elif err_count < 7:
+            LOG.error(exc)
+            ctx.reschedule(3600)  # every hour
+        else:
+            LOG.critical(exc)
+            ctx.reschedule(43200)  # twice a day
     except (requests.Timeout,
             requests.exceptions.ConnectTimeout,
-            requests.exceptions.ReadTimeout) as err:
-        LOG.warning("Timeout error for %s: %s", ctx.model.filename, exc)
-    except requests.exceptions.TooManyRedirects as err:
-        LOG.warning(
-            "Too many redirects for %s: %s", ctx.model.filename, exc)
-    except requests.exceptions.HTTPError as exc:
-        LOG.warning(
-            "Received bad HTTP status code \%\s from OCSP server \%\s for "
-            " %s: %s",
-            # status,
-            # url,
-            ctx.model.filename,
-            exc
-        )
-    except (requests.ConnectionError,
-            requests.RequestException) as err:
-        LOG.warning("Connection error for %s: %s", ctx.model.filename, err)
+            requests.exceptions.ReadTimeout,
+            urllib.error.URLError,
+            requests.exceptions.TooManyRedirects,
+            requests.exceptions.HTTPError,
+            requests.ConnectionError,
+            requests.RequestException) as exc:
+        if isinstance(exc, urllib.error.URLError):
+            LOG.error(
+                "Can't open URL: %s, reason: ",
+                ctx.ocsp_urls[ctx.ulr_index],
+                exc.reason
+            )
+        elif isinstance(exc, requests.exceptions.TooManyRedirects):
+            LOG.warning(
+                "Too many redirects for %s: %s", ctx.model.filename, exc)
+        elif isinstance(exc, requests.exceptions.HTTPError):
+            LOG.warning(
+                "Received bad HTTP status code %s from OCSP server %s for "
+                " %s: %s",
+                exc.response.status_code,
+                ctx.model.ocsp_urls[ctx.model.ulr_index],
+                ctx.model.filename,
+                exc
+            )
+        elif isinstance(exc, (
+                requests.ConnectionError,
+                requests.RequestException)):
+            LOG.warning("Connection error for %s: %s", ctx.model.filename, exc)
+        else:
+            LOG.warning("Timeout error for %s: %s", ctx.model.filename, exc)
 
-        # if context.model.url_index > len(self.ocsp_urls):
-        # No more urls to try
+        # Iterate over the available OCSP URLs while rescheduling
+        len_ocsp_urls = len(ctx.model.ocsp_urls)
+        ctx.model.url_index += 1
+        if ctx.model.url_index >= len_ocsp_urls:
+            ctx.model.url_index = 0
+
+        # Reschedule every 10 seconds (3x), then every hour (3x),
+        # then twice a day, *per* URL so if we have 3 urls we will run:
+        #  - every 10 seconds (9x), 3 per url
+        #  - every hour (9x), 3 per url
+        #  - twice a day per url
+        err_count = ctx.set_last_exception(str(exc))
+        if err_count < (3*len_ocsp_urls)+1:
+            LOG.error(exc)
+            ctx.reschedule(10)  # every err_count minutes
+        elif err_count < (6*len_ocsp_urls)+1:
+            LOG.error(exc)
+            ctx.reschedule(3600)  # every hour
+        else:
+            LOG.critical(exc)
+            ctx.reschedule(43200 // len_ocsp_urls)  # twice a day per url
     except Exception as exc:  # the show must go on..
         dump_stack_trace(ctx, exc)
-
-# action_ctx.reschedule(3600)
 
 
 def delete_ocsp_for_context(ctx):

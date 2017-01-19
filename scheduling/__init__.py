@@ -157,21 +157,20 @@ class SchedulerThread(threading.Thread):
             # Run scheduled tasks ASAP by adding it to the queue.
             return self._queue_task(ctx)
 
-        sched_time = ctx.sched_time
-        if isinstance(sched_time, int):
+        if isinstance(ctx.sched_time, int):
             # Convert relative time in seconds to absolute time
-            sched_time = datetime.datetime.now() + \
-                datetime.timedelta(seconds=sched_time)
+            ctx.sched_time = datetime.datetime.now() + \
+                datetime.timedelta(seconds=ctx.sched_time)
 
         if ctx in self.scheduled:
             LOG.warning("Task %s was already scheduled, unscheduling.", ctx)
             self.cancel_task(ctx)
         # Run scheduled tasks after ctx.sched_time seconds.
-        self.scheduled[ctx] = sched_time
+        self.scheduled[ctx] = ctx.sched_time
         if ctx.sched_time in self.schedule:
-            self.schedule[sched_time].append(ctx)
+            self.schedule[ctx.sched_time].append(ctx)
         else:
-            self.schedule[sched_time] = [ctx]
+            self.schedule[ctx.sched_time] = [ctx]
         LOG.info(
             "Scheduled %s at %s",
             ctx, ctx.sched_time.strftime('%Y-%m-%d %H:%M:%S'))

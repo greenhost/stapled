@@ -28,7 +28,6 @@ import time
 import logging
 import os
 import ocspd
-from core.exceptions import CertFileAccessError
 from core.excepthandler import ocsp_except_handle
 from core.taskcontext import OCSPTaskContext
 from core.certmodel import CertModel
@@ -194,6 +193,7 @@ class CertFinderThread(threading.Thread):
 
         Deleted files are removed from the model cache in
         :attr:`core.daemon.run.models`.
+
         :raises CertFileAccessError: If a certfile can't be accessed.
         """
         for filename, model in self.models.items():
