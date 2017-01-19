@@ -32,7 +32,7 @@ from core.excepthandler import ocsp_except_handle
 from core.taskcontext import OCSPTaskContext
 from core.certmodel import CertModel
 
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 
 
 class CertFinderThread(threading.Thread):

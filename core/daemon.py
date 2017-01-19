@@ -50,7 +50,7 @@ from core import ocsprenewer
 from core import ocspadder
 import scheduling
 
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 
 
 def run(args):
@@ -106,7 +106,7 @@ def run(args):
             scheduler=scheduler
         )
         thread.daemon = False
-        thread.name = "renewer-{}".format(tid)
+        thread.name = "renewer-{:02d}".format(tid)
         thread.start()
         threads_list.append(thread)
 

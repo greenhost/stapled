@@ -28,7 +28,7 @@ import datetime
 import queue
 import time
 
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 
 
 class ScheduledTaskContext(object):
@@ -270,9 +270,7 @@ class SchedulerThread(threading.Thread):
                 elif 1 < late.seconds < 59:  # between 1 and 59 seconds
                     late = " {} seconds late".format(late.seconds)
                 else:
-                    late = " {} late".format(
-                        late.strftime('%H:%M:%S')
-                    )
+                    late = " {} late".format(late)
                 LOG.debug(
                     "Queued %s at %s%s",
                     ctx, now.strftime('%Y-%m-%d %H:%M:%S'), late)

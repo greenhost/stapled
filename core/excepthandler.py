@@ -43,7 +43,7 @@ from core.exceptions import CertFileAccessError
 from core.exceptions import CertParsingError
 from core.exceptions import CertValidationError
 
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
 
 
@@ -108,23 +108,28 @@ def ocsp_except_handle(ctx=None):
                 exc.reason
             )
         elif isinstance(exc, requests.exceptions.TooManyRedirects):
-            LOG.warning(
+            LOG.error(
                 "Too many redirects for %s: %s", ctx.model.filename, exc)
         elif isinstance(exc, requests.exceptions.HTTPError):
-            LOG.warning(
+            LOG.error(
                 "Received bad HTTP status code %s from OCSP server %s for "
                 " %s: %s",
                 exc.response.status_code,
-                ctx.model.ocsp_urls[ctx.model.ulr_index],
+                ctx.model.ocsp_urls[ctx.model.url_index],
                 ctx.model.filename,
                 exc
             )
         elif isinstance(exc, (
                 requests.ConnectionError,
-                requests.RequestException)):
-            LOG.warning("Connection error for %s: %s", ctx.model.filename, exc)
+                requests.RequestException)
+                ):
+            LOG.error(
+                "Failed to connect to: %s, for %s",
+                ctx.model.ocsp_urls[ctx.model.url_index],
+                ctx.model.filename
+            )
         else:
-            LOG.warning("Timeout error for %s: %s", ctx.model.filename, exc)
+            LOG.error("Timeout error for %s: %s", ctx.model.filename, exc)
 
         # Iterate over the available OCSP URLs while rescheduling
         len_ocsp_urls = len(ctx.model.ocsp_urls)
@@ -139,14 +144,16 @@ def ocsp_except_handle(ctx=None):
         #  - twice a day per url
         err_count = ctx.set_last_exception(str(exc))
         if err_count < (3*len_ocsp_urls)+1:
-            LOG.error(exc)
             ctx.reschedule(10)  # every err_count minutes
         elif err_count < (6*len_ocsp_urls)+1:
-            LOG.error(exc)
             ctx.reschedule(3600)  # every hour
         else:
-            LOG.critical(exc)
             ctx.reschedule(43200 // len_ocsp_urls)  # twice a day per url
+        LOG.debug(
+            "This exception %d in a row, context.model.ocsp_urls has %d "
+            "entries",
+            err_count, len_ocsp_urls
+        )
     except Exception as exc:  # the show must go on..
         dump_stack_trace(ctx, exc)
 
@@ -156,8 +163,8 @@ def delete_ocsp_for_context(ctx):
     When something bad happens, sometimes it is good to delete a related bad
     OCSP file so it can't be served any more.
 
-    TODO: Check that HAProxy doesn't cache this, it probably does, we need to
-    be able to tell it not to remember it.
+    .. TODO:: Check that HAProxy doesn't cache this, it probably does, we need
+        to be able to tell it not to remember it.
     """
     LOG.info("Deleting any OCSP staple: \"%s.ocsp\" if it exists.", ctx.model)
     try:

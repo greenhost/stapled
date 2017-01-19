@@ -10,7 +10,7 @@ from io import StringIO
 from core.excepthandler import ocsp_except_handle
 import util.functions
 
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 SOCKET_BUFFER_SIZE = 1024
 
 

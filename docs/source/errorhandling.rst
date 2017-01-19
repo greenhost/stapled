@@ -1,7 +1,12 @@
 Exception handling
 ==================
 
-During the OCSP renewal proces lots of things could go wrong, some errors are recoverable, others can be ignored, still others could be cause by temporary issues e.g.: a service interruption of the OCSP server in question. So extensive error handling is done to keep the daemons threads running. The following is an overview of what can be expected when exceptions occur.
+During the OCSP renewal proces lots of things could go wrong, some errors are
+recoverable, others can be ignored, still others could be cause by temporary
+issues e.g.: a service interruption of the OCSP server in question. So
+extensive error handling is done to keep the daemons threads running.
+
+The following is an overview of what can be expected when exceptions occur.
 
 +--------------------------------------+---------------+------------------------------------------+---------------------------------------------------------------------------+
 | Exception                            | Source        | Raised when?                             | Action                                                                    |
@@ -41,3 +46,14 @@ During the OCSP renewal proces lots of things could go wrong, some errors are re
 
 .. [1] When the certificate file is changed, `certfinder` will add the file back to the parsing queue.
 
+core.exceptions
+---------------
+
+.. automodule:: core.exceptions
+   :members:
+
+core.excepthandler
+------------------
+
+.. automodule:: core.excepthandler
+    :members:

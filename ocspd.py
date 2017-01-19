@@ -36,7 +36,7 @@ import core.daemon
 
 #: :attr:`logging.format` format string (default:
 #: ``%(threadName)-10s [%(levelname)s] %(message)s``)
-LOGFORMAT = '%(threadName)-10s [%(levelname)s] %(message)s'
+LOGFORMAT = '[%(levelname)5.5s] %(threadName)+10s/%(name)-16.20s %(message)s'
 
 #: The extensions the daemon will try to parse as certificate files
 #: (default:``crt,pem,cer``)
@@ -46,7 +46,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format=LOGFORMAT
 )
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 
 def get_cli_arg_parser():
     """
@@ -181,9 +181,10 @@ def init():
     parser = get_cli_arg_parser()
     args = parser.parse_args()
     args.directories = [os.path.abspath(d) for d in args.directories]
-
     log_level = max(min(50 - args.verbose * 10, 50), 10)
     LOG.setLevel(log_level)
+    logging.getLogger("requests").setLevel(logging.FATAL)
+    logging.getLogger("urllib3").setLevel(logging.FATAL)
     if args.logfile:
         file_handler = logging.FileHandler(args.logfile)
         file_handler.setLevel(log_level)

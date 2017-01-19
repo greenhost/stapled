@@ -14,7 +14,7 @@ import datetime
 from core.taskcontext import OCSPTaskContext
 from core.excepthandler import ocsp_except_handle
 
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 
 
 class OCSPRenewerThread(threading.Thread):

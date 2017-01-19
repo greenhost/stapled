@@ -11,7 +11,7 @@ import datetime
 from core.excepthandler import ocsp_except_handle
 from core.taskcontext import OCSPTaskContext
 
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 
 
 class CertParserThread(threading.Thread):

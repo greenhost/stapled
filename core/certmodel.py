@@ -34,7 +34,7 @@ from util.ocsp import OCSPResponseParser
 from util.functions import pretty_base64
 from util.cache import cache
 
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 
 
 class CertModel(object):
@@ -229,7 +229,7 @@ class CertModel(object):
         if LOG.getEffectiveLevel() < 20:
             LOG.debug(
                 "Response data: \n%s",
-                pretty_base64(ocsp_staple, line_len=75, prefix="\t")
+                pretty_base64(ocsp_staple, line_len=75, prefix=" "*36)
             )
         if ocsp_staple == b'':
             raise OCSPBadResponse(
@@ -381,7 +381,7 @@ class CertModel(object):
         if LOG.getEffectiveLevel() < 20:
             LOG.debug(
                 "Request data: \n%s",
-                pretty_base64(ocsp_request, line_len=75, prefix="\t")
+                pretty_base64(ocsp_request, line_len=75, prefix=" "*36)
             )
         return ocsp_request
 

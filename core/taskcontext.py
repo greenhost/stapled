@@ -43,7 +43,7 @@ class OCSPTaskContext(ScheduledTaskContext):
         :param str exc: The last exception as a string.
         :return int: Count of same exceptions in a row.
         """
-        if not self.last_exception or self.last_exception != exc:
+        if not self.last_exception or repr(self.last_exception) is repr(exc):
             self.last_exception = exc
             self.last_exception_count = 1
         else:

@@ -72,13 +72,3 @@ core.certmodel
       :special-members:
       :private-members:
 
-core.exceptions
----------------
-.. automodule:: core.exceptions
-   :members:
-
-core.excepthandler
-------------------
-
-.. automodule:: core.excepthandler
-   :members:
