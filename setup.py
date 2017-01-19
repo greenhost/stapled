@@ -54,7 +54,7 @@ setup(name='ocspd',
       ],
       entry_points={
           'console_scripts': [
-              'ocspd = ocspd.main:main'
+              'ocspd = ocspd.main:init'
           ]
       },
      )
