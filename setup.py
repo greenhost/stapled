@@ -9,8 +9,7 @@ install_requires = [
     'certvalidator>=0.11.1',
     'ocspbuilder>=0.10.2',
     'oscrypto>=0.17.2',
-    'python-daemon>=2.1.2',
-    'asn1crypto>=0.19.0',
+    'python-daemon==2.1.2',
     'requests>=2.12.4',
 ]
 
@@ -20,7 +19,7 @@ docs_extras = [
 ]
 
 long_description = \
-    ("Update OCSP staples from CA’s and store the result so they "
+    ("Update OCSP staples from CA's and store the result so they "
      "can be served to clients.")
 
 setup(name='ocspd',
