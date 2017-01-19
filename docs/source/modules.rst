@@ -10,8 +10,12 @@ OCSP staples up-to-date. In short, these are the modules:
     for the scheduled moment and add the task to a queue to be handled by one
     of the other modules.
 :Finder:
-    Finds certificates and parses them. If certificates are correct, it
-    schedules a renewal for these certificates
+    Finds certificates in the specified directories. When new file are found,
+    or existing files are changed it schedules a parsing for these
+    certificates.
+:Parser:
+    Parses certificates and parses them. If certificates are correct, it
+    schedules a renewal for these certificates.
 :Renewer:
     The renewer takes input from the scheduler. It contacts the CA to
     renew an OCSP staple. After renewing the staple it schedules a new
@@ -26,17 +30,22 @@ This graph explains their interaction. Every arrow passes a
 .. graphviz::
 
    digraph {
-       graph [fontsize=10, margin=0.001];
-       scheduler [label="Scheduler ⌛" shape=diamond URL="core.html#core.scheduling.SchedulerThread"]
-       finder [label="Finder" URL="core.html#core.certfinder.CertFinderThread"]
-       renewer [label="Renewer" URL="core.html#core.ocsprenewer.OCSPRenewerThread"]
-       adder [label="Adder" URL="core.html#core.ocspadder.OCSPAdder"]
-       haproxy [shape=box URL="https://www.haproxy.com/"]
-       ca[shape=box URL="https://en.wikipedia.org/wiki/Certificate_authority"]
-       finder -> scheduler [label="schedule next renewal"];
-       scheduler -> renewer [dir="both" label="renew cert"]
-       renewer -> ca [label="renew cert"]
-       renewer -> scheduler [label="schedule renewal"]
-       scheduler -> adder [label="add staple"]
-       adder -> haproxy [label="add staple"]
+       graph [fontsize=10, margin=.001, fontname="helvetica" pad=".001", ranksep="1", nodesep="0.001"];
+       node [fontname="helvetica"];
+       edge [fontname="helvetica"];
+       scheduler [label="\nSchedulerThread\n\n🕐" URL="core.html#core.scheduling.SchedulerThread"]
+       finder [label="CertFinderThread" URL="core.html#core.certfinder.CertFinderThread"]
+       parser [label="CertParserThread" URL="core.html#core.certparser.CertParserThread"]
+       renewer [label="OCSPRenewerThread" URL="core.html#core.ocsprenewer.OCSPRenewerThread"]
+       adder [label="OCSPAdder" URL="core.html#core.ocspadder.OCSPAdder"]
+       haproxy [label=HAProxy shape=box URL="https://www.haproxy.com/"]
+       ca[label="Certificate Authority" shape=box URL="https://en.wikipedia.org/wiki/Certificate_authority"]
+       finder -> scheduler [label="  schedule next renewal"];
+       parser -> scheduler [label=" schedule parsing  "]
+       scheduler -> parser [dir="both" label="  parse cert "]
+       scheduler -> renewer [dir="both" label="  renew staple    "]
+       renewer -> ca [label="  renew staple"]
+       renewer -> scheduler [label=" schedule renewal  "]
+       scheduler -> adder [dir="both" label="  add staple  "]
+       adder -> haproxy [label="  add staple  "]
    }

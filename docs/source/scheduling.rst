@@ -10,7 +10,7 @@ Source code
 
 scheduling
 ---------------
-.. automodule:: core.scheduling
+.. automodule:: scheduling
    :members:
    :special-members:
    :private-members:
