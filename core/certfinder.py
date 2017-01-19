@@ -188,15 +188,13 @@ class CertFinderThread(threading.Thread):
         Loop through the list of files that were already found and check
         whether they were deleted or changed.
 
-        If a file was modified since it was last seen, a SHA1 hash value of
-        the old file is compared with a SHA1 hash of the new file. Only if the
-        hash is different, the changed file is added to the scheduler to get a
-        new OCSP staple. This makes sure only changed files are processed by
-        the CPU intensive processes.
+        If a file was modified since it was last seen, the file is added to the
+        scheduler to get a new OCSP staple. This makes sure only changed files
+        are processed by the CPU intensive processes.
 
         Deleted files are removed from the model cache in
         :attr:`core.daemon.run.models`.
-        :raises CertFileAccessError: If a certfile can't be opened for hashing.
+        :raises CertFileAccessError: If a certfile can't be accessed.
         """
         for filename, model in self.models.items():
             # purge certs that no longer exist in the cert dirs
@@ -208,19 +206,9 @@ class CertFinderThread(threading.Thread):
                 )
             elif os.path.getmtime(filename) > model.modtime:
                 # purge and re-add files that have changed
-                try:
-                    new_model = CertModel(filename)
-                    if new_model.hash != model.hash:
-                        LOG.info(
-                            "File \"%s\" changed, parsing it again.", filename)
-                        self._del_model(filename)
-                        context = OCSPTaskContext("parse", model, None)
-                        self.scheduler.add_task(context)
-                    else:
-                        LOG.info(
-                            "Ignoring change in \"%s\" hash didn't change",
-                            filename
-                        )
-                except (IOError, OSError) as exc:
-                    raise CertFileAccessError(
-                        "Can't access file %s, reason: %s", filename, exc)
+                new_model = CertModel(filename)
+                LOG.info(
+                    "File \"%s\" changed, parsing it again.", filename)
+                self._del_model(filename)
+                context = OCSPTaskContext("parse", new_model, None)
+                self.scheduler.add_task(context)

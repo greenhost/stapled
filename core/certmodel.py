@@ -19,22 +19,20 @@ import os
 import logging
 import binascii
 import urllib
-import time
 import datetime
+import hashlib
 import requests
 import certvalidator
 import ocspbuilder
 import asn1crypto
-import ocspd
 from oscrypto import asymmetric
+from core.exceptions import CertFileAccessError
 from core.exceptions import OCSPBadResponse
 from core.exceptions import RenewalRequirementMissing
 from core.exceptions import CertParsingError
 from core.exceptions import CertValidationError
-from core.exceptions import OCSPRenewError
 from util.ocsp import OCSPResponseParser
 from util.functions import pretty_base64
-from util.functions import file_hexdigest
 from util.cache import cache
 
 LOG = logging.getLogger()
@@ -51,11 +49,10 @@ class CertModel(object):
         (*end_entity*) and the chain (*intermediates*). Validates the
         certificate chain.
 
-        :raises core.exceptions.CertValidationError: When the certificate
-            chain is invalid.
+        :raises core.exceptions.CertFileAccessError: When the certificate
+            file can't be accessed.
         """
         self.filename = filename
-        self.hash = file_hexdigest(filename)
         self.modtime = os.path.getmtime(filename)
         self.end_entity = None
         self.intermediates = []
@@ -63,11 +60,18 @@ class CertModel(object):
         self.ocsp_urls = []
         self.chain = []
         self.url_index = 0
+        self.crt_data = None
+        try:
+            with open(filename, 'rb') as f_obj:
+                self.crt_data = f_obj.read()
+        except (IOError, OSError) as exc:
+            raise CertFileAccessError(
+                "Can't access file %s, reason: %s", filename, exc)
 
     def parse_crt_file(self):
         """
         Parse certificate, wraps the ``self_read_full_chain()`` and the
-        ``self._validate_cert() methods.
+        ``self._validate_cert()`` methods.
         """
         LOG.info("Parsing file \"%s\"..", self.filename)
         self._read_full_chain()
@@ -79,6 +83,9 @@ class CertModel(object):
         ``minimum_validity`` period. If it is not valid for longer than the
         ``minimum_validity`` period, but still valid, add it to the context but
         still ask for a new one by returning ``False``.
+
+        If anything goes wrong during this process, ``False`` is returned
+        without any error handling, we can always try to get a new staple.
 
         :return bool: False if a new staple should be requested, True if the
             current one is still valid for more than ``minimum_validity``
@@ -95,7 +102,7 @@ class CertModel(object):
             LOG.info("Seeing if %s is still valid..", ocsp_file)
             with open(ocsp_file, "rb") as file_handle:
                 staple = file_handle.read()
-        except IOError:
+        except (IOError, OSError):
             # Can't access the staple file, game over.
             LOG.error("Can't access %s, let's schedule a renewal.", ocsp_file)
             return False
@@ -149,8 +156,8 @@ class CertModel(object):
 
         :raises RenewalRequirementMissing: If a requirment for the renewal is
             missing.
-        :raises OCSPRenewError: when the ocsp staple is an empty byte string,
-            or when the certificate was revoked, or when all URLs fail.
+
+        TODO: document all ``requests`` raises..
         """
         if not self.end_entity:
             raise RenewalRequirementMissing(
@@ -206,7 +213,7 @@ class CertModel(object):
         """
             Check that the OCSP response says that the status is ``good``.
             Also sets :attr:`core.certmodel.CertModel.ocsp_staple.valid_until`.
-            :raises OCSPRenewError: If an empty response is received.
+            :raises OCSPBadResponse: If an empty response is received.
         """
         if LOG.getEffectiveLevel() < 20:
             LOG.debug(
@@ -245,24 +252,19 @@ class CertModel(object):
 
     def _read_full_chain(self):
         """
-        Reads binary data from file in :attr:`self.filename` and parses the
-        content. The server certificate a.k.a. *end_entity* is put in
+        Parses binary data in :attr:`self.crt_data` and parses the content.
+        The server certificate a.k.a. *end_entity* is put in
         :attr:`self.end_entity`, anything else that has a CA extension is added
         to :attr:`self.intermediates`.
 
         .. Note:: At this point it is not clear yet which of the intermediates
             is the root and which are actual intermediates.
 
-        If anything goes wrong the exceptions are handled and the call will
-        fail silently, leading to exceptions being raised by any subsequent
-        call to methods that require the values that this method should have
-        set.
         :raises CertParsingError: If the certificate file can't be read, it
             contains errors or parts of the chain are missing.
         """
         try:
-            with open(self.filename, 'rb') as f_obj:
-                pem_obj = asn1crypto.pem.unarmor(f_obj.read(), multiple=True)
+            pem_obj = asn1crypto.pem.unarmor(self.crt_data, multiple=True)
             for type_name, _, der_bytes in pem_obj:
                 if type_name == 'CERTIFICATE':
                     crt = asn1crypto.x509.Certificate.load(der_bytes)
@@ -273,12 +275,6 @@ class CertModel(object):
                         LOG.info("Found the end entity..")
                         self.end_entity = crt
                         self.ocsp_urls = getattr(crt, 'ocsp_urls')
-        except (IOError, OSError):
-            raise CertParsingError(
-                "Can't access the certificate file \"{}\".".format(
-                    self.filename
-                )
-            )
         except binascii.Error:
             raise CertParsingError(
                 "Certificate file contains errors \"{}\".".format(

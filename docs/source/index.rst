@@ -15,6 +15,7 @@ Why do I need ``ocspd``?
     modules
     core
     scheduling
+    errorhandling
 
 
 Indices and tables

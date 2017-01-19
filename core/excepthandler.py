@@ -42,7 +42,6 @@ from core.exceptions import RenewalRequirementMissing
 from core.exceptions import CertFileAccessError
 from core.exceptions import CertParsingError
 from core.exceptions import CertValidationError
-from core.exceptions import OCSPRenewError
 
 LOG = logging.getLogger()
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
@@ -66,19 +65,17 @@ def ocsp_except_handle(ctx=None):
             ctx.reschedule(err_count * 3600)
         else:
             LOG.critical("{}, giving up..".format(exc))
-    except OCSPBadResponse as exc:
-        LOG.error(exc)
-    except OCSPRenewError as exc:
-        LOG.critical(exc)
     except (RenewalRequirementMissing,
             CertValidationError,
             CertParsingError) as exc:
-        # Can't parse or validate the certificat file, or a requirement for
+        # Can't parse or validate the certificate file, or a requirement for
         # OCSP renewal is missing.
         # We can't do anything until the certificate file is changed which
         # means we should not rechedule, when the certificate file changes,
         # the certfinder will add it to the parsing queue anyway..
         LOG.critical(exc)
+    except OCSPBadResponse as exc:
+        LOG.error(exc)
     except urllib.error.URLError as err:
         LOG.error("Connection problem: %s", err)
     except (requests.Timeout,

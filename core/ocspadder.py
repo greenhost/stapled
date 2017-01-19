@@ -104,17 +104,19 @@ class OCSPAdder(threading.Thread):
     def send(self, socket_key, command):
         """
         Send the command through self.socks[socket_key] (using
-            self.socket_paths)
+        self.socket_paths)
 
         :param str socket_key: Identifying dictionary key of the socket. This
             is typically the directory HAProxy serves certificates from.
         :param str command: String with the HAProxy command. For a list of
             possible commands, see the `haproxy documentation`_
+
         :raises IOError if an error occurs and it's not errno.EAGAIN or
             errno.EINTR
 
         .. _haproxy documentation:
-           http://haproxy.tech-notes.net/9-2-unix-socket-commands/
+            http://haproxy.tech-notes.net/9-2-unix-socket-commands/
+
         """
         # Empty buffer first, it's possible that other commands have been fired
         # to the same socket, we don't want the response to those commands in

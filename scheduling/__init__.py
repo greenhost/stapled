@@ -74,7 +74,8 @@ class ScheduledTaskContext(object):
             back to the task queue
         """
         try:
-            self.scheduler.add_task(self, sched_time)
+            self.sched_time = sched_time
+            self.scheduler.add_task(self)
         except AttributeError:
             raise AttributeError(
                 "This context was never added to a queue before.")

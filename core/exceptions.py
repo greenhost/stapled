@@ -39,10 +39,3 @@ class CertValidationError(Exception):
     .. Note: This may or may not include an OCSP staple.
     """
     pass
-
-
-class OCSPRenewError(BaseException):
-    """
-    Gets raised when something went wrong while renewing the OCSP staple.
-    """
-    pass
