@@ -32,7 +32,7 @@ import logging
 import logging.handlers
 import os
 import daemon
-import core.daemon
+import ocspd.core.daemon
 
 #: :attr:`logging.format` format string (default:
 #: ``%(threadName)-10s [%(levelname)s] %(message)s``)
@@ -203,10 +203,10 @@ def init():
     if args.daemon:
         LOG.info("Daemonising now..")
         with daemon.DaemonContext(files_preserve=log_file_handles):
-            core.daemon.run(args)
+            ocspd.core.daemon.run(args)
     else:
         LOG.info("Running interactively..")
-        core.daemon.run(args)
+        ocspd.core.daemon.run(args)
 
 if __name__ == '__main__':
     init()

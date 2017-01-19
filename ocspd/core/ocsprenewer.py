@@ -7,8 +7,8 @@ import threading
 import logging
 import datetime
 import os
-from core.exceptions import CertValidationError
-from core.exceptions import OCSPRenewError
+from ocspd.core.exceptions import CertValidationError
+from ocspd.core.exceptions import OCSPRenewError
 
 LOG = logging.getLogger()
 

@@ -44,10 +44,10 @@ This module bootstraps the ocspd process by starting threads for:
 
 """
 import logging
-from core import certfinder
-from core import ocsprenewer
-from core import ocspadder
-from core import scheduling
+from ocspd.core import certfinder
+from ocspd.core import ocsprenewer
+from ocspd.core import ocspadder
+from ocspd.core import scheduling
 
 LOG = logging.getLogger()
 

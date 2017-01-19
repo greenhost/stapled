@@ -29,8 +29,8 @@ import logging
 import os
 import datetime
 import ocspd
-from core.certmodel import CertModel
-from core.exceptions import CertValidationError
+from ocspd.core.certmodel import CertModel
+from ocspd.core.exceptions import CertValidationError
 
 
 LOG = logging.getLogger()
@@ -67,7 +67,7 @@ class CertFinderThread(threading.Thread):
         self.scheduler = kwargs.pop('scheduler', None)
         self.refresh_interval = kwargs.pop('refresh_interval', 10)
         self.file_extensions = kwargs.pop(
-            'file_extensions', ocspd.FILE_EXTENSIONS_DEFAULT
+            'file_extensions', ocspd.main.FILE_EXTENSIONS_DEFAULT
         )
         self.last_refresh = None
 

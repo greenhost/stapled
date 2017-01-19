@@ -25,14 +25,14 @@ import requests
 import certvalidator
 import ocspbuilder
 import asn1crypto
-import ocspd
 from oscrypto import asymmetric
-from core.exceptions import CertValidationError
-from core.exceptions import OCSPRenewError
-from util.ocsp import OCSPResponseParser
-from util.functions import pretty_base64
-from util.functions import file_hexdigest
-from util.cache import cache
+import ocspd.main
+from ocspd.core.exceptions import CertValidationError
+from ocspd.core.exceptions import OCSPRenewError
+from ocspd.util.ocsp import OCSPResponseParser
+from ocspd.util.functions import pretty_base64
+from ocspd.util.functions import file_hexdigest
+from ocspd.util.cache import cache
 
 LOG = logging.getLogger()
 
@@ -156,7 +156,7 @@ class CertModel(object):
             "Trying to get OCSP staple from url \"%s\"..",
             url
         )
-        retry = ocspd.OCSP_REQUEST_RETRY_COUNT
+        retry = ocspd.main.OCSP_REQUEST_RETRY_COUNT
         while retry > 0:
             try:
                 # TODO: send merge request for header in ocsp fetching
@@ -203,7 +203,7 @@ class CertModel(object):
 
             retry = retry - 1
             if retry > 0:
-                sleep_time = (ocspd.OCSP_REQUEST_RETRY_COUNT - retry) * 5
+                sleep_time = (ocspd.main.OCSP_REQUEST_RETRY_COUNT - retry) * 5
                 LOG.info("Retrying in %d seconds..", sleep_time)
                 time.sleep(sleep_time)
             else:

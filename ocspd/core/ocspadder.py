@@ -8,7 +8,7 @@ import errno
 import os
 from io import StringIO
 
-import util.functions
+import ocspd.util.functions
 
 LOG = logging.getLogger()
 SOCKET_BUFFER_SIZE = 1024
@@ -93,7 +93,8 @@ class OCSPAdder(threading.Thread):
         :param cert: An object that has a binary string `ocsp_staple` in it and
             a filename `filename`.
         """
-        command = self.OCSP_ADD.format(util.functions.base64(cert.ocsp_staple.data))
+        command = self.OCSP_ADD.format(
+            ocspd.util.functions.base64(cert.ocsp_staple.data))
         LOG.debug("Setting OCSP staple with command '%s'", command)
         directory = os.path.dirname(cert.filename)
         return self.send(directory, command)

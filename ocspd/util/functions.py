@@ -21,6 +21,7 @@ def pretty_base64(data, line_len=79, prefix="", suffix="\n"):
     b64_data = "".join(["{}{}{}".format(prefix, x, suffix) for x in b64_data])
     return b64_data.strip("\n")
 
+
 def base64(data):
     """
     Get base64 string (1 line) from binary "data".
@@ -39,6 +40,7 @@ def base64(data):
     # Remove any new lines and carriage returns
     b64_data.replace("\n", "").replace("\r", "")
     return b64_data.strip("\n")
+
 
 def split_by_len(string, length):
     """

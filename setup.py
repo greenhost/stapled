@@ -30,7 +30,7 @@ setup(name='ocspd',
       author='Greenhost BV',
       author_email='info@greenhost.nl',
       url='https://code.greenhost.net/open/ocspd',
-      #packages=find_packages(),
+      packages=find_packages(),
       include_package_data=True,
       install_requires=install_requires,
       extras_require={
@@ -53,4 +53,9 @@ setup(name='ocspd',
           'Topic :: System :: Systems Administration',
           'Topic :: Utilities',
       ],
+      entry_points={
+          'console_scripts': [
+              'ocspd = ocspd.main:main'
+          ]
+      },
      )
