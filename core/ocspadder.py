@@ -27,6 +27,7 @@ class OCSPAdder(threading.Thread):
     :param Queue command_queue: A queue that holds cert models. As soon as a
         model is received, an OCSP response is read from it and added to a
         HAProxy socket found from self.socks[<certificate directory>].
+
     .. _collectd haproxy connection:
        https://github.com/wglass/collectd-haproxy/blob/master/collectd_haproxy/
        connection.py
@@ -107,7 +108,7 @@ class OCSPAdder(threading.Thread):
             is typically the directory HAProxy serves certificates from.
         :param str command: String with the HAProxy command. For a list of possible
             commands, see the `haproxy documentation`_
-        :raises IOError if an error occurs and it's not errno.EAGAIN or
+        :raises IOError: if an error occurs and it's not errno.EAGAIN or
             errno.EINTR
 
         .. _haproxy documentation:

@@ -36,6 +36,15 @@ core.ocsprenewer
       :special-members:
       :private-members:
 
+core.ocspadder
+----------------
+.. automodule:: core.ocspadder
+
+   .. autoclass:: OCSPAdder
+      :members:
+      :special-members:
+      :private-members:
+
 core.certmodel
 --------------
 .. automodule:: core.certmodel
