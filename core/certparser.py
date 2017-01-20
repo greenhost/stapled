@@ -17,7 +17,7 @@ LOG = logging.getLogger(__name__)
 class CertParserThread(threading.Thread):
     """
     This object makes sure certificate files are parsed, after which a task
-    context is created for the :class:`core.oscprenewe.OCSPRenewer` which is
+    context is created for the :class:`core.oscprenewer.OCSPRenewer` which is
     scheduled to be executed ASAP.
     """
 

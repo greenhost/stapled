@@ -119,9 +119,11 @@ class SchedulerThread(threading.Thread):
         # The schedule contains items indexed by time.
         self.schedule = defaultdict(lambda: [])
         # Keeping the tasks in reverse order helps for faster unscheduling.
-        self.scheduled_by_subject = {}
+        self.scheduled_by_context = {}
         # Keeping the tasks per queue name helps faster queue deletion.
         self.scheduled_by_queue = {}
+        # To allow removing by subject we keep the scheduled tasks by subject.
+        self.scheduled_by_subject = defaultdict(lambda: [])
 
         queues = kwargs.pop('queues', None)
         if queues:
@@ -154,8 +156,10 @@ class SchedulerThread(threading.Thread):
         """
         try:
             for ctx in self.scheduled_by_queue[name]:
-                sched_time = self.scheduled_by_subject[ctx]
+                sched_time = self.scheduled_by_context.pop(ctx)
                 self.scheduled[sched_time].remove(ctx)
+                del self.scheduled_by_subject[ctx.subject]
+            del self.scheduled_by_queue[name]
             del self._queues[name]
         except KeyError:
             raise KeyError("A queue with name %s doesn't exist.", name)
@@ -193,13 +197,14 @@ class SchedulerThread(threading.Thread):
             ctx.sched_time = datetime.datetime.now() + \
                 datetime.timedelta(seconds=ctx.sched_time)
 
-        if ctx in self.scheduled_by_subject:
+        if ctx in self.scheduled_by_context:
             LOG.warning("Task %s was already scheduled, unscheduling.", ctx)
             self.cancel_task(ctx)
         # Run scheduled tasks after ctx.sched_time seconds.
-        self.scheduled_by_subject[ctx] = ctx.sched_time
+        self.scheduled_by_context[ctx] = ctx.sched_time
         self.scheduled_by_queue[ctx.task_name].append(ctx)
         self.schedule[ctx.sched_time].append(ctx)
+        self.scheduled_by_subject[ctx.subject].append(ctx)
         LOG.info(
             "Scheduled %s at %s",
             ctx, ctx.sched_time.strftime('%Y-%m-%d %H:%M:%S'))
@@ -217,12 +222,13 @@ class SchedulerThread(threading.Thread):
         """
         try:
             # Find out when it was scheduled
-            sched_time = self.scheduled_by_subject.pop(ctx)
+            sched_time = self.scheduled_by_context.pop(ctx)
             # There can be more than one task scheduled in the same time
             # slot so we need to filter out any value that is not our target
             # and leave it
             self.schedule[sched_time].remove(ctx)
             self.scheduled_by_queue[ctx.task_name].remove(ctx)
+            self.scheduled_by_subject[ctx.subject].remove(ctx)
             return True
         except KeyError:
             LOG.warning("Can't unschedule, %s wasn't scheduled.", ctx)
@@ -287,9 +293,9 @@ class SchedulerThread(threading.Thread):
             for ctx in items:
                 LOG.info("Adding %s to the %s queue.", ctx, ctx.task_name)
                 # Remove from reverse indexed dict
-                del self.scheduled_by_subject[ctx]
+                del self.scheduled_by_context[ctx]
                 self.scheduled_by_queue[ctx.task_name].remove(ctx)
-
+                self.scheduled_by_subject[ctx.subject].remove(ctx)
                 self._queues[ctx.task_name].put(ctx)
                 late = datetime.datetime.now() - sched_time
                 if late.seconds < 1:
@@ -301,3 +307,8 @@ class SchedulerThread(threading.Thread):
                 LOG.debug(
                     "Queued %s at %s%s",
                     ctx, now.strftime('%Y-%m-%d %H:%M:%S'), late)
+
+    def cancel_by_subject(self, subject):
+        ctxs = self.scheduled_by_subject[subject]
+        for ctx in ctxs:
+            self.cancel_task(ctx)

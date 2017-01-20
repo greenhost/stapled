@@ -37,10 +37,10 @@ LOG = logging.getLogger(__name__)
 
 class CertFinderThread(threading.Thread):
     """
-    This object can be used to index directories and search for certificate
-    files. When found they will be added to the supplied scheduler so the
-    :class:`core.ocsprenewer.OCSPRenewerThread` instances can request an OCSP
-    staple for them.
+    This object can be used to search directories certificate files.
+    When found they will be a task context is created for the
+    :class:`core.certparser.CertParserThread` which is scheduled to be
+    executed ASAP.
 
     Pass ``refresh_interval=None`` if you want to run it only once (e.g. for
     testing)
@@ -48,7 +48,7 @@ class CertFinderThread(threading.Thread):
 
     def __init__(self, *args, **kwargs):
         """
-        Initialise the thread's arguments and its parent
+        Initialise the thread with its arguments and its parent
         :class:`threading.Thread`.
 
         Currently supported keyword arguments:
@@ -66,7 +66,7 @@ class CertFinderThread(threading.Thread):
         self.models = kwargs.pop('models', None)
         self.directories = kwargs.pop('directories', None)
         self.scheduler = kwargs.pop('scheduler', None)
-        self.refresh_interval = kwargs.pop('refresh_interval', 10)
+        self.refresh_interval = kwargs.pop('refresh_interval', 60)
         self.file_extensions = kwargs.pop(
             'file_extensions', ocspd.FILE_EXTENSIONS_DEFAULT
         )
@@ -89,15 +89,14 @@ class CertFinderThread(threading.Thread):
         """
 
         LOG.info("Scanning directories: %s", ", ".join(self.directories))
-        self.refresh()
-
-        if self.refresh_interval is None:
-            # Stop refreshing if it is not wanted.
-            return
 
         while True:
             # Catch any exceptions within this context to protect the thread.
             with ocsp_except_handle():
+                self.refresh()
+                if self.refresh_interval is None:
+                    # Stop refreshing if it is not wanted.
+                    break
                 # Schedule the next refresh run..
                 since_last = time.time() - self.last_refresh
                 # Check if the last refresh took longer than the interval..
@@ -110,7 +109,6 @@ class CertFinderThread(threading.Thread):
                         since_last,
                         self.refresh_interval
                     )
-                    self.refresh()
                 else:
                     # Wait the remaining time before refreshing again..
                     LOG.info(
@@ -122,7 +120,6 @@ class CertFinderThread(threading.Thread):
                         self.refresh_interval
                     )
                     time.sleep(self.refresh_interval - since_last)
-                    self.refresh()
 
     def refresh(self):
         """
@@ -140,8 +137,10 @@ class CertFinderThread(threading.Thread):
 
     def _find_new_certs(self):
         """
-        Locate new files and add parse them, if they are valid, schedule them
-        for parsing.
+        Locate new files, schedule them for parsing.
+
+        :raises core.exceptions.CertFileAccessError: When the certificate
+            file can't be accessed.
         """
         for path in self.directories:
             try:
@@ -154,8 +153,8 @@ class CertFinderThread(threading.Thread):
                     if filename in self.models:
                         continue
                     model = CertModel(filename)
-                    # Remember the model so we can compare the hash later
-                    # to see if it changed.
+                    # Remember the model so we can compare the file later to
+                    # see if it changed.
                     self.models[filename] = model
                     # Schedule the certificate for parsing.
                     context = OCSPTaskContext(
@@ -164,20 +163,20 @@ class CertFinderThread(threading.Thread):
                         sched_time=None
                     )
                     self.scheduler.add_task(context)
-            except (IOError, OSError) as err:
+            except (IOError, OSError) as exc:
                 # If the directory is unreadable this gets printed at every
                 # refresh until the directory is readable. We catch this here
                 # so any readable directory can still be scanned.
                 LOG.critical(
                     "Can't read directory: %s, reason: %s.",
-                    path, err
+                    path, exc
                 )
 
     def _del_model(self, filename):
         """
-            Delete model from :attr:`core.daemon.run.models` in a
-            thread safe manner, if another thread deleted it, we should ignore
-            the KeyError making this function omnipotent.
+            Delete model from :attr:`core.daemon.run.models` in a thread-safe
+            manner, if another thread deleted it, we should ignore the KeyError
+            making this function omnipotent.
 
             :param str filename: The filename of the model to forget about.
         """
@@ -192,28 +191,38 @@ class CertFinderThread(threading.Thread):
         whether they were deleted or changed.
 
         If a file was modified since it was last seen, the file is added to the
-        scheduler to get a new OCSP staple. This makes sure only changed files
-        are processed by the CPU intensive processes.
+        scheduler to get the new certificate data parsed.
 
         Deleted files are removed from the model cache in
-        :attr:`core.daemon.run.models`.
+        :attr:`core.daemon.run.models`. Any scheduled tasks for the model's
+        task context are cancelled.
 
         :raises CertFileAccessError: If a certfile can't be accessed.
         """
+        deleted = []
+        changed = []
         for filename, model in self.models.items():
-            # purge certs that no longer exist in the cert dirs
             if not os.path.exists(filename):
-                self._del_model(filename)
-                LOG.info(
-                    "File \"%s\" was deleted, removing it from the list.",
-                    filename
-                )
+                deleted.append(filename)
             elif os.path.getmtime(filename) > model.modtime:
-                # purge and re-add files that have changed
-                new_model = CertModel(filename)
-                LOG.info(
-                    "File \"%s\" changed, parsing it again.", filename)
-                self._del_model(filename)
-                context = OCSPTaskContext(
-                    task_name="parse", model=new_model, sched_time=None)
-                self.scheduler.add_task(context)
+                changed.append(filename)
+
+        # purge certs that no longer exist in the cert dirs
+        for filename in deleted:
+            # Remove the model from cache
+            self._del_model(filename)
+            LOG.info(
+                "File %s was deleted, removing it from the cache.", filename)
+
+        # re-add files that have changed
+        for filename in changed:
+            # Cancel any scheduled tasks for the model.
+            self.scheduler.cancel_by_subject(self.models[filename])
+            # Remove the model from cache.
+            self._del_model(filename)
+            # Make a new model.
+            LOG.info("File %s changed, parsing it again.", filename)
+            new_model = CertModel(filename)
+            context = OCSPTaskContext(
+                task_name="parse", model=new_model, sched_time=None)
+            self.scheduler.add_task(context)
