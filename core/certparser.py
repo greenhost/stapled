@@ -87,5 +87,6 @@ class CertParserThread(threading.Thread):
             sched_time = None
 
         # Schedule a renewal of the OCSP staple
-        context = OCSPTaskContext("renew", model, sched_time)
+        context = OCSPTaskContext(
+            task_name="renew", model=model, sched_time=sched_time)
         self.scheduler.add_task(context)

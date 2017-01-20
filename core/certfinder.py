@@ -158,7 +158,11 @@ class CertFinderThread(threading.Thread):
                     # to see if it changed.
                     self.models[filename] = model
                     # Schedule the certificate for parsing.
-                    context = OCSPTaskContext("parse", model, None)
+                    context = OCSPTaskContext(
+                        task_name="parse",
+                        model=model,
+                        sched_time=None
+                    )
                     self.scheduler.add_task(context)
             except (IOError, OSError) as err:
                 # If the directory is unreadable this gets printed at every
@@ -210,5 +214,6 @@ class CertFinderThread(threading.Thread):
                 LOG.info(
                     "File \"%s\" changed, parsing it again.", filename)
                 self._del_model(filename)
-                context = OCSPTaskContext("parse", new_model, None)
+                context = OCSPTaskContext(
+                    task_name="parse", model=new_model, sched_time=None)
                 self.scheduler.add_task(context)

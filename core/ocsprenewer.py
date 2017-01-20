@@ -66,7 +66,8 @@ class OCSPRenewerThread(threading.Thread):
                 # Adds the proxy-add command to the scheduler to run ASAP.
                 # This updates the running HAProxy instance's OCSP staple by
                 # running `set ssl ocsp-response {}`
-                proxy_add_context = OCSPTaskContext("proxy-add", model, None)
+                proxy_add_context = OCSPTaskContext(
+                    task_name="proxy-add", model=model, sched_time=None)
                 self.scheduler.add_task(proxy_add_context)
 
     def schedule_renew(self, model, sched_time=None):
@@ -89,5 +90,6 @@ class OCSPRenewerThread(threading.Thread):
             valid_until = model.ocsp_staple.valid_until
             sched_time = valid_until - before_sched_time
         # Make a fresh task context to reset exception counters
-        new_context = OCSPTaskContext("renew", model, sched_time)
+        new_context = OCSPTaskContext(
+            task_name="renew", model=model, sched_time=sched_time)
         self.scheduler.add_task(new_context)
