@@ -13,28 +13,31 @@ class OCSPTaskContext(ScheduledTaskContext):
      - Keep track of the exception that occurred last, and how many times it
        occurred.
     """
-    def __init__(self, task, model, sched_time=None, **attributes):
+    def __init__(self, task_name, model, sched_time=None, **attributes):
         """
-        Initialise a OCSPTaskContext with task data, optional scheduled time
-        and optional name.
+        Initialise a OCSPTaskContext with a cert model, optional scheduled time
+        and task name.
 
-        :param str task: A task corresponding to an existing queue in the
-            target scheduler.
+        :param str task_name: A task namecorresponding to an existing queue in
+            the scheduler.
+        :param core.certmodel.CertModel model: A certificate model.
         :param datetime.datetime|int sched_time: Absolute time
             (datetime.datetime object) or relative time in seconds (int) to
-            execute the task.
-        :param str name: A name for the context instance (used in
-            ``__repr__()``)
+            execute the task or None for processing ASAP.
         :param kwargs attributes: Any data you want to assign to the context,
             avoid using names already defined in the context: scheduler, task,
             name, sched_time, reschedule.
         """
         self.last_exception = None
         self.last_exception_count = 0
-        self.model = model
 
         super(OCSPTaskContext, self).__init__(
-            task, sched_time, model.filename, **attributes)
+            task_name=task_name,
+            subject=model,
+            sched_time=sched_time,
+            **attributes
+        )
+        self.model = self.subject
 
     def set_last_exception(self, exc):
         """
