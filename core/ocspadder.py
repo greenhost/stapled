@@ -1,5 +1,5 @@
 """
-Module for adding OCSP Staples to a running HAProxy instance
+Module for adding OCSP Staples to a running HAProxy instance.
 """
 import threading
 import logging
@@ -16,18 +16,16 @@ SOCKET_BUFFER_SIZE = 1024
 
 class OCSPAdder(threading.Thread):
     """
-    This class is used to add an OCSP staple to a running HAProxy instance by
-    sending it over a socket. It runs a thread that keeps open socket
-    connections the supplied haproxy sockets. Code from `collectd haproxy
-    connection`_ under the MIT license, was used for inspiration.
+    This class is used to add a OCSP staples to a running HAProxy instance by
+    sending it over a socket. It runs a thread that keeps connections to
+    sockets open for each of the supplied haproxy sockets. Code from
+    `collectd haproxy connection`_ under the MIT license, was used for
+    inspiration.
 
-    :param dict socket_paths: A mapping from a directory (typically the
-        directory containing TLS certificates) to a HAProxy socket that serves
-        certificates from that directory. These sockets are used to communicate
-        new OCSP staples to HAProxy, so it does not have to be restarted.
-    :param Queue command_queue: A queue that holds certificate models. As soon
-        as a model is received, an OCSP response is read from it and added to a
-        HAProxy socket found from self.socks[<certificate directory>].
+    Tasks are taken from the :class:`core.scheduling.SchedulerThread`, as soon
+        as a task context is received, an OCSP response is read from the model
+        within it, it is added to a HAProxy socket found in
+        self.socks[<certificate directory>].
 
     .. _collectd haproxy connection:
        https://github.com/wglass/collectd-haproxy/blob/master/collectd_haproxy/
@@ -42,6 +40,18 @@ class OCSPAdder(threading.Thread):
     OCSP_ADD = 'set ssl ocsp-response {}'
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialise the thread with its parent :class:`threading.Thread` and its
+        arguments.
+
+        :kwarg dict socket_paths: A mapping from a directory (typically the
+            directory containing TLS certificates) to a HAProxy socket that
+            serves certificates from that directory. These sockets are used to
+            communicate new OCSP staples to HAProxy, so it does not have to be
+            restarted.
+        :kwarg core.scheduling.SchedulerThread scheduler: The scheduler object
+            where we can get "haproxy-adder" tasks from **(required)**.
+        """
         LOG.debug("Starting OCSPAdder thread")
         self.scheduler = kwargs.pop('scheduler', None)
         self.socket_paths = kwargs.pop('socket_paths', None)
