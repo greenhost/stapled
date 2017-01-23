@@ -4,6 +4,8 @@ certificate models that consist of parsed certificates. It then generates an
 OCSP request and sends it to the OCSP server(s) that is/are found in the
 certificate and saves both the request and the response in the model. It also
 generates a file containing the respone (the OCSP staple) and creates a new
+:class:`core.taskcontext.OCSPTaskContext` to schedule a renewal before the
+staple expires. Optionally creates a :class:`core.taskcontext.OCSPTaskContext`
 task context for the :class:`core.oscpadder.OCSPAdder` and schedules it to be
 run ASAP.
 """
@@ -19,17 +21,17 @@ LOG = logging.getLogger(__name__)
 
 class OCSPRenewerThread(threading.Thread):
     """
-    This object takes tasks from the renew_queue, the tasks contain certificate
-    files that have to be pared to extract the certificate chain and the server
-    certificate.
+    This object requests OCSP responses for certificates, after which a new
+    task context is created for the :class:`core.oscprenewer.OCSPRenewer` which
+    is scheduled to be executed before the new staple expires. Optionally a
+    task is created for the :class:`core.oscpadder.OCSPAdder` to tell HAProxy
+    about the new staple.
     """
 
     def __init__(self, *args, **kwargs):
         """
         Initialise the thread's arguments and its parent
         :class:`threading.Thread`.
-
-        Currently supported keyword arguments:
 
         :kwarg int minimum_validity: The amount of seconds the OCSP staple is
             still valid for, before starting to attempt to request a new OCSP
@@ -50,7 +52,7 @@ class OCSPRenewerThread(threading.Thread):
 
     def run(self):
         """
-        Start the thread if threaded, otherwise just run the same process.
+        Start the renewer thread.
         """
         LOG.info("Started a renewer thread.")
         while True:
@@ -60,9 +62,11 @@ class OCSPRenewerThread(threading.Thread):
                 LOG.info("Renewing OCSP staple for \"%s\"..", model)
                 model.renew_ocsp_staple()
                 self.scheduler.task_done("renew")
-                self.schedule_renew(model)
+
                 # DEBUG scheduling, schedule 10 seconds in the future.
                 # self.schedule_renew(context, 10)
+                self.schedule_renew(model)
+
                 # Adds the proxy-add command to the scheduler to run ASAP.
                 # This updates the running HAProxy instance's OCSP staple by
                 # running `set ssl ocsp-response {}`

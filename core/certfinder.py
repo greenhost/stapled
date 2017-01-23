@@ -2,25 +2,22 @@
 This module locates certificate files in the supplied directories and parses
 them. It then keeps track of the following:
 
-  - If cert is found for the first time (thus also when the daemon is started),
-    the cert is added to the :attr:`core.certfinder.CertFinder.scheduler`
-    so an OCSP request can be done by one of the
-    :class:`core.ocsprenewer.OCSPRenewerThread` instances. The following is
-    then recorded:
+- If cert is found for the first time (thus also when the daemon is started),
+  the cert is added to the :attr:`core.certfinder.CertFinder.scheduler` so the
+  :class:`~core.certparser.CertParserThread` can parse the certificate. The
+  file modification time is recorded so file changes can be detected.
 
-     - File modification time.
-     - Hash of the file.
+- If a cert is found a second time, the modification time is compared to the
+  recorded modification time. If it differs, if it differs, the file is added
+  to the scheduler for parsing again, any scheduled actions for the old file
+  are cancelled.
 
-  - If a cert is found a second time, the modification time is compared to the
-    recorded modification time. If it differs, the hash is compared too, if it
-    too differs, the file is added to the scheduler for renewal again, removing
-    any scheduled actions for the old file in the process.
+- When certificates are deleted from the directories, the entries are removed
+  from the cache in :attr:`core.daemon.run.models`. Any scheduled actions for
+  deleted files are cancelled.
 
-  - When certificates are deleted from the directories, the entries are removed
-    from the cache in :attr:`core.daemon.run.models`.
-
-    The cache of parsed files is volatile so every time the process is killed
-    files need to be indexed again (thus files are considered "new").
+The cache of parsed files is volatile so every time the process is killed
+files need to be indexed again (thus files are considered "new").
 """
 
 import threading
@@ -37,10 +34,10 @@ LOG = logging.getLogger(__name__)
 
 class CertFinderThread(threading.Thread):
     """
-    This object can be used to search directories certificate files.
-    When found they will be a task context is created for the
-    :class:`core.certparser.CertParserThread` which is scheduled to be
-    executed ASAP.
+    This searches directories for certificate files.
+    When found, models are created for the certificate files, which are wrapped
+    in a :class:`core.taskcontext.OCSPTaskContext` which are then scheduled to
+    be processed by the :class:`core.certparser.CertParserThread` ASAP.
 
     Pass ``refresh_interval=None`` if you want to run it only once (e.g. for
     testing)
@@ -48,25 +45,25 @@ class CertFinderThread(threading.Thread):
 
     def __init__(self, *args, **kwargs):
         """
-        Initialise the thread with its arguments and its parent
-        :class:`threading.Thread`.
-
-        Currently supported keyword arguments:
+        Initialise the thread with its parent :class:`threading.Thread` and its
+        arguments.
 
         :kwarg dict models: A dict to maintain a model cache **(required)**.
         :kwarg iter directories: The directories to index **(required)**.
         :kwarg core.scheduling.SchedulerThread scheduler: The scheduler object
-            where we can get tasks from and add new tasks to. **(required)**.
+            where we add new parse tasks to. **(required)**.
         :kwarg int refresh_interval: The minimum amount of time (s)
-            between indexing runs, defaults to 10 seconds. Set to None to run
+            between search runs, defaults to 10 seconds. Set to None to run
             only once **(optional)**.
         :kwarg array file_extensions: An array containing the file extensions
-            of files to check for certificate content **(optional)**.
+            of file types to check for certificate content **(optional)**.
         """
         self.models = kwargs.pop('models', None)
         self.directories = kwargs.pop('directories', None)
         self.scheduler = kwargs.pop('scheduler', None)
-        self.refresh_interval = kwargs.pop('refresh_interval', 60)
+        self.refresh_interval = kwargs.pop(
+            'refresh_interval', ocspd.DEFAULT_REFRESH_INTERVAL
+        )
         self.file_extensions = kwargs.pop(
             'file_extensions', ocspd.FILE_EXTENSIONS_DEFAULT
         )
@@ -197,7 +194,8 @@ class CertFinderThread(threading.Thread):
         :attr:`core.daemon.run.models`. Any scheduled tasks for the model's
         task context are cancelled.
 
-        :raises CertFileAccessError: If a certfile can't be accessed.
+        :raises core.exceptions.CertFileAccessError: When the certificate
+            file can't be accessed.
         """
         deleted = []
         changed = []
@@ -209,6 +207,8 @@ class CertFinderThread(threading.Thread):
 
         # purge certs that no longer exist in the cert dirs
         for filename in deleted:
+            # Cancel any scheduled tasks for the model.
+            self.scheduler.cancel_by_subject(self.models[filename])
             # Remove the model from cache
             self._del_model(filename)
             LOG.info(

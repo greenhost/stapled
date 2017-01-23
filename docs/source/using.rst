@@ -8,18 +8,19 @@ Quick start
 System requirements
 ===================
 
-This application requires **Python 3.3+**  and an installed version of **PIP** for Python 3. It is also convenient to have ``virtualenv`` installed so you can make a separate environment for ocspd's dependencies.
+This application requires **Python 3.3+**  and an installed version of **PIP**
+for Python 3. It is also convenient to have ``virtualenv`` installed so you can
+make a separate environment for ocspd's dependencies.
 
 Installation
 ============
 
 Before installation make sure you have met the :ref:`System Requirements`.
-You can install the ocsp daemon by doing the following:
+You can install the ocsp daemon from the source code repository on our gitlab
+instance.
 
 From gitlab
 -----------
-
-
 
 .. code-block:: python
 
@@ -34,8 +35,9 @@ From gitlab
     # Now install the dependencies
     pip install -r requirements.txt
 
-Every time you want to run ocspd you will need to run ``source env/bin/activate`` to load the virtualenv.
-
+Every time you want to run ``ocspd`` you will need to run
+``source env/bin/activate`` to load the virtualenv first. Alternatively you can
+start the daemon by starting python with ocspd.py as an argyme
 
 Using ocspd
 ===========

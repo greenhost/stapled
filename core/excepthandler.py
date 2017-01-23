@@ -54,7 +54,7 @@ def ocsp_except_handle(ctx=None):
     """
     Handle lots of potential errors and reschedule failed action contexts.
     """
-    # pylint: disable=broad-except
+    # pylint: disable=too-many-branches,too-many-statements
     try:
         yield  # do the "with ocsp_except_handle(ctx):" code block
     except (CertFileAccessError, OCSPAdderBadResponse) as exc:
@@ -78,7 +78,7 @@ def ocsp_except_handle(ctx=None):
         # Can't parse or validate the certificate file, or a requirement for
         # OCSP renewal is missing.
         # We can't do anything until the certificate file is changed which
-        # means we should not rechedule, when the certificate file changes,
+        # means we should not reschedule, when the certificate file changes,
         # the certfinder will add it to the parsing queue anyway..
         if isinstance(exc, CertValidationError):
             # If the certificate validation failed, we probably better not
@@ -109,7 +109,7 @@ def ocsp_except_handle(ctx=None):
             requests.RequestException) as exc:
         if isinstance(exc, urllib.error.URLError):
             LOG.error(
-                "Can't open URL: %s, reason: ",
+                "Can't open URL: %s, reason: %s",
                 ctx.ocsp_urls[ctx.ulr_index],
                 exc.reason
             )
@@ -127,8 +127,9 @@ def ocsp_except_handle(ctx=None):
             )
         elif isinstance(exc, (
                 requests.ConnectionError,
-                requests.RequestException)
-                ):
+                requests.RequestException
+            )
+                       ):
             LOG.error(
                 "Failed to connect to: %s, for %s",
                 ctx.model.ocsp_urls[ctx.model.url_index],
@@ -160,7 +161,8 @@ def ocsp_except_handle(ctx=None):
             "entries",
             err_count, len_ocsp_urls
         )
-    except Exception as exc:  # the show must go on..
+    # the show must go on..
+    except Exception as exc:  # pylint: disable=broad-except
         dump_stack_trace(ctx, exc)
 
 
