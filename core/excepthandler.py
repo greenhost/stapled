@@ -176,7 +176,7 @@ def delete_ocsp_for_context(ctx):
     """
     LOG.info("Deleting any OCSP staple: \"%s.ocsp\" if it exists.", ctx.model)
     try:
-        ocsp_file = "{}.ocsp".format(ctx.model)
+        ocsp_file = "{}.ocsp".format(ctx.model.filename)
         os.remove(ocsp_file)
     except IOError:
         LOG.debug(
