@@ -4,6 +4,8 @@ certificate models that consist of parsed certificates. It then generates an
 OCSP request and sends it to the OCSP server(s) that is/are found in the
 certificate and saves both the request and the response in the model. It also
 generates a file containing the respone (the OCSP staple) and creates a new
+:class:`core.taskcontext.OCSPTaskContext` to schedule a renewal before the
+staple expires. Optionally creates a :class:`core.taskcontext.OCSPTaskContext`
 task context for the :class:`core.oscpadder.OCSPAdder` and schedules it to be
 run ASAP.
 """

@@ -2,8 +2,8 @@
 Module description
 ==================
 
-Ocspd consists of several modules that interact with each other in order to keep
-OCSP staples up-to-date. In short, these are the modules:
+``ocspd`` consists of several modules that interact with each other in order to
+keep OCSP staples up-to-date. In short, these are the modules:
 
 :Scheduler:
     It is possible to schedule a task with the scheduler. It will wait

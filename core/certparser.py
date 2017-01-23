@@ -1,8 +1,9 @@
 """
 This module parses certificate in a queue so the data contained in the
-certificate can be used to request OCSP responses. After parsing a new task
-context is created for the :class:`core.oscprenewe.OCSPRenewer` which is then
-scheduled to be executed ASAP.
+certificate can be used to request OCSP responses. After parsing a new
+:class:`core.taskcontext.OCSPTaskContext` is created for the
+:class:`core.oscprenewe.OCSPRenewer` which is then scheduled to be processed
+ASAP.
 """
 
 import threading
@@ -23,16 +24,15 @@ class CertParserThread(threading.Thread):
 
     def __init__(self, *args, **kwargs):
         """
-        Initialise the thread's arguments and its parent
-        :class:`threading.Thread`.
-
-        Currently supported keyword arguments:
+        Initialise the thread with its parent :class:`threading.Thread` and its
+        arguments.
 
         :kwarg dict models: A dict to maintain a model cache **(required)**.
         :kwarg int minimum_validity: The amount of seconds the OCSP staple
             should be valid for before a renewal is scheduled **(required)**.
         :kwarg core.scheduling.SchedulerThread scheduler: The scheduler object
-            where we can get tasks from and add new tasks to. **(required)**.
+            where we can get parser tasks from and add renew tasks to.
+            **(required)**.
         """
         self.models = kwargs.pop('models', None)
         self.minimum_validity = kwargs.pop('minimum_validity', None)
