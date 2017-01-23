@@ -1,55 +1,59 @@
 """
 This module bootstraps the ocspd process by starting threads for:
 
- - 1x :class:`core.scheduling.SchedulerThread`
+- 1x :class:`core.scheduling.SchedulerThread`
 
-        Can be used to create action queues that where tasks can be added that
-        are either added to the action queue immediately or at a set time in
-        the future.
+  Can be used to create action queues that where tasks can be added that are
+  either added to the action queue immediately or at a set time in the future.
 
- - 1x :class:`core.certfinder.CertFinderThread`
+- 1x :class:`core.certfinder.CertFinderThread`
 
-        - Finds certificate files in the specified directories at regular
-          intervals.
-        - Parses certificates and caches parsed certificates in
-          :attr:`core.certfinder.CertFinder.contexts`.
-        - Removes deleted certificates from the context cache in
-          :attr:`core.certfinder.CertFinder.contexts`.
-        - Add the parsed certificate to the the renew action queue of the
-          scheduler for requesting or renewing the OCSP staple.
+  - Finds certificate files in the specified directories at regular intervals.
+  - Removes deleted certificates from the context cache in
+    :attr:`core.daemon.run.models`.
+  - Add the found certificate to the the parse action queue of the scheduler
+    for parsing the certificate file.
 
- - 2x (or more depending on the ``-t`` CLI argument)
-   :class:`core.ocsprenewer.OCSPRenewerThread`
+- 1x :class:`core.certparser.CertParserThread`
 
-        - Gets tasks from the scheduler in :attr:`self.scheduler` which is a
-          :class:`core.scheduling.Scheduler` object passed by this module.
-        - For each task:
-            - Validates the certificate chains.
-            - Renews the OCSP staples.
-            - Validates the certificate chains again but this time including
-              the OCSP staple.
-            - Writes the OCSP staple to disk.
-            - Schedules a renewal at a configurable time before the expiration
-              of the OCSP staple.
+  - Parses certificates and caches parsed certificates in
+    :attr:`core.daemon.run.models`.
+  - Add the parsed certificate to the the renew action queue of the scheduler
+    for requesting or renewing the OCSP staple.
 
-    The main reason for spawning multiple threads for this is that the OCSP
-    request is a blocking action that also takes relatively long to complete.
-    If any of these request stall for long, the entire daemon doesn't stop
-    working until it is no longer stalled.
+- 2x (or more depending on the ``-t`` CLI argument)
+  :class:`core.ocsprenewer.OCSPRenewerThread`
 
- - 1x :class:`core.ocspadder.OCSPAdder` **(optional)**
+  - Gets tasks from the scheduler in :attr:`self.scheduler` which is a
+    :class:`core.scheduling.Scheduler` object passed by this module.
+  - For each task:
+     - Validates the certificate chains.
+     - Renews the OCSP staples.
+     - Validates the certificate chains again but this time including the OCSP
+       staple.
+     - Writes the OCSP staple to disk.
+     - Schedules a renewal at a configurable time before the expiration of the
+       OCSP staple.
 
-        Takes tasks ``haproxy-add`` from the scheduler and communicates OCSP
-        staple updates to HAProxy through a HAProxy socket.
+  The main reason for spawning multiple threads for this is that the OCSP
+  request is a blocking action that also takes relatively long to complete.
+  If any of these request stall for long, the entire daemon doesn't stop
+  working until it is no longer stalled.
+
+- 1x :class:`core.ocspadder.OCSPAdder` **(optional)**
+
+  Takes tasks ``haproxy-add`` from the scheduler and communicates OCSP staples
+  updates to HAProxy through a HAProxy socket.
 
 """
 import logging
 from core import certfinder
+from core import certparser
 from core import ocsprenewer
 from core import ocspadder
-from core import scheduling
+import scheduling
 
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 
 
 def run(args):
@@ -72,6 +76,7 @@ def run(args):
     file_extensions = args.file_extensions.replace(" ", "").split(",")
     renewal_threads = args.renewal_threads
     refresh_interval = args.refresh_interval
+    model_cache = {}
 
     LOG.info(
         "Starting OCSP Stapling daemon, finding files of types: %s with "
@@ -81,13 +86,12 @@ def run(args):
     )
 
     # Scheduler thread
-    scheduler = scheduling.SchedulerThread()
+    scheduler = scheduling.SchedulerThread(
+        queues=["parse", "renew", "proxy-add"]
+    )
     scheduler.daemon = False
     scheduler.name = "scheduler"
-    scheduler.add_queue("renew")
-    scheduler.add_queue("proxy-add")
     scheduler.start()
-
 
     if socket_paths:
         proxy_adder = ocspadder.OCSPAdder(
@@ -105,13 +109,23 @@ def run(args):
             scheduler=scheduler
         )
         thread.daemon = False
-        thread.name = "renewer-{}".format(tid)
+        thread.name = "renewer-{:02d}".format(tid)
         thread.start()
         threads_list.append(thread)
 
+    # Start certificate parser thread
+    parser = certparser.CertParserThread(
+        models=model_cache,
+        minimum_validity=args.minimum_validity,
+        scheduler=scheduler
+    )
+    parser.daemon = False
+    parser.name = "parser"
+    parser.start()
+
     # Start certificate finding thread
     finder = certfinder.CertFinderThread(
-        minimum_validity=args.minimum_validity,
+        models=model_cache,
         directories=directories,
         refresh_interval=refresh_interval,
         file_extensions=file_extensions,
