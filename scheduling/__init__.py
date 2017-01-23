@@ -18,9 +18,7 @@ This module defines the following objects:
     which will be added to the task queue when the schedule time expires.
  - :class:`core.scheduling.SchedulerThread`
     An object that is capable of scheduling and unscheduling tasks that you
-    can define with, you should add contexts to the schedule with an optional
-    time. The context should to have a proper ``__repr__()`` defined since the
-    scheduler relies on it to be a unique identifier.
+    can define with :class:`core.scheduling.ScheduledTaskContext`.
 """
 import threading
 import logging
@@ -35,27 +33,29 @@ LOG = logging.getLogger(__name__)
 class ScheduledTaskContext(object):
     """
     A context for scheduled tasks, this context can be updated with an
-    exception count per exception type, so it can be re-scheduled if it is
+    exception count for the last exception, so it can be re-scheduled if it is
     the appropriate action.
     """
     def __init__(self, task_name, subject, sched_time=None, **attributes):
         """
-        Initialise a ScheduledTaskContext with a subject and optional scheduled
-        time. Any remaining keyword arguments are set as attributes of the
-        task context.
+        Initialise a :class:`~core.scheduling.ScheduledTaskContext` with a
+        task name, subject and optional scheduled time. Any remaining keyword
+        arguments are set as attributes of the task context.
 
         :param str task: A task corresponding to an existing queue in the
             target scheduler.
         :param datetime.datetime|int sched_time: Absolute time
             (datetime.datetime object) or relative time in seconds (int) to
-            execute the task.
+            schedule the task.
         :param obj subject: A subject for the context instance this can be
             whatever object you want to pass along to the worker.
         :param kwargs attributes: Any additional data you want to assign to
             the context, avoid using names already defined in the context:
-            scheduler, task, subject, sched_time, reschedule.
+            ``scheduler``, ``task``, ``subject``, ``sched_time``,
+            ``reschedule``.
         """
-        # this will be set when it is passed to a scheduler automatically.
+        #: This attribute will be set automatically when the context is passed
+        #: to a scheduler.
         self.scheduler = None
         self.task_name = task_name
         self.subject = subject
@@ -93,7 +93,8 @@ class SchedulerThread(threading.Thread):
 
     The context should be a :class:`~scheduler.ScheduledTaskContext` or an
     extension of it.. When the scheduled time has *passed*, the context will be
-    added back to the task queue, where it can be consumed by a worker thread.
+    added back to the internal task queue(s), where it can be consumed by a
+    worker thread.
     When a task is scheduled you can choose to have it added to the task queue
     ASAP or at a specified absolute or relative point in time. If you add it
     with an absolute time in the past, or a negative relative number, it will
@@ -116,13 +117,13 @@ class SchedulerThread(threading.Thread):
         """
         self._queues = {}
 
-        # The schedule contains items indexed by time.
+        #: The schedule contains items indexed by time.
         self.schedule = defaultdict(lambda: [])
-        # Keeping the tasks in reverse order helps for faster unscheduling.
+        #: Keeping the tasks in reverse order helps for faster unscheduling.
         self.scheduled_by_context = {}
-        # Keeping the tasks per queue name helps faster queue deletion.
+        #: Keeping the tasks per queue name helps faster queue deletion.
         self.scheduled_by_queue = {}
-        # To allow removing by subject we keep the scheduled tasks by subject.
+        #: To allow removing by subject we keep the scheduled tasks by subject.
         self.scheduled_by_subject = defaultdict(lambda: [])
 
         queues = kwargs.pop('queues', None)
@@ -174,7 +175,7 @@ class SchedulerThread(threading.Thread):
 
         :param ScheduledTaskContext ctx: A context containing data for a
             worker thread.
-        :raises Queue.Full: If the underlying task queue is full.
+        :raises queue.Queue.Full: If the underlying task queue is full.
         :raises TypeError: If the passed context is not a
             :class:`~scheduler.ScheduledTaskContext`
         :raises KeyError: If the task queue doesn't exist.
