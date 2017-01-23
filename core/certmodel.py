@@ -308,8 +308,9 @@ class CertModel(object):
             )
         if len(self.intermediates) < 1:
             raise CertParsingError(
-                "Can't find the CA certificate chain items in \"%s\".",
-                self.filename
+                "Can't find the CA certificate chain items in \"{}\".".format(
+                    self.filename
+                )
             )
 
     def _validate_cert(self, ocsp_staple=None):
