@@ -8,6 +8,7 @@ import errno
 import os
 from io import StringIO
 from core.excepthandler import ocsp_except_handle
+import core.exceptions
 import util.functions
 
 LOG = logging.getLogger(__name__)
@@ -52,13 +53,32 @@ class OCSPAdder(threading.Thread):
             "The OCSPAdder needs a socket_paths dict"
 
         self.socks = {}
-        # Open sockets and ask for a prompt to keep it open
-        for key, socket_path in self.socket_paths.items():
-            self.socks[key] = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.socks[key].connect(socket_path)
-            result = self.send(key, "prompt")
-            LOG.debug("Opened prompt with result: '%s'", result)
+        with ocsp_except_handle():
+            for key, socket_path in self.socket_paths.items():
+                self._open_socket(key, socket_path)
         super(OCSPAdder, self).__init__(*args, **kwargs)
+
+    def _open_socket(self, key, socket_path):
+        """
+        Opens a socket located at socket_path and saves it in self.socks[key].
+        Subsequently it asks for a prompt to keep the socket connection open,
+        so several commands can be sent without having to close and re-open the
+        socket.
+
+        :param key: the identifier of the socket in self.socks
+        :param str socket_path: A valid HAProxy socket path.
+        :raises :exc:core.exceptions.SocketError: when the socket can not be
+            opened.
+        """
+        self.socks[key] = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            self.socks[key].connect(socket_path)
+        except FileNotFoundError as exc:
+            raise core.exceptions.SocketError(
+                "Could not initialize OCSPAdder with socket {}: {}",
+                socket_path, exc)
+        result = self.send(key, "prompt")
+        LOG.debug("Opened prompt with result: '%s'", result)
 
     def __del__(self):
         """
@@ -82,9 +102,7 @@ class OCSPAdder(threading.Thread):
 
             # Open the exception handler context to run tasks likely to fail
             with ocsp_except_handle(context):
-                response = self.add_staple(model)
-                if response != 'OCSP Response updated!':
-                    self._handle_failed_staple(model, response)
+                self.add_staple(model)
             self.scheduler.task_done(self.TASK_NAME)
 
     def add_staple(self, model):
@@ -99,7 +117,10 @@ class OCSPAdder(threading.Thread):
             util.functions.base64(model.ocsp_staple.data))
         LOG.debug("Setting OCSP staple with command '%s'", command)
         directory = os.path.dirname(model.filename)
-        return self.send(directory, command)
+        response = self.send(directory, command)
+        if response != 'OCSP Response updated!':
+            raise core.exceptions.OCSPAdderBadResponse(
+                "Bad HAProxy response {}", response)
 
     def send(self, socket_key, command):
         """
@@ -138,7 +159,15 @@ class OCSPAdder(threading.Thread):
         #             break
 
         # Send command
-        self.socks[socket_key].sendall((command + "\n").encode())
+        with ocsp_except_handle():
+            try:
+                self.socks[socket_key].sendall((command + "\n").encode())
+            except BrokenPipeError:
+                # Try to re-open the socket. If that doesn't work, that will
+                # raise a :exc:`~core.exceptions.SocketError`
+                LOG.warning("Re-opening socket %s", socket_key)
+                self.socks[socket_key].close()
+                self._open_socket(socket_key, self.socket_paths[socket_key])
 
         buff = StringIO()
 
@@ -149,8 +178,8 @@ class OCSPAdder(threading.Thread):
                 if chunk:
                     d_chunk = chunk.decode('ascii')
                     buff.write(d_chunk)
-                    # TODO: what happens if several threads are talking to
-                    # HAProxy on this socket?
+                    # TODO: Find out what happens if several threads are
+                    # talking to HAProxy on this socket
                     if '> ' in d_chunk:
                         break
                 else:
@@ -164,15 +193,3 @@ class OCSPAdder(threading.Thread):
         buff.close()
         LOG.debug("Received HAProxy response '%s'", response)
         return response
-
-    @staticmethod
-    def _handle_failed_staple(model, problem):
-        """
-        Handles a problem.
-
-        :param str model: The certificate for which a staple was sent
-        :param err,str problem: Either a Python exception or a string returned
-            by HAProxy.
-        """
-        # TODO: What to do???
-        LOG.critical("ERROR: cert '%s' has problem '%s'", model, problem)

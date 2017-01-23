@@ -17,6 +17,20 @@ class RenewalRequirementMissing(Exception):
     pass
 
 
+class SocketError(Exception):
+    """
+    Gets raised by the :class:`OCSPAdder` when it is impossible to connect to
+    or use its socket.
+    """
+    pass
+
+
+class OCSPAdderBadResponse(Exception):
+    """
+    Gets raised when the HAProxy does not respond with "OCSP Response updated"
+    """
+
+
 class CertFileAccessError(Exception):
     """
     Gets raised when a file can't be accessed at all.

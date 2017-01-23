@@ -42,6 +42,8 @@ from core.exceptions import RenewalRequirementMissing
 from core.exceptions import CertFileAccessError
 from core.exceptions import CertParsingError
 from core.exceptions import CertValidationError
+from core.exceptions import OCSPAdderBadResponse
+from core.exceptions import SocketError
 
 LOG = logging.getLogger(__name__)
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
@@ -55,7 +57,7 @@ def ocsp_except_handle(ctx=None):
     # pylint: disable=broad-except
     try:
         yield  # do the "with ocsp_except_handle(ctx):" code block
-    except CertFileAccessError as exc:
+    except (CertFileAccessError, OCSPAdderBadResponse) as exc:
         # Can't access the certificat file, we can try again a bit later..
         err_count = ctx.set_last_exception(str(exc))
         if err_count < 4:
@@ -65,7 +67,11 @@ def ocsp_except_handle(ctx=None):
             LOG.error(exc)
             ctx.reschedule(3600)  # every hour
         else:
-            LOG.critical("{}, giving up..".format(exc))
+            LOG.critical("%s, giving up..", exc)
+    except SocketError as exc:
+        # This is a fatal exception that can occur during initialisation of a
+        # OCSPAdder or when an OCSPAdder uses a socket that has a broken pipe.
+        LOG.critical(exc)
     except (RenewalRequirementMissing,
             CertValidationError,
             CertParsingError) as exc:
