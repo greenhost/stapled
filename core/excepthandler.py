@@ -72,7 +72,7 @@ def ocsp_except_handle(ctx=None):
         # Can't parse or validate the certificate file, or a requirement for
         # OCSP renewal is missing.
         # We can't do anything until the certificate file is changed which
-        # means we should not rechedule, when the certificate file changes,
+        # means we should not reschedule, when the certificate file changes,
         # the certfinder will add it to the parsing queue anyway..
         if isinstance(exc, CertValidationError):
             # If the certificate validation failed, we probably better not
