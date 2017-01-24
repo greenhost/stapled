@@ -37,13 +37,13 @@ import os
 import traceback
 import urllib.error
 import requests.exceptions
-from core.exceptions import OCSPBadResponse
-from core.exceptions import RenewalRequirementMissing
-from core.exceptions import CertFileAccessError
-from core.exceptions import CertParsingError
-from core.exceptions import CertValidationError
-from core.exceptions import OCSPAdderBadResponse
-from core.exceptions import SocketError
+from ocspd.core.exceptions import OCSPBadResponse
+from ocspd.core.exceptions import RenewalRequirementMissing
+from ocspd.core.exceptions import CertFileAccessError
+from ocspd.core.exceptions import CertParsingError
+from ocspd.core.exceptions import CertValidationError
+from ocspd.core.exceptions import OCSPAdderBadResponse
+from ocspd.core.exceptions import SocketError
 
 LOG = logging.getLogger(__name__)
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"

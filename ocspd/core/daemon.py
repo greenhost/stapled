@@ -1,31 +1,31 @@
 """
 This module bootstraps the ocspd process by starting threads for:
 
-- 1x :class:`core.scheduling.SchedulerThread`
+- 1x :class:`ocspd.scheduling.SchedulerThread`
 
   Can be used to create action queues that where tasks can be added that are
   either added to the action queue immediately or at a set time in the future.
 
-- 1x :class:`core.certfinder.CertFinderThread`
+- 1x :class:`ocspd.core.certfinder.CertFinderThread`
 
   - Finds certificate files in the specified directories at regular intervals.
   - Removes deleted certificates from the context cache in
-    :attr:`core.daemon.run.models`.
+    :attr:`ocspd.core.daemon.run.models`.
   - Add the found certificate to the the parse action queue of the scheduler
     for parsing the certificate file.
 
-- 1x :class:`core.certparser.CertParserThread`
+- 1x :class:`ocspd.core.certparser.CertParserThread`
 
   - Parses certificates and caches parsed certificates in
-    :attr:`core.daemon.run.models`.
+    :attr:`ocspd.core.daemon.run.models`.
   - Add the parsed certificate to the the renew action queue of the scheduler
     for requesting or renewing the OCSP staple.
 
 - 2x (or more depending on the ``-t`` CLI argument)
-  :class:`core.ocsprenewer.OCSPRenewerThread`
+  :class:`ocspd.core.ocsprenewer.OCSPRenewerThread`
 
   - Gets tasks from the scheduler in :attr:`self.scheduler` which is a
-    :class:`core.scheduling.Scheduler` object passed by this module.
+    :class:`ocspd.scheduling.Scheduler` object passed by this module.
   - For each task:
      - Validates the certificate chains.
      - Renews the OCSP staples.
@@ -40,18 +40,18 @@ This module bootstraps the ocspd process by starting threads for:
   If any of these request stall for long, the entire daemon doesn't stop
   working until it is no longer stalled.
 
-- 1x :class:`core.ocspadder.OCSPAdder` **(optional)**
+- 1x :class:`ocspd.core.ocspadder.OCSPAdder` **(optional)**
 
   Takes tasks ``haproxy-add`` from the scheduler and communicates OCSP staples
   updates to HAProxy through a HAProxy socket.
 
 """
 import logging
-from core import certfinder
-from core import certparser
-from core import ocsprenewer
-from core import ocspadder
-import scheduling
+from ocspd.core import certfinder
+from ocspd.core import certparser
+from ocspd.core import ocsprenewer
+from ocspd.core import ocspadder
+import ocspd.scheduling
 
 LOG = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ def run(args):
     )
 
     # Scheduler thread
-    scheduler = scheduling.SchedulerThread(
+    scheduler = ocspd.scheduling.SchedulerThread(
         queues=["parse", "renew", "proxy-add"]
     )
     scheduler.daemon = False

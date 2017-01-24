@@ -51,14 +51,14 @@ The following is an overview of what can be expected when exceptions occur.
 
 .. [1] When the certificate file is changed, `certfinder` will add the file back to the parsing queue.
 
-core.exceptions
----------------
+ocspd.core.exceptions
+---------------------
 
-.. automodule:: core.exceptions
+.. automodule:: ocspd.core.exceptions
    :members:
 
-core.excepthandler
-------------------
+ocspd.core.excepthandler
+------------------------
 
-.. automodule:: core.excepthandler
+.. automodule:: ocspd.core.excepthandler
     :members:

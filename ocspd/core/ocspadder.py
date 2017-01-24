@@ -7,9 +7,9 @@ import socket
 import errno
 import os
 from io import StringIO
-from core.excepthandler import ocsp_except_handle
-import core.exceptions
-import util.functions
+from ocspd.core.excepthandler import ocsp_except_handle
+import ocspd.core.exceptions
+import ocspd.util.functions
 
 LOG = logging.getLogger(__name__)
 SOCKET_BUFFER_SIZE = 1024
@@ -23,7 +23,7 @@ class OCSPAdder(threading.Thread):
     `collectd haproxy connection`_ under the MIT license, was used for
     inspiration.
 
-    Tasks are taken from the :class:`core.scheduling.SchedulerThread`, as soon
+    Tasks are taken from the :class:`ocspd.scheduling.SchedulerThread`, as soon
         as a task context is received, an OCSP response is read from the model
         within it, it is added to a HAProxy socket found in
         self.socks[<certificate directory>].
@@ -50,7 +50,7 @@ class OCSPAdder(threading.Thread):
             serves certificates from that directory. These sockets are used to
             communicate new OCSP staples to HAProxy, so it does not have to be
             restarted.
-        :kwarg core.scheduling.SchedulerThread scheduler: The scheduler object
+        :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
             where we can get "haproxy-adder" tasks from **(required)**.
         """
         LOG.debug("Starting OCSPAdder thread")
@@ -77,14 +77,15 @@ class OCSPAdder(threading.Thread):
 
         :param key: the identifier of the socket in self.socks
         :param str socket_path: A valid HAProxy socket path.
-        :raises :exc:core.exceptions.SocketError: when the socket can not be
+
+        :raises :exc:ocspd.core.exceptions.SocketError: when the socket can not be
             opened.
         """
         self.socks[key] = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             self.socks[key].connect(socket_path)
         except FileNotFoundError as exc:
-            raise core.exceptions.SocketError(
+            raise ocspd.core.exceptions.SocketError(
                 "Could not initialize OCSPAdder with socket {}: {}",
                 socket_path, exc)
         result = self.send(key, "prompt")
@@ -124,12 +125,12 @@ class OCSPAdder(threading.Thread):
             and a filename `filename`.
         """
         command = self.OCSP_ADD.format(
-            util.functions.base64(model.ocsp_staple.data))
+            ocspd.util.functions.base64(model.ocsp_staple.data))
         LOG.debug("Setting OCSP staple with command '%s'", command)
         directory = os.path.dirname(model.filename)
         response = self.send(directory, command)
         if response != 'OCSP Response updated!':
-            raise core.exceptions.OCSPAdderBadResponse(
+            raise ocspd.core.exceptions.OCSPAdderBadResponse(
                 "Bad HAProxy response {}", response)
 
     def send(self, socket_key, command):
@@ -174,7 +175,7 @@ class OCSPAdder(threading.Thread):
                 self.socks[socket_key].sendall((command + "\n").encode())
             except BrokenPipeError:
                 # Try to re-open the socket. If that doesn't work, that will
-                # raise a :exc:`~core.exceptions.SocketError`
+                # raise a :exc:`~ocspd.core.exceptions.SocketError`
                 LOG.warning("Re-opening socket %s", socket_key)
                 self.socks[socket_key].close()
                 self._open_socket(socket_key, self.socket_paths[socket_key])

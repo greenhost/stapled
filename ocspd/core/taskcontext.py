@@ -2,7 +2,7 @@
 This module defines an extended version of the general purpose
 :class:`scheduling.ScheduledTaskContext` for use in the OCSP daemon.
 """
-from scheduling import ScheduledTaskContext
+from ocspd.scheduling import ScheduledTaskContext
 
 
 class OCSPTaskContext(ScheduledTaskContext):
@@ -22,7 +22,7 @@ class OCSPTaskContext(ScheduledTaskContext):
 
         :param str task_name: A task name corresponding to an existing queue in
             the scheduler.
-        :param core.certmodel.CertModel model: A certificate model.
+        :param ocspd.core.certmodel.CertModel model: A certificate model.
         :param datetime.datetime|int sched_time: Absolute time
             (datetime.datetime object) or relative time in seconds (int) to
             execute the task or None for processing ASAP.

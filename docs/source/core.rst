@@ -8,64 +8,64 @@ Daemon documentation
 Source code
 ===========
 
-ocspd
------
+ocspd.main
+----------
 .. automodule:: ocspd
    :members:
 
-core.daemon
------------
-.. automodule:: core.daemon
+ocspd.core.daemon
+-----------------
+.. automodule:: ocspd.core.daemon
    :members:
 
-core.taskcontext
-----------------
-.. automodule:: core.taskcontext
+ocspd.core.taskcontext
+----------------------
+.. automodule:: ocspd.core.taskcontext
 
    .. autoclass:: OCSPTaskContext
       :members:
       :special-members:
       :private-members:
 
-core.certfinder
----------------
-.. automodule:: core.certfinder
+ocspd.core.certfinder
+---------------------
+.. automodule:: ocspd.core.certfinder
 
    .. autoclass:: CertFinderThread
       :members:
       :special-members:
       :private-members:
 
-core.certparser
----------------
-.. automodule:: core.certparser
+ocspd.core.certparser
+---------------------
+.. automodule:: ocspd.core.certparser
 
    .. autoclass:: CertParserThread
       :members:
       :special-members:
       :private-members:
 
-core.ocsprenewer
-----------------
-.. automodule:: core.ocsprenewer
+ocspd.core.ocsprenewer
+----------------------
+.. automodule:: ocspd.core.ocsprenewer
 
    .. autoclass:: OCSPRenewerThread
       :members:
       :special-members:
       :private-members:
 
-core.ocspadder
-----------------
-.. automodule:: core.ocspadder
+ocspd.core.ocspadder
+--------------------
+.. automodule:: ocspd.core.ocspadder
 
    .. autoclass:: OCSPAdder
       :members:
       :special-members:
       :private-members:
 
-core.certmodel
---------------
-.. automodule:: core.certmodel
+ocspd.core.certmodel
+--------------------
+.. automodule:: ocspd.core.certmodel
 
    .. autoclass:: CertModel
       :members:

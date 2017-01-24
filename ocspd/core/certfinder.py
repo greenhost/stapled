@@ -3,8 +3,8 @@ This module locates certificate files in the supplied directories and parses
 them. It then keeps track of the following:
 
 - If cert is found for the first time (thus also when the daemon is started),
-  the cert is added to the :attr:`core.certfinder.CertFinder.scheduler` so the
-  :class:`~core.certparser.CertParserThread` can parse the certificate. The
+  the cert is added to the :attr:`ocspd.core.certfinder.CertFinder.scheduler` so the
+  :class:`~ocspd.core.certparser.CertParserThread` can parse the certificate. The
   file modification time is recorded so file changes can be detected.
 
 - If a cert is found a second time, the modification time is compared to the
@@ -13,7 +13,7 @@ them. It then keeps track of the following:
   are cancelled.
 
 - When certificates are deleted from the directories, the entries are removed
-  from the cache in :attr:`core.daemon.run.models`. Any scheduled actions for
+  from the cache in :attr:`ocspd.core.daemon.run.models`. Any scheduled actions for
   deleted files are cancelled.
 
 The cache of parsed files is volatile so every time the process is killed
@@ -25,9 +25,9 @@ import time
 import logging
 import os
 import ocspd
-from core.excepthandler import ocsp_except_handle
-from core.taskcontext import OCSPTaskContext
-from core.certmodel import CertModel
+from ocspd.core.excepthandler import ocsp_except_handle
+from ocspd.core.taskcontext import OCSPTaskContext
+from ocspd.core.certmodel import CertModel
 
 LOG = logging.getLogger(__name__)
 
@@ -36,8 +36,8 @@ class CertFinderThread(threading.Thread):
     """
     This searches directories for certificate files.
     When found, models are created for the certificate files, which are wrapped
-    in a :class:`core.taskcontext.OCSPTaskContext` which are then scheduled to
-    be processed by the :class:`core.certparser.CertParserThread` ASAP.
+    in a :class:`ocspd.core.taskcontext.OCSPTaskContext` which are then scheduled to
+    be processed by the :class:`ocspd.core.certparser.CertParserThread` ASAP.
 
     Pass ``refresh_interval=None`` if you want to run it only once (e.g. for
     testing)
@@ -50,7 +50,7 @@ class CertFinderThread(threading.Thread):
 
         :kwarg dict models: A dict to maintain a model cache **(required)**.
         :kwarg iter directories: The directories to index **(required)**.
-        :kwarg core.scheduling.SchedulerThread scheduler: The scheduler object
+        :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
             where we add new parse tasks to. **(required)**.
         :kwarg int refresh_interval: The minimum amount of time (s)
             between search runs, defaults to 10 seconds. Set to None to run
@@ -136,7 +136,7 @@ class CertFinderThread(threading.Thread):
         """
         Locate new files, schedule them for parsing.
 
-        :raises core.exceptions.CertFileAccessError: When the certificate
+        :raises ocspd.core.exceptions.CertFileAccessError: When the certificate
             file can't be accessed.
         """
         for path in self.directories:
@@ -171,7 +171,7 @@ class CertFinderThread(threading.Thread):
 
     def _del_model(self, filename):
         """
-            Delete model from :attr:`core.daemon.run.models` in a thread-safe
+            Delete model from :attr:`ocspd.core.daemon.run.models` in a thread-safe
             manner, if another thread deleted it, we should ignore the KeyError
             making this function omnipotent.
 
@@ -191,10 +191,10 @@ class CertFinderThread(threading.Thread):
         scheduler to get the new certificate data parsed.
 
         Deleted files are removed from the model cache in
-        :attr:`core.daemon.run.models`. Any scheduled tasks for the model's
+        :attr:`ocspd.core.daemon.run.models`. Any scheduled tasks for the model's
         task context are cancelled.
 
-        :raises core.exceptions.CertFileAccessError: When the certificate
+        :raises ocspd.core.exceptions.CertFileAccessError: When the certificate
             file can't be accessed.
         """
         deleted = []

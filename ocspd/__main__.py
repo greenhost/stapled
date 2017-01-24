@@ -24,7 +24,7 @@ bunch of threads for:
 
 If the ``-d`` argument is specified, this module is responsible for starting
 the application in daemonised mode, and disconnecting the process from the
-user's process hierarchy node. In any case, it starts up the :mod:`core.daemon`
+user's process hierarchy node. In any case, it starts up the :mod:`ocspd.core.daemon`
 module to bootstrap the application.
 """
 
@@ -33,17 +33,11 @@ import logging
 import logging.handlers
 import os
 import daemon
-import core.daemon
+import ocspd
+import ocspd.core.daemon
 
 #: :attr:`logging.format` format string
 LOGFORMAT = '[%(levelname)5.5s] %(threadName)+10s/%(name)-16.20s %(message)s'
-
-#: The extensions the daemon will try to parse as certificate files
-FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
-
-#: The default refresh interval for the
-#: :class:`core.certfinder.CertFinderThread`.
-DEFAULT_REFRESH_INTERVAL = 60
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -108,7 +102,7 @@ def get_cli_arg_parser():
     parser.add_argument(
         '--file-extensions',
         type=str,
-        default=FILE_EXTENSIONS_DEFAULT,
+        default=ocspd.FILE_EXTENSIONS_DEFAULT,
         help=(
             "Files with which extensions should be scanned? Comma separated "
             "list (default: crt,pem,cer)"
@@ -171,7 +165,7 @@ def get_cli_arg_parser():
 
 def init():
     """
-    Configures logging and log level, then calls :func:`core.daemon.run()`
+    Configures logging and log level, then calls :func:`ocspd.core.daemon.run()`
     either in daemonised mode if the ``-d`` argument was supplied, or in the
     current context if ``-d`` wasn't supplied.
     """
@@ -199,10 +193,10 @@ def init():
     if args.daemon:
         LOG.info("Daemonising now..")
         with daemon.DaemonContext(files_preserve=log_file_handles):
-            core.daemon.run(args)
+            ocspd.core.daemon.run(args)
     else:
         LOG.info("Running interactively..")
-        core.daemon.run(args)
+        ocspd.core.daemon.run(args)
 
 if __name__ == '__main__':
     init()

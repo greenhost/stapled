@@ -5,12 +5,12 @@ Scheduler documentation
 .. contents:: Table of Contents
    :local:
 
-Source code
-===========
+Scheduler source code
+=====================
 
 scheduling
----------------
-.. automodule:: scheduling
+----------
+.. automodule:: ocspd.scheduling
    :members:
    :special-members:
    :private-members:
