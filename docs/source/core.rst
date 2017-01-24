@@ -10,7 +10,7 @@ Source code
 
 ocspd.main
 ----------
-.. automodule:: ocspd.main
+.. automodule:: ocspd
    :members:
 
 ocspd.core.daemon

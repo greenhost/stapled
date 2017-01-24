@@ -33,17 +33,11 @@ import logging
 import logging.handlers
 import os
 import daemon
+import ocspd
 import ocspd.core.daemon
 
 #: :attr:`logging.format` format string
 LOGFORMAT = '[%(levelname)5.5s] %(threadName)+10s/%(name)-16.20s %(message)s'
-
-#: The extensions the daemon will try to parse as certificate files
-FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
-
-#: The default refresh interval for the
-#: :class:`ocspd.core.certfinder.CertFinderThread`.
-DEFAULT_REFRESH_INTERVAL = 60
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -108,7 +102,7 @@ def get_cli_arg_parser():
     parser.add_argument(
         '--file-extensions',
         type=str,
-        default=FILE_EXTENSIONS_DEFAULT,
+        default=ocspd.FILE_EXTENSIONS_DEFAULT,
         help=(
             "Files with which extensions should be scanned? Comma separated "
             "list (default: crt,pem,cer)"

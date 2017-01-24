@@ -24,7 +24,7 @@ import threading
 import time
 import logging
 import os
-import ocspd.main
+import ocspd
 from ocspd.core.excepthandler import ocsp_except_handle
 from ocspd.core.taskcontext import OCSPTaskContext
 from ocspd.core.certmodel import CertModel
@@ -62,10 +62,10 @@ class CertFinderThread(threading.Thread):
         self.directories = kwargs.pop('directories', None)
         self.scheduler = kwargs.pop('scheduler', None)
         self.refresh_interval = kwargs.pop(
-            'refresh_interval', ocspd.main.DEFAULT_REFRESH_INTERVAL
+            'refresh_interval', ocspd.DEFAULT_REFRESH_INTERVAL
         )
         self.file_extensions = kwargs.pop(
-            'file_extensions', ocspd.main.FILE_EXTENSIONS_DEFAULT
+            'file_extensions', ocspd.FILE_EXTENSIONS_DEFAULT
         )
         self.last_refresh = None
 
