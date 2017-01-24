@@ -3,7 +3,6 @@ Just a module containing some useful auxiliary functions.
 """
 
 import binascii
-import hashlib
 
 
 def pretty_base64(data, line_len=79, prefix="", suffix="\n"):
@@ -54,14 +53,3 @@ def split_by_len(string, length):
     :return list: List of substrings of input string
     """
     return [string[i:i+length] for i in range(0, len(string), length)]
-
-
-def file_hexdigest(filename):
-    """
-    Return the SHA1 hash of the binary file contents.
-
-    """
-    sha1 = hashlib.sha1()
-    with open(filename, 'rb') as f_obj:
-        sha1.update(f_obj.read())
-    return sha1.hexdigest()

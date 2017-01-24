@@ -1,6 +1,6 @@
-=======================
-Technical documentation
-=======================
+====================
+Daemon documentation
+====================
 
 .. contents:: Table of Contents
    :local:
@@ -8,51 +8,67 @@ Technical documentation
 Source code
 ===========
 
-ocspd
------
-.. automodule:: ocspd
+ocspd.main
+----------
+.. automodule:: ocspd.main
    :members:
 
-core.daemon
------------
-.. automodule:: core.daemon
+ocspd.core.daemon
+-----------------
+.. automodule:: ocspd.core.daemon
    :members:
 
-core.certfinder
----------------
-.. automodule:: core.certfinder
+ocspd.core.taskcontext
+----------------------
+.. automodule:: ocspd.core.taskcontext
+
+   .. autoclass:: OCSPTaskContext
+      :members:
+      :special-members:
+      :private-members:
+
+ocspd.core.certfinder
+---------------------
+.. automodule:: ocspd.core.certfinder
 
    .. autoclass:: CertFinderThread
       :members:
       :special-members:
       :private-members:
 
-core.ocsprenewer
-----------------
-.. automodule:: core.ocsprenewer
+ocspd.core.certparser
+---------------------
+.. automodule:: ocspd.core.certparser
+
+   .. autoclass:: CertParserThread
+      :members:
+      :special-members:
+      :private-members:
+
+ocspd.core.ocsprenewer
+----------------------
+.. automodule:: ocspd.core.ocsprenewer
 
    .. autoclass:: OCSPRenewerThread
       :members:
       :special-members:
       :private-members:
 
-core.certmodel
---------------
-.. automodule:: core.certmodel
+ocspd.core.ocspadder
+--------------------
+.. automodule:: ocspd.core.ocspadder
+
+   .. autoclass:: OCSPAdder
+      :members:
+      :special-members:
+      :private-members:
+
+ocspd.core.certmodel
+--------------------
+.. automodule:: ocspd.core.certmodel
 
    .. autoclass:: CertModel
       :members:
       :special-members:
       :private-members:
 
-core.scheduling
----------------
-.. automodule:: core.scheduling
-   :members:
-   :special-members:
-   :private-members:
-
-core.exceptions
----------------
-.. automodule:: core.exceptions
-   :members:

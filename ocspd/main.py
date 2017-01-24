@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-This is the main script that parses your command line arguments and then starts
-the OCSP Staple daemon, which indexes your certificate directories and requests
-staples for all certificates in them. They will then be saved as
+This is the module that parses your command line arguments and then starts
+the OCSP Staple daemon, which searches your certificate directories and
+requests staples for all certificates in them. They will then be saved as
 ``certificatename.pem.ocsp`` in the same directories that are being indexed.
 
 Type ``ocsp.py -h`` for all command line arguments.
 
-This module collects the command line arguments and detaches the process
+This module parses the command line arguments and detaches the process
 from the user's context if ``-d`` (daemon mode) is specified, then spawns a
 bunch of threads for:
 
- - Indexing certificates in the given directories.
+ - Finding certificates in the given directories.
  - Parsing certificate files and determining validity, then requesting a
    staple if valid.
  - Renewing staples for certificates from the queue. This process requires
@@ -20,10 +20,11 @@ bunch of threads for:
    select the amount of threads for with a command line argument.
  - Optionally, a thread for adding the gathered OCSP staples to a running
    HAProxy instance through a HAProxy socket.
+ - Scheduling tasks: parsing, renewing, adding staples to HAProxy.
 
 If the ``-d`` argument is specified, this module is responsible for starting
 the application in daemonised mode, and disconnecting the process from the
-user's process hierarchy node. In any case, it starts up the :mod:`core.daemon`
+user's process hierarchy node. In any case, it starts up the :mod:`ocspd.core.daemon`
 module to bootstrap the application.
 """
 
@@ -34,22 +35,21 @@ import os
 import daemon
 import ocspd.core.daemon
 
-#: :attr:`logging.format` format string (default:
-#: ``%(threadName)-10s [%(levelname)s] %(message)s``)
-LOGFORMAT = '%(threadName)-10s [%(levelname)s] %(message)s'
+#: :attr:`logging.format` format string
+LOGFORMAT = '[%(levelname)5.5s] %(threadName)+10s/%(name)-16.20s %(message)s'
 
 #: The extensions the daemon will try to parse as certificate files
-#: (default:``crt,pem,cer``)
 FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
 
-#: The amount of OSCP request retry attempts before giving up (default:``3``).
-OCSP_REQUEST_RETRY_COUNT = 3
+#: The default refresh interval for the
+#: :class:`ocspd.core.certfinder.CertFinderThread`.
+DEFAULT_REFRESH_INTERVAL = 60
 
 logging.basicConfig(
     level=logging.DEBUG,
     format=LOGFORMAT
 )
-LOG = logging.getLogger()
+LOG = logging.getLogger(__name__)
 
 def get_cli_arg_parser():
     """
@@ -65,9 +65,14 @@ def get_cli_arg_parser():
             "HAProxy can serve them to clients."
         ),
         conflict_handler='resolve',
-        epilog="This will not serve OCSP responses."
+        epilog=(
+            "The daemon will not serve OCSP responses, it can however "
+            "inform HAPRoxy about the staples it creates using the "
+            "``--haproxy-sockets.`` argument. Alternatively you can configure"
+            "HAPRoxy or another proxy (e.g. nginx has support for serving "
+            "OCSP staples) to serve the OCSP staples manually."
+        )
     )
-
     parser.add_argument(
         '--minimum-validity',
         type=int,
@@ -77,7 +82,6 @@ def get_cli_arg_parser():
             "attempt will be made to get a new, valid staple (default: 7200)."
         )
     )
-
     parser.add_argument(
         '-t',
         '--renewal-threads',
@@ -85,7 +89,6 @@ def get_cli_arg_parser():
         default=2,
         help="Amount of threads to run for renewing staples."
     )
-
     parser.add_argument(
         '-v',
         '--verbose',
@@ -93,17 +96,15 @@ def get_cli_arg_parser():
         default=0,
         help="Verbose output, repeat to increase verbosity (default: CRITICAL)."
     )
-
     parser.add_argument(
         '-d',
         '--daemon',
         action='store_true',
         help=(
             "Daemonise the process, release from shell and process group, run"
-            "under new process group, optionally drop privileges and chroot."
+            "under new process group."
         )
     )
-
     parser.add_argument(
         '--file-extensions',
         type=str,
@@ -113,7 +114,6 @@ def get_cli_arg_parser():
             "list (default: crt,pem,cer)"
         )
     )
-
     parser.add_argument(
         '-r',
         '--refresh-interval',
@@ -122,21 +122,18 @@ def get_cli_arg_parser():
         help="Minimum time to wait between parsing cert dirs and "
         "certificates (default=60)."
     )
-
     parser.add_argument(
         '-l',
         '--logfile',
         type=str,
         help="File to log output to."
     )
-
     parser.add_argument(
         '--syslog',
         action='store_true',
         default=False,
         help="Output to syslog."
     )
-
     parser.add_argument(
         '-s',
         '--haproxy-sockets',
@@ -146,22 +143,21 @@ def get_cli_arg_parser():
         # size of the help message here.
         help=(
             "Sockets to connect to HAProxy. Each directory you pass with "
-            "the `directory` argument, should have its own haproxy socket. "
+            "the ``directory`` argument, should have its own haproxy socket. "
             "The order of the socket arguments should match the order of the "
             "directory arguments."
             "Example:"
-            "I have a directory `/etc/haproxy1` with certificates, and a "
+            "I have a directory ``/etc/haproxy1`` with certificates, and a "
             "HAProxy that serves these certificates and has stats socket "
-            "`/etc/haproxy1/haproxy.sock`. I have another directory "
-            "`/etc/haproxy2` with certificates and another haproxy instance "
+            "``/etc/haproxy1/haproxy.sock``. I have another directory "
+            "``/etc/haproxy2`` with certificates and another haproxy instance "
             "that serves these and has stats socket "
-            "`/etc/haproxy2/haproxy.sock`. I would then start ocspd as "
+            "``/etc/haproxy2/haproxy.sock``. I would then start ocspd as "
             "follows:"
-            "`./ocspd /etc/haproxy1 /etc/haproxy2 -s /etc/haproxy1.sock "
-            "/etc/haproxy2.sock"
+            "``./ocspd /etc/haproxy1 /etc/haproxy2 -s /etc/haproxy1.sock "
+            "/etc/haproxy2.sock``"
         )
     )
-
     parser.add_argument(
         'directories',
         type=str,
@@ -171,22 +167,22 @@ def get_cli_arg_parser():
             "Multiple directories may be specified separated by a space. "
         )
     )
-
     return parser
 
 def init():
     """
-        Configures logging and log level, then calls :func:`core.daemon.run()`
-        either in daemonised mode if the ``-d`` argument was supplied, or in
-        the current context if it wasn't supplied.
+    Configures logging and log level, then calls :func:`ocspd.core.daemon.run()`
+    either in daemonised mode if the ``-d`` argument was supplied, or in the
+    current context if ``-d`` wasn't supplied.
     """
     log_file_handles = []
     parser = get_cli_arg_parser()
     args = parser.parse_args()
     args.directories = [os.path.abspath(d) for d in args.directories]
-
     log_level = max(min(50 - args.verbose * 10, 50), 10)
     LOG.setLevel(log_level)
+    logging.getLogger("requests").setLevel(logging.FATAL)
+    logging.getLogger("urllib3").setLevel(logging.FATAL)
     if args.logfile:
         file_handler = logging.FileHandler(args.logfile)
         file_handler.setLevel(log_level)
