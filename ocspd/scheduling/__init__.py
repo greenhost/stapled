@@ -13,12 +13,12 @@ thread.
 
 This module defines the following objects:
 
- - :class:`ocspd.core.scheduling.ScheduledTaskContext`
+ - :class:`ocspd.scheduling.ScheduledTaskContext`
     A context that wraps around any data you want to pass to the scheduler and
     which will be added to the task queue when the schedule time expires.
- - :class:`ocspd.core.scheduling.SchedulerThread`
+ - :class:`ocspd.scheduling.SchedulerThread`
     An object that is capable of scheduling and unscheduling tasks that you
-    can define with :class:`ocspd.core.scheduling.ScheduledTaskContext`.
+    can define with :class:`ocspd.scheduling.ScheduledTaskContext`.
 """
 import threading
 import logging
@@ -38,7 +38,7 @@ class ScheduledTaskContext(object):
     """
     def __init__(self, task_name, subject, sched_time=None, **attributes):
         """
-        Initialise a :class:`~ocspd.core.scheduling.ScheduledTaskContext` with a
+        Initialise a :class:`~ocspd.scheduling.ScheduledTaskContext` with a
         task name, subject and optional scheduled time. Any remaining keyword
         arguments are set as attributes of the task context.
 

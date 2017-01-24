@@ -23,7 +23,7 @@ class OCSPAdder(threading.Thread):
     `collectd haproxy connection`_ under the MIT license, was used for
     inspiration.
 
-    Tasks are taken from the :class:`ocspd.core.scheduling.SchedulerThread`, as soon
+    Tasks are taken from the :class:`ocspd.scheduling.SchedulerThread`, as soon
         as a task context is received, an OCSP response is read from the model
         within it, it is added to a HAProxy socket found in
         self.socks[<certificate directory>].
@@ -50,7 +50,7 @@ class OCSPAdder(threading.Thread):
             serves certificates from that directory. These sockets are used to
             communicate new OCSP staples to HAProxy, so it does not have to be
             restarted.
-        :kwarg ocspd.core.scheduling.SchedulerThread scheduler: The scheduler object
+        :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
             where we can get "haproxy-adder" tasks from **(required)**.
         """
         LOG.debug("Starting OCSPAdder thread")
@@ -77,6 +77,7 @@ class OCSPAdder(threading.Thread):
 
         :param key: the identifier of the socket in self.socks
         :param str socket_path: A valid HAProxy socket path.
+
         :raises :exc:ocspd.core.exceptions.SocketError: when the socket can not be
             opened.
         """

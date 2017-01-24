@@ -43,7 +43,7 @@ Using ocspd
 ===========
 
 .. argparse::
-    :module: ocspd
+    :module: ocspd.main
     :func: get_cli_arg_parser
     :prog: ocspd.py
     :nodefault:

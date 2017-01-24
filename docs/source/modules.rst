@@ -25,7 +25,7 @@ keep OCSP staples up-to-date. In short, these are the modules:
     staples without restarting HAProxy.
 
 This graph explains their interaction. Every arrow passes a
-:class:`~core.taskcontext.OCSPTaskContext` instance to the other module.
+:class:`~ocspd.core.taskcontext.OCSPTaskContext` instance to the other module.
 
 .. graphviz::
 
@@ -33,11 +33,11 @@ This graph explains their interaction. Every arrow passes a
        graph [fontsize=10, margin=.001, fontname="helvetica" pad=".001", ranksep="1", nodesep="0.001"];
        node [fontname="helvetica"];
        edge [fontname="helvetica"];
-       scheduler [label="\nSchedulerThread\n\n🕐" URL="core.html#core.scheduling.SchedulerThread"]
-       finder [label="CertFinderThread" URL="core.html#core.certfinder.CertFinderThread"]
-       parser [label="CertParserThread" URL="core.html#core.certparser.CertParserThread"]
-       renewer [label="OCSPRenewerThread" URL="core.html#core.ocsprenewer.OCSPRenewerThread"]
-       adder [label="OCSPAdder" URL="core.html#core.ocspadder.OCSPAdder"]
+       scheduler [label="\nSchedulerThread\n\n🕐" URL="core.html#ocspd.scheduling.SchedulerThread"]
+       finder [label="CertFinderThread" URL="core.html#ocspd.core.certfinder.CertFinderThread"]
+       parser [label="CertParserThread" URL="core.html#ocspd.core.certparser.CertParserThread"]
+       renewer [label="OCSPRenewerThread" URL="core.html#ocspd.core.ocsprenewer.OCSPRenewerThread"]
+       adder [label="OCSPAdder" URL="core.html#ocspd.core.ocspadder.OCSPAdder"]
        haproxy [label=HAProxy shape=box URL="https://www.haproxy.com/"]
        ca[label="Certificate Authority" shape=box URL="https://en.wikipedia.org/wiki/Certificate_authority"]
        finder -> scheduler [label="  schedule next renewal"];

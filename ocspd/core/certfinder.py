@@ -50,7 +50,7 @@ class CertFinderThread(threading.Thread):
 
         :kwarg dict models: A dict to maintain a model cache **(required)**.
         :kwarg iter directories: The directories to index **(required)**.
-        :kwarg ocspd.core.scheduling.SchedulerThread scheduler: The scheduler object
+        :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
             where we add new parse tasks to. **(required)**.
         :kwarg int refresh_interval: The minimum amount of time (s)
             between search runs, defaults to 10 seconds. Set to None to run

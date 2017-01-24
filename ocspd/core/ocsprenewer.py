@@ -36,7 +36,7 @@ class OCSPRenewerThread(threading.Thread):
         :kwarg int minimum_validity: The amount of seconds the OCSP staple is
             still valid for, before starting to attempt to request a new OCSP
             staple **(required)**.
-        :kwarg ocspd.core.scheduling.SchedulerThread scheduler: The scheduler object
+        :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
             where we can get tasks from and add new tasks to. **(required)**.
         """
         self.minimum_validity = kwargs.pop('minimum_validity', None)

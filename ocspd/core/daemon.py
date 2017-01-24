@@ -1,7 +1,7 @@
 """
 This module bootstraps the ocspd process by starting threads for:
 
-- 1x :class:`ocspd.core.scheduling.SchedulerThread`
+- 1x :class:`ocspd.scheduling.SchedulerThread`
 
   Can be used to create action queues that where tasks can be added that are
   either added to the action queue immediately or at a set time in the future.
@@ -25,7 +25,7 @@ This module bootstraps the ocspd process by starting threads for:
   :class:`ocspd.core.ocsprenewer.OCSPRenewerThread`
 
   - Gets tasks from the scheduler in :attr:`self.scheduler` which is a
-    :class:`ocspd.core.scheduling.Scheduler` object passed by this module.
+    :class:`ocspd.scheduling.Scheduler` object passed by this module.
   - For each task:
      - Validates the certificate chains.
      - Renews the OCSP staples.

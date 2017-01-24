@@ -30,7 +30,7 @@ class CertParserThread(threading.Thread):
         :kwarg dict models: A dict to maintain a model cache **(required)**.
         :kwarg int minimum_validity: The amount of seconds the OCSP staple
             should be valid for before a renewal is scheduled **(required)**.
-        :kwarg ocspd.core.scheduling.SchedulerThread scheduler: The scheduler object
+        :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
             where we can get parser tasks from and add renew tasks to.
             **(required)**.
         """
