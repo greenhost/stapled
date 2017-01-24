@@ -179,6 +179,9 @@ class OCSPAdder(threading.Thread):
                 LOG.warning("Re-opening socket %s", socket_key)
                 self.socks[socket_key].close()
                 self._open_socket(socket_key, self.socket_paths[socket_key])
+                # Try again, if this results in a BrokenPipeError *again*, it
+                # will be caught by ocsp_except_handle
+                self.socks[socket_key].sendall((command + "\n").encode())
 
         buff = StringIO()
 
