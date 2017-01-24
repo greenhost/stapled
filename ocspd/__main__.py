@@ -35,15 +35,15 @@ import os
 import daemon
 import ocspd
 import ocspd.core.daemon
+from ocspd.colourlog import ColourFormatter
 
-#: :attr:`logging.format` format string
-LOGFORMAT = '[%(levelname)5.5s] %(threadName)+10s/%(name)-16.20s %(message)s'
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format=LOGFORMAT
+#: :attr:`logging.format` format string for log files and syslog
+LOGFORMAT = '[%(levelname)s] %(threadName)+10s/%(name)-16.20s %(message)s'
+#: :attr:`logging.format` format string for stdout
+COLOUR_LOGFORMAT = (
+    '{lvl}[%(levelname)s]{reset} {msg}%(threadName)+10s/%(name)-16.20s '
+    '%(message)s{reset}'
 )
-LOG = logging.getLogger(__name__)
 
 def get_cli_arg_parser():
     """
@@ -129,6 +129,12 @@ def get_cli_arg_parser():
         help="Output to syslog."
     )
     parser.add_argument(
+        '-q',
+        '--quiet',
+        action='store_true',
+        help="Don't print messages to stdout"
+    )
+    parser.add_argument(
         '-s',
         '--haproxy-sockets',
         type=str,
@@ -174,28 +180,35 @@ def init():
     args = parser.parse_args()
     args.directories = [os.path.abspath(d) for d in args.directories]
     log_level = max(min(50 - args.verbose * 10, 50), 10)
-    LOG.setLevel(log_level)
+    logging.basicConfig()
+    logger = logging.getLogger('ocspd')
+    logger.propagate = False
+    # Don't allow dependencies to log anything but fatal errors
     logging.getLogger("requests").setLevel(logging.FATAL)
     logging.getLogger("urllib3").setLevel(logging.FATAL)
+    logger.setLevel(level=log_level)
+    if not args.quiet and not args.daemon:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(log_level)
+        console_handler.setFormatter(ColourFormatter(COLOUR_LOGFORMAT))
+        logger.addHandler(console_handler)
     if args.logfile:
         file_handler = logging.FileHandler(args.logfile)
         file_handler.setLevel(log_level)
         file_handler.setFormatter(logging.Formatter(LOGFORMAT))
-        LOG.addHandler(file_handler)
+        logger.addHandler(file_handler)
         log_file_handles.append(file_handler.stream)
-
     if args.syslog:
         syslog_handler = logging.handlers.SysLogHandler()
         syslog_handler.setLevel(log_level)
         syslog_handler.setFormatter(logging.Formatter(LOGFORMAT))
-        LOG.addHandler(syslog_handler)
-
+        logger.addHandler(syslog_handler)
     if args.daemon:
-        LOG.info("Daemonising now..")
+        logger.info("Daemonising now..")
         with daemon.DaemonContext(files_preserve=log_file_handles):
             ocspd.core.daemon.run(args)
     else:
-        LOG.info("Running interactively..")
+        logger.info("Running interactively..")
         ocspd.core.daemon.run(args)
 
 init()

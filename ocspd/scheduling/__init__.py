@@ -36,6 +36,7 @@ class ScheduledTaskContext(object):
     exception count for the last exception, so it can be re-scheduled if it is
     the appropriate action.
     """
+    # pylint: disable=too-few-public-methods
     def __init__(self, task_name, subject, sched_time=None, **attributes):
         """
         Initialise a :class:`~ocspd.scheduling.ScheduledTaskContext` with a
@@ -128,8 +129,8 @@ class SchedulerThread(threading.Thread):
 
         queues = kwargs.pop('queues', None)
         if queues:
-            for _queue in queues:
-                self.add_queue(_queue)
+            for queue_ in queues:
+                self.add_queue(queue_)
 
         self.sleep = kwargs.pop('sleep', 1)
 
@@ -158,7 +159,7 @@ class SchedulerThread(threading.Thread):
         try:
             for ctx in self.scheduled_by_queue[name]:
                 sched_time = self.scheduled_by_context.pop(ctx)
-                self.scheduled[sched_time].remove(ctx)
+                self.schedule[sched_time].remove(ctx)
                 del self.scheduled_by_subject[ctx.subject]
             del self.scheduled_by_queue[name]
             del self._queues[name]
@@ -310,6 +311,15 @@ class SchedulerThread(threading.Thread):
                     ctx, now.strftime('%Y-%m-%d %H:%M:%S'), late)
 
     def cancel_by_subject(self, subject):
+        """
+        Cancel scheduled tasks by the task's context's subject.
+
+        This comes down to: delete anything from the scheduler that relates to
+        my object `X`.
+
+        :param obj subject: The object you want all scheduled tasks cancelled
+            for.
+        """
         ctxs = self.scheduled_by_subject[subject]
         for ctx in ctxs:
             self.cancel_task(ctx)

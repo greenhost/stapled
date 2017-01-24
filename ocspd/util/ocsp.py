@@ -1,5 +1,5 @@
 """
-    This class contains utilities for all things OCSP related.
+This class contains utilities for all things OCSP related.
 """
 
 import datetime

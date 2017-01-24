@@ -234,7 +234,7 @@ class CertModel(object):
 
         :raises OCSPBadResponse: If an empty response is received.
         """
-        if LOG.getEffectiveLevel() < 20:
+        if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug(
                 "Response data: \n%s",
                 pretty_base64(ocsp_staple, line_len=75, prefix=" "*36)
@@ -387,7 +387,7 @@ class CertModel(object):
         ocsp_request_builder.nonce = False
         ocsp_request = ocsp_request_builder.build().dump()
         # This data can be posted to the OCSP URI to debug further
-        if LOG.getEffectiveLevel() < 20:
+        if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug(
                 "Request data: \n%s",
                 pretty_base64(ocsp_request, line_len=75, prefix=" "*36)
