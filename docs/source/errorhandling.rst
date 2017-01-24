@@ -44,6 +44,9 @@ The following is an overview of what can be expected when exceptions occur.
 |                                      |               | established.                             |                                                                           |
 +--------------------------------------+---------------+------------------------------------------+---------------------------------------------------------------------------+
 | SocketError                          | ocspadder     | A HAProxy socket can not be opened       | Log a critical error. Every "send" action will try to re-open the socket. |
++--------------------------------------+               +------------------------------------------+                                                                           +
+| BrokenPipeError                      |               | A HAProxy socket consistently has a      |                                                                           |
+|                                      |               | broken pipe                              |                                                                           |
 +--------------------------------------+               +------------------------------------------+---------------------------------------------------------------------------+
 | OCSPAdderBadResponse                 |               | HAProxy does not respond with            | Schedule a retry 3x *n*\*60s, then 3x, every hour, then ignore.           |
 |                                      |               | 'OCSP Response updated!'                 |                                                                           |

@@ -68,9 +68,10 @@ def ocsp_except_handle(ctx=None):
             ctx.reschedule(3600)  # every hour
         else:
             LOG.critical("%s, giving up..", exc)
-    except SocketError as exc:
+    except (SocketError, BrokenPipeError) as exc:
         # This is a fatal exception that can occur during initialisation of a
-        # OCSPAdder or when an OCSPAdder uses a socket that has a broken pipe.
+        # OCSPAdder or when an OCSPAdder uses a socket that consistently has a
+        # broken pipe
         LOG.critical(exc)
     except (RenewalRequirementMissing,
             CertValidationError,
