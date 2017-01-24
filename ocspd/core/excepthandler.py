@@ -58,7 +58,8 @@ def ocsp_except_handle(ctx=None):
     try:
         yield  # do the "with ocsp_except_handle(ctx):" code block
     except (CertFileAccessError, OCSPAdderBadResponse) as exc:
-        # Can't access the certificat file, we can try again a bit later..
+        # Can't access the certificate file or the response from HAPRoxy was
+        # not "OCSP Response updated", we can try again a bit later..
         err_count = ctx.set_last_exception(str(exc))
         if err_count < 4:
             LOG.error(exc)

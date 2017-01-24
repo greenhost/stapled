@@ -78,8 +78,8 @@ class OCSPAdder(threading.Thread):
         :param key: the identifier of the socket in self.socks
         :param str socket_path: A valid HAProxy socket path.
 
-        :raises :exc:ocspd.core.exceptions.SocketError: when the socket can not be
-            opened.
+        :raises :exc:ocspd.core.exceptions.SocketError: when the socket can not
+            be opened.
         """
         self.socks[key] = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
