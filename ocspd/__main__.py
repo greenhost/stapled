@@ -217,4 +217,5 @@ def init():
         logger.info("Running interactively..")
         ocspd.core.daemon.run(args)
 
-init()
+if __name__ == '__main__':
+    init()

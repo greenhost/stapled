@@ -24,7 +24,10 @@ This module defines the following objects:
 import threading
 import logging
 import datetime
-import queue
+try:
+    from Queue import Queue  # Python2.7
+except ImportError:
+    from queue import Queue  # Python3
 import time
 from collections import defaultdict
 
@@ -147,7 +150,7 @@ class SchedulerThread(threading.Thread):
         """
         if name in self._queues:
             raise KeyError("A queue with name %s already exists.", name)
-        self._queues[name] = queue.Queue(max_size)
+        self._queues[name] = Queue(max_size)
         self.scheduled_by_queue[name] = []
 
     def remove_queue(self, name):

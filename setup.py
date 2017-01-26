@@ -62,7 +62,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'ocspd = ocspd.__main__'
+            'ocspd = ocspd.__main__:init'
         ]
     }
 )

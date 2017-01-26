@@ -36,7 +36,10 @@ import datetime
 import logging
 import os
 import traceback
-import urllib.error
+try:
+    from urllib2 import URLError  # Python2.7
+except ImportError:
+    from urllib.error import URLError  # Python3
 import requests.exceptions
 from ocspd.core.exceptions import OCSPBadResponse
 from ocspd.core.exceptions import RenewalRequirementMissing
@@ -45,6 +48,11 @@ from ocspd.core.exceptions import CertParsingError
 from ocspd.core.exceptions import CertValidationError
 from ocspd.core.exceptions import OCSPAdderBadResponse
 from ocspd.core.exceptions import SocketError
+try:
+    BrokenPipeError_ = BrokenPipeError
+except NameError:
+    import socket
+    BrokenPipeError_ = socket.error
 
 LOG = logging.getLogger(__name__)
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
@@ -70,7 +78,7 @@ def ocsp_except_handle(ctx=None):
             ctx.reschedule(3600)  # every hour
         else:
             LOG.critical("%s, giving up..", exc)
-    except (SocketError, BrokenPipeError) as exc:
+    except (SocketError, BrokenPipeError_) as exc:
         # This is a fatal exception that can occur during initialisation of a
         # OCSPAdder or when an OCSPAdder uses a socket that consistently has a
         # broken pipe
@@ -105,15 +113,15 @@ def ocsp_except_handle(ctx=None):
     except (requests.Timeout,
             requests.exceptions.ConnectTimeout,
             requests.exceptions.ReadTimeout,
-            urllib.error.URLError,
+            URLError,
             requests.exceptions.TooManyRedirects,
             requests.exceptions.HTTPError,
             requests.ConnectionError,
             requests.RequestException) as exc:
-        if isinstance(exc, urllib.error.URLError):
+        if isinstance(exc, URLError):
             LOG.error(
                 "Can't open URL: %s, reason: %s",
-                ctx.ocsp_urls[ctx.ulr_index],
+                ctx.model.ocsp_urls[ctx.model.url_index],
                 exc.reason
             )
         elif isinstance(exc, requests.exceptions.TooManyRedirects):
@@ -181,7 +189,7 @@ def delete_ocsp_for_context(ctx):
     try:
         ocsp_file = "{}.ocsp".format(ctx.model.filename)
         os.remove(ocsp_file)
-    except IOError:
+    except (IOError, OSError):
         LOG.debug(
             "Can't delete OCSP staple %s, maybe it doesn't exist.",
             ocsp_file

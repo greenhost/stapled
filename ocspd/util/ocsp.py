@@ -2,7 +2,7 @@
 """
 This class contains utilities for all things OCSP related.
 """
-
+from builtins import str
 import datetime
 import asn1crypto
 

@@ -44,6 +44,7 @@ for dep in $DEPS; do
     cd "$DEP_BUILD"
 done
 
+cd ..
 python2 setup.py sdist
 py2dsc dist/ocspd-*.tar.gz
 cd deb_dist/ocspd-*/
