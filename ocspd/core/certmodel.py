@@ -34,7 +34,7 @@ from ocspd.core.exceptions import CertParsingError
 from ocspd.core.exceptions import CertValidationError
 from ocspd.util.ocsp import OCSPResponseParser
 from ocspd.util.functions import pretty_base64
-from ocspd.util.cache import cache
+from backports.functools_lru_cache import lru_cache
 
 LOG = logging.getLogger(__name__)
 
@@ -372,7 +372,7 @@ class CertModel(object):
             )
 
     @property
-    @cache
+    @lru_cache
     def ocsp_request(self):
         """
         Generate an OCSP request or return an already cached request.
