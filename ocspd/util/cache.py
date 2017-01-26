@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
     Simple lightweight caching class without third-party dependencies or fancy
     features.

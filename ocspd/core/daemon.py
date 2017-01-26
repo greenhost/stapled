@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 This module bootstraps the ocspd process by starting threads for:
 

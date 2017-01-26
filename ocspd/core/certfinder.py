@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 This module locates certificate files in the supplied directories and parses
 them. It then keeps track of the following:

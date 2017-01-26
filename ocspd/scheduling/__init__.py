@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 This is a general purpose scheduler. It does best effort scheduling and
 execution of expired items in the order they are added. This also means that

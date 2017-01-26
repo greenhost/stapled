@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 This is the module that parses your command line arguments and then starts
 the OCSP Staple daemon, which searches your certificate directories and
@@ -24,10 +25,10 @@ bunch of threads for:
 
 If the ``-d`` argument is specified, this module is responsible for starting
 the application in daemonised mode, and disconnecting the process from the
-user's process hierarchy node. In any case, it starts up the :mod:`ocspd.core.daemon`
+user's process hierarchy node. In any case, it starts up the
+:mod:`ocspd.core.daemon`
 module to bootstrap the application.
 """
-
 import argparse
 import logging
 import logging.handlers
@@ -44,6 +45,7 @@ COLOUR_LOGFORMAT = (
     '{lvl}[%(levelname)s]{reset} {msg}%(threadName)+10s/%(name)-16.20s '
     '%(message)s{reset}'
 )
+
 
 def get_cli_arg_parser():
     """
@@ -88,7 +90,10 @@ def get_cli_arg_parser():
         '--verbose',
         action='count',
         default=0,
-        help="Verbose output, repeat to increase verbosity (default: CRITICAL)."
+        help=(
+            "Verbose output, repeat to increase verbosity "
+            "(default: CRITICAL)."
+        )
     )
     parser.add_argument(
         '-d',
@@ -168,6 +173,7 @@ def get_cli_arg_parser():
         )
     )
     return parser
+
 
 def init():
     """

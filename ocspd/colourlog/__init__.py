@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 ANSI colourise the logging stream (works on LINUX/UNIX based systems).
 
@@ -136,8 +137,8 @@ class ColourFormatter(logging.Formatter):
         if self.no_colour_nl:
             self.strip_ansi_colour = re.compile(r'\x1b\[([0-9]{1,2};?)*m')
         super(ColourFormatter, self).__init__(*args, **kwargs)
-        if not self._fmt.endswith("$reset"):
-            self._fmt += "$reset"
+        if not self._fmt.endswith("{reset}"):
+            self._fmt += "{reset}"
         self.format_str = self._fmt
 
     def format(self, record):

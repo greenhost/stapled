@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 This class contains utilities for all things OCSP related.
 """
