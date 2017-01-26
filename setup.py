@@ -12,8 +12,8 @@ install_requires = [
     'certvalidator>=0.11.1',
     'ocspbuilder>=0.10.2',
     'oscrypto>=0.17.2',
-    'python-daemon==2.1.2',
-    'requests>=2.12.4',
+    'python-daemon==1.5.5',
+    'requests>=2.4.3',
 ]
 
 docs_extras = [

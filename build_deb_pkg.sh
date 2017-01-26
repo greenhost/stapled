@@ -32,10 +32,10 @@ source ./env/bin/activate
 for dep in $DEPS; do
     git clone "https://github.com/wbond/${dep}"
     cd "$dep"
-    pip2 uninstall $dep
-    pip2 install -e ./
+    pip uninstall $dep
+    pip install -e ./
     sed -i "s/.*'clean': CleanCommand,.*/        # 'clean': CleanCommand,/" setup.py
-    python2 setup.py sdist
+    python setup.py sdist
     py2dsc dist/${dep}-*.tar.gz
     cd deb_dist/${dep}-*/
     dpkg-buildpackage -rfakeroot -uc -us
