@@ -49,10 +49,10 @@ from ocspd.core.exceptions import CertValidationError
 from ocspd.core.exceptions import OCSPAdderBadResponse
 from ocspd.core.exceptions import SocketError
 try:
-    BrokenPipeError_ = BrokenPipeError
+    _ = BrokenPipeError
 except NameError:
     import socket
-    BrokenPipeError_ = socket.error
+    BrokenPipeError = socket.error
 
 LOG = logging.getLogger(__name__)
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
@@ -78,7 +78,7 @@ def ocsp_except_handle(ctx=None):
             ctx.reschedule(3600)  # every hour
         else:
             LOG.critical("%s, giving up..", exc)
-    except (SocketError, BrokenPipeError_) as exc:
+    except (SocketError, BrokenPipeError) as exc:
         # This is a fatal exception that can occur during initialisation of a
         # OCSPAdder or when an OCSPAdder uses a socket that consistently has a
         # broken pipe

@@ -100,7 +100,7 @@ def get_cli_arg_parser():
         '--daemon',
         action='store_true',
         help=(
-            "Daemonise the process, release from shell and process group, run"
+            "Daemonise the process, release from shell and process group, run "
             "under new process group."
         )
     )
@@ -144,8 +144,6 @@ def get_cli_arg_parser():
         '--haproxy-sockets',
         type=str,
         nargs='+',
-        # FIXME: Maybe we want to move this to the documentation and reduce the
-        # size of the help message here.
         help=(
             "Sockets to connect to HAProxy. Each directory you pass with "
             "the ``directory`` argument, should have its own haproxy socket. "
@@ -183,9 +181,9 @@ def get_cli_arg_parser():
 
 def init():
     """
-    Configures logging and log level, then calls :func:`ocspd.core.daemon.run()`
-    either in daemonised mode if the ``-d`` argument was supplied, or in the
-    current context if ``-d`` wasn't supplied.
+    Configures logging and log level, then calls
+    :func:`ocspd.core.daemon.run()` either in daemonised mode if the ``-d``
+    argument was supplied, or in the current context if ``-d`` wasn't supplied.
     """
     log_file_handles = []
     parser = get_cli_arg_parser()
