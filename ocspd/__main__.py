@@ -172,6 +172,12 @@ def get_cli_arg_parser():
             "Multiple directories may be specified separated by a space. "
         )
     )
+    parser.add_argument(
+        '--no-recycle',
+        action='store_true',
+        default=False,
+        help="Don't re-use existing staples, force renewal."
+    )
     return parser
 
 
