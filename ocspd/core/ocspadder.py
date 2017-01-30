@@ -13,10 +13,10 @@ import ocspd.core.exceptions
 import ocspd.util.functions
 
 try:
-    BrokenPipeError_ = BrokenPipeError
+    _ = BrokenPipeError
 except NameError:
     import socket
-    BrokenPipeError_ = socket.error
+    BrokenPipeError = socket.error
 
 LOG = logging.getLogger(__name__)
 SOCKET_BUFFER_SIZE = 1024
@@ -180,7 +180,7 @@ class OCSPAdder(threading.Thread):
         with ocsp_except_handle():
             try:
                 self.socks[socket_key].sendall((command + "\n").encode())
-            except BrokenPipeError_:
+            except BrokenPipeError:
                 # Try to re-open the socket. If that doesn't work, that will
                 # raise a :exc:`~ocspd.core.exceptions.SocketError`
                 LOG.warning("Re-opening socket %s", socket_key)
