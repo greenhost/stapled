@@ -34,16 +34,10 @@ from ocspd.core.exceptions import CertParsingError
 from ocspd.core.exceptions import CertValidationError
 from ocspd.util.ocsp import OCSPResponseParser
 from ocspd.util.functions import pretty_base64
-try:
-    from functools import lru_cache  # Python3
-except ImportError:
-    from backports.functools_lru_cache import lru_cache  # Python2.7
-
-try:
-    from urllib.parse import urlparse  # Python3
-except ImportError:
-    from urlparse import urlparse  # Python2.7
-
+from pylru import lrudecorator
+from future.standard_library import hooks
+with hooks():
+    from urllib.parse import urlparse
 
 LOG = logging.getLogger(__name__)
 
@@ -382,7 +376,7 @@ class CertModel(object):
             )
 
     @property
-    @lru_cache(0)
+    @lrudecorator(1)
     def ocsp_request(self):
         """
         Generate an OCSP request or return an already cached request.

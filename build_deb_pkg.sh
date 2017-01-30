@@ -1,4 +1,15 @@
 #!/bin/bash
+###############################################################################
+## WARNING: PROVIDED AS IS, DO NOT USE THIS, SERIOUS SIDE EFFECTS GUARANTEED ##
+###############################################################################
+## This script downloads the master branch of each of the dependencies that  ##
+## are not available as a debian package and converts them to a debian       ##
+## package. However whatever source code you happen to check out, it won't   ##
+## be audited. It may contain lines of code you don't intend to run. You     ##
+## will also have to make sure you get updates yourself. More info can be    ##
+## found in the documentation: `docs/using.rst`.                             ##
+###############################################################################
+
 set -x
 DEPS="asn1crypto oscrypto ocspbuilder certvalidator"
 BUILD=$(pwd)/build
