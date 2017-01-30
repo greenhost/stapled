@@ -33,10 +33,12 @@ class CertParserThread(threading.Thread):
         :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
             where we can get parser tasks from and add renew tasks to.
             **(required)**.
+        :kwarg bool no_recycle: Don't recycle existing staples (default=False)
         """
         self.models = kwargs.pop('models', None)
         self.minimum_validity = kwargs.pop('minimum_validity', None)
         self.scheduler = kwargs.pop('scheduler', None)
+        self.no_recycle = kwargs.pop('no_recycle', False)
 
         assert self.models is not None, \
             "You need to pass a dict to hold the certificate model cache."
@@ -77,7 +79,7 @@ class CertParserThread(threading.Thread):
         # Parse the certificate
         model.parse_crt_file()
         # If there is a valid existing staple, use it..
-        if model.recycle_staple(self.minimum_validity):
+        if not self.no_recycle and model.recycle_staple(self.minimum_validity):
             # There is a valid staple file, schedule a regular renewal
             until = model.ocsp_staple.valid_until
             sched_time = until - datetime.timedelta(

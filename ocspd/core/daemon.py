@@ -117,6 +117,7 @@ def run(args):
     parser = certparser.CertParserThread(
         models=model_cache,
         minimum_validity=args.minimum_validity,
+        no_recycle=args.no_recycle,
         scheduler=scheduler
     )
     parser.daemon = False
