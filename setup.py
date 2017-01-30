@@ -12,12 +12,15 @@ install_requires = [
     'certvalidator>=0.11.1',
     'ocspbuilder>=0.10.2',
     'oscrypto>=0.17.2',
-    'python-daemon==2.1.2',
-    'requests>=2.12.4',
+    'python-daemon==1.5.5',
+    'requests>=2.4.3',
+    'future>=0.16.0',
+    'pylru>=1.0.9'
 ]
 
 docs_extras = [
     'Sphinx>=1.0',  # autodoc_member_order = 'bysource', autodoc_default_flags
+    'sphinx-argparse>=0.1.15',
     'sphinx_rtd_theme',
 ]
 
@@ -48,6 +51,8 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
@@ -60,7 +65,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'ocspd = ocspd.__main__'
+            'ocspd = ocspd.__main__:init'
         ]
     }
 )

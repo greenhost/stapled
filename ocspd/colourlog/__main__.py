@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Test the ColourFormatter class when run directly.
 """

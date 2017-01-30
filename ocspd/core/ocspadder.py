@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Module for adding OCSP Staples to a running HAProxy instance.
 """
@@ -10,6 +11,12 @@ from io import StringIO
 from ocspd.core.excepthandler import ocsp_except_handle
 import ocspd.core.exceptions
 import ocspd.util.functions
+
+try:
+    _ = BrokenPipeError
+except NameError:
+    import socket
+    BrokenPipeError = socket.error
 
 LOG = logging.getLogger(__name__)
 SOCKET_BUFFER_SIZE = 1024

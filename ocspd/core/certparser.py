@@ -1,9 +1,10 @@
+# -*- coding: utf-8 -*-
 """
 This module parses certificate in a queue so the data contained in the
 certificate can be used to request OCSP responses. After parsing a new
 :class:`ocspd.core.taskcontext.OCSPTaskContext` is created for the
-:class:`ocspd.core.oscprenewe.OCSPRenewer` which is then scheduled to be processed
-ASAP.
+:class:`ocspd.core.oscprenewe.OCSPRenewer` which is then scheduled to be
+processed ASAP.
 """
 
 import threading
@@ -18,8 +19,8 @@ LOG = logging.getLogger(__name__)
 class CertParserThread(threading.Thread):
     """
     This object makes sure certificate files are parsed, after which a task
-    context is created for the :class:`ocspd.core.oscprenewer.OCSPRenewer` which is
-    scheduled to be executed ASAP.
+    context is created for the :class:`ocspd.core.oscprenewer.OCSPRenewer`
+    which is scheduled to be executed ASAP.
     """
 
     def __init__(self, *args, **kwargs):

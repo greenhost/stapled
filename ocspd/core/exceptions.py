@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 This module holds the application specific exceptions.
 """

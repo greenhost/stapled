@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 This is a general purpose scheduler. It does best effort scheduling and
 execution of expired items in the order they are added. This also means that
@@ -23,7 +24,7 @@ This module defines the following objects:
 import threading
 import logging
 import datetime
-import queue
+from queue import Queue
 import time
 from collections import defaultdict
 
@@ -146,7 +147,7 @@ class SchedulerThread(threading.Thread):
         """
         if name in self._queues:
             raise KeyError("A queue with name %s already exists.", name)
-        self._queues[name] = queue.Queue(max_size)
+        self._queues[name] = Queue(max_size)
         self.scheduled_by_queue[name] = []
 
     def remove_queue(self, name):

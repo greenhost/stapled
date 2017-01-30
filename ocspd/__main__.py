@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 This is the module that parses your command line arguments and then starts
 the OCSP Staple daemon, which searches your certificate directories and
@@ -24,10 +25,10 @@ bunch of threads for:
 
 If the ``-d`` argument is specified, this module is responsible for starting
 the application in daemonised mode, and disconnecting the process from the
-user's process hierarchy node. In any case, it starts up the :mod:`ocspd.core.daemon`
+user's process hierarchy node. In any case, it starts up the
+:mod:`ocspd.core.daemon`
 module to bootstrap the application.
 """
-
 import argparse
 import logging
 import logging.handlers
@@ -44,6 +45,7 @@ COLOUR_LOGFORMAT = (
     '{lvl}[%(levelname)s]{reset} {msg}%(threadName)+10s/%(name)-16.20s '
     '%(message)s{reset}'
 )
+
 
 def get_cli_arg_parser():
     """
@@ -88,14 +90,17 @@ def get_cli_arg_parser():
         '--verbose',
         action='count',
         default=0,
-        help="Verbose output, repeat to increase verbosity (default: CRITICAL)."
+        help=(
+            "Verbose output, repeat to increase verbosity "
+            "(default: CRITICAL)."
+        )
     )
     parser.add_argument(
         '-d',
         '--daemon',
         action='store_true',
         help=(
-            "Daemonise the process, release from shell and process group, run"
+            "Daemonise the process, release from shell and process group, run "
             "under new process group."
         )
     )
@@ -139,8 +144,6 @@ def get_cli_arg_parser():
         '--haproxy-sockets',
         type=str,
         nargs='+',
-        # FIXME: Maybe we want to move this to the documentation and reduce the
-        # size of the help message here.
         help=(
             "Sockets to connect to HAProxy. Each directory you pass with "
             "the ``directory`` argument, should have its own haproxy socket. "
@@ -175,11 +178,12 @@ def get_cli_arg_parser():
     )
     return parser
 
+
 def init():
     """
-    Configures logging and log level, then calls :func:`ocspd.core.daemon.run()`
-    either in daemonised mode if the ``-d`` argument was supplied, or in the
-    current context if ``-d`` wasn't supplied.
+    Configures logging and log level, then calls
+    :func:`ocspd.core.daemon.run()` either in daemonised mode if the ``-d``
+    argument was supplied, or in the current context if ``-d`` wasn't supplied.
     """
     log_file_handles = []
     parser = get_cli_arg_parser()
@@ -217,4 +221,5 @@ def init():
         logger.info("Running interactively..")
         ocspd.core.daemon.run(args)
 
-init()
+if __name__ == '__main__':
+    init()
