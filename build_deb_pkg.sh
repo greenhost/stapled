@@ -11,7 +11,7 @@
 ###############################################################################
 
 set -x
-DEPS="asn1crypto oscrypto ocspbuilder certvalidator"
+REPOS="wbond/asn1crypto wbond/oscrypto wbond/ocspbuilder wbond/certvalidator jlhutch/pylru"
 BUILD=$(pwd)/build
 DEP_BUILD=$(pwd)/dep_build/
 
@@ -40,8 +40,9 @@ cd "$DEP_BUILD"
 virtualenv ./env
 source ./env/bin/activate
 
-for dep in $DEPS; do
-    git clone "https://github.com/wbond/${dep}"
+for rep in $REPOS; do
+    dep=$(echo $rep | cut -d/ -f2)
+    git clone "https://github.com/${rep}"
     cd "$dep"
     pip uninstall $dep
     pip install -e ./

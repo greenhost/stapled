@@ -93,8 +93,8 @@ class OCSPAdder(threading.Thread):
             self.socks[key].connect(socket_path)
         except FileNotFoundError as exc:
             raise ocspd.core.exceptions.SocketError(
-                "Could not initialize OCSPAdder with socket {}: {}",
-                socket_path, exc)
+                "Could not initialize OCSPAdder with socket {}: {}".format(
+                    socket_path, exc))
         result = self.send(key, "prompt")
         LOG.debug("Opened prompt with result: '%s'", result)
 
@@ -138,7 +138,7 @@ class OCSPAdder(threading.Thread):
         response = self.send(directory, command)
         if response != 'OCSP Response updated!':
             raise ocspd.core.exceptions.OCSPAdderBadResponse(
-                "Bad HAProxy response {}", response)
+                "Bad HAProxy response: {}".format(response))
 
     def send(self, socket_key, command):
         """

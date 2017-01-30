@@ -4,10 +4,9 @@ This module defines the :class:`ocspd.core.certmodel.CertModel` class which is
 used to keep track of certificates that are found by the
 :class:`ocspd.core.certfinder.CertFinderThread`, then parsed by the
 :class:`ocspd.core.certparser.CertParserThread`, an OCSP request is generated
-by the
-:class:`ocspd.core.ocsprenewer.OCSPRenewer`, a response from an OCSP server is
-returned. All data generated and returned like the request and the response are
-stored in the context.
+by the :class:`ocspd.core.ocsprenewer.OCSPRenewer`, a response from an OCSP
+server is returned. All data generated and returned like the request and the
+response are stored in the context.
 
 The following logic is contained within the context class:
 
