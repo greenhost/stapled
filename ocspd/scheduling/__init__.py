@@ -24,10 +24,7 @@ This module defines the following objects:
 import threading
 import logging
 import datetime
-try:
-    from Queue import Queue  # Python2.7
-except ImportError:
-    from queue import Queue  # Python3
+from queue import Queue
 import time
 from collections import defaultdict
 

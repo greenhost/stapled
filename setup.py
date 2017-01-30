@@ -14,10 +14,13 @@ install_requires = [
     'oscrypto>=0.17.2',
     'python-daemon==1.5.5',
     'requests>=2.4.3',
+    'future>=0.16.0',
+    'pylru>=1.0.9'
 ]
 
 docs_extras = [
     'Sphinx>=1.0',  # autodoc_member_order = 'bysource', autodoc_default_flags
+    'sphinx-argparse>=0.1.15',
     'sphinx_rtd_theme',
 ]
 

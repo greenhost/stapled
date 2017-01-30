@@ -34,12 +34,9 @@ from ocspd.core.exceptions import CertValidationError
 from ocspd.util.ocsp import OCSPResponseParser
 from ocspd.util.functions import pretty_base64
 from pylru import lrudecorator
-
-try:
-    from urllib.parse import urlparse  # Python3
-except ImportError:
-    from urlparse import urlparse  # Python2.7
-
+from future.standard_library import hooks
+with hooks():
+    from urllib.parse import urlparse
 
 LOG = logging.getLogger(__name__)
 
