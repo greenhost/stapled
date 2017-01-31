@@ -13,5 +13,5 @@ ExecStart=/usr/bin/ocspd
 TimeoutStopSec=30s
 Restart=on-failure
 WorkingDirectory=/var/log/ocspd/
-User=haproxy
-Group=haproxy
+#User=haproxy
+#Group=haproxy

@@ -191,6 +191,7 @@ def get_cli_arg_parser():
     parser.add(
         '-d',
         '--directories',
+        required=True,
         type=str,
         nargs='+',
         help=(

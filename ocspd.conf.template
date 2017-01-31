@@ -28,7 +28,7 @@ directories=/etc/ssl/private/
 # Detach from the current process tree and run in the background, no output
 # will be sent to stdout, when you end your shell's session, it will continue
 # in the background.
-# daemon=False
+daemon=True
 
 # Log to syslog
 syslog=True

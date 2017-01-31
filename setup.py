@@ -14,7 +14,7 @@ install_requires = [
     'oscrypto>=0.17.2',
     'python-daemon==1.5.5',
     'requests>=2.4.3',
-    'future>=0.16.0',
+    'future>=0.15.0',
     'pylru>=1.0.9'
 ]
 
