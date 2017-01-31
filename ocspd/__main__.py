@@ -128,10 +128,10 @@ def get_cli_arg_parser():
         type=str,
         nargs='?',
         default=None,
-        const="/var/log/ocspd",
-        help=("Enable logging to '/var/log/ocspd'. It is possible to supply "
+        const=ocspd.core.excepthandler.LOG_DIR,
+        help=("Enable logging to '{}'. It is possible to supply "
               "another directory. Traces of unexpected exceptions are placed "
-              "here as well.")
+              "here as well.".format(ocspd.core.excepthandler.LOG_DIR))
     )
     parser.add_argument(
         '--syslog',
