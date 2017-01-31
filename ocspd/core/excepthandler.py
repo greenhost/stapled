@@ -36,6 +36,7 @@ import datetime
 import logging
 import os
 import traceback
+import configargparse
 try:
     from urllib2 import URLError  # Python2.7
 except ImportError:
@@ -57,7 +58,7 @@ except NameError:
 LOG = logging.getLogger(__name__)
 
 # Might be overwritten by :mod:`ocspd.__main__`
-LOG_DIR = "/var/log/ocspd"
+LOG_DIR = configargparse.getArgumentParser().parse_known_args().logdir
 
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
 
