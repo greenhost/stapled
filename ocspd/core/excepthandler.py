@@ -15,9 +15,9 @@ handler will catch it, generate a stack trace and save if in a file in the
 current working directory. A log entry will be created explaining that there
 was an exception, inform about the location of the stack trace dump and that
 the context will be dropped. It will also kindly request the administrator to
-contact the developers so the exception can be caught in a future relaese which
+contact the developers so the exception can be caught in a future release which
 will probably increase stability and might result in a retry rather than just
-droppingt the context.
+dropping the context.
 
 Dropping the context effectively means that a retry won't occur and since the
 context will have no more references, it will be garbage collected.
@@ -36,10 +36,6 @@ import datetime
 import logging
 import os
 import traceback
-try:
-    from urllib2 import URLError  # Python2.7
-except ImportError:
-    from urllib.error import URLError  # Python3
 import requests.exceptions
 from ocspd.core.exceptions import OCSPBadResponse
 from ocspd.core.exceptions import RenewalRequirementMissing
@@ -48,6 +44,9 @@ from ocspd.core.exceptions import CertParsingError
 from ocspd.core.exceptions import CertValidationError
 from ocspd.core.exceptions import OCSPAdderBadResponse
 from ocspd.core.exceptions import SocketError
+from future.standard_library import hooks
+with hooks():
+    from urllib.error import URLError
 try:
     _ = BrokenPipeError
 except NameError:
