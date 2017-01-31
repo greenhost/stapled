@@ -25,7 +25,9 @@ files need to be indexed again (thus files are considered "new").
 import threading
 import time
 import logging
+import re
 import os
+from pylru import lrudecorator
 import ocspd
 from ocspd.core.excepthandler import ocsp_except_handle
 from ocspd.core.taskcontext import OCSPTaskContext
@@ -71,6 +73,7 @@ class CertFinderThread(threading.Thread):
             'file_extensions', ocspd.FILE_EXTENSIONS_DEFAULT
         )
         self.last_refresh = None
+        self.ignore = kwargs.pop('ignore', [])
 
         assert self.models is not None, \
             "You need to pass a dict to hold the certificate model cache."
@@ -152,6 +155,13 @@ class CertFinderThread(threading.Thread):
                     filename = os.path.join(path, filename)
                     if filename in self.models:
                         continue
+                    if self.check_ignore(filename):
+                        LOG.debug(
+                            "Ignoring file %s, because it's on the ignore "
+                            "list.",
+                            filename
+                        )
+                        continue
                     model = CertModel(filename)
                     # Remember the model so we can compare the file later to
                     # see if it changed.
@@ -229,3 +239,54 @@ class CertFinderThread(threading.Thread):
             context = OCSPTaskContext(
                 task_name="parse", model=new_model, sched_time=None)
             self.scheduler.add_task(context)
+
+    @lrudecorator(10000)
+    def check_ignore(self, path):
+        """
+        Check if a file path matches any pattern in the ignore list.
+
+        :param str path: Path to a file to match.
+        """
+        for pattern in self.ignore:
+            regex = self.compile_pattern(pattern)
+            if regex.match(path):
+                return True
+        return False
+
+    @staticmethod
+    @lrudecorator(100)
+    def compile_pattern(pattern):
+        """
+        Compile a glob pattern and return a compiled regex object.
+
+        :param str pattern: Glob pattern.
+        """
+        # Absolute or relative path
+        if not pattern.startswith(os.sep) or pattern.startswith("*"):
+            begin_regex = "^.*"  # relative
+        else:
+            begin_regex = "^{}".format(os.sep)  # absolute
+
+        if pattern.endswith(os.sep) or pattern.endswith("*"):
+            end_regex = ".*$"  # anything below this path matches
+        else:
+            end_regex = "$"  # only exactly this file name matches
+
+        pattern = pattern.lstrip("*{}".format(os.sep))
+        pattern = pattern.rstrip("*")
+
+        # Escape some characters
+        middle_regex = re.escape(pattern)
+        # Question marks replace any 1 character
+        middle_regex = middle_regex.replace("\?", ".")
+        # Double stars replace anything including "/" lazily
+        middle_regex = middle_regex.replace("\*\*", ".*?/?".format(os.sep))
+        # Single star replaces anthing but "/"
+        middle_regex = middle_regex.replace("\*", "[^{}]*".format(os.sep))
+
+        regex = "{}{}{}".format(
+            begin_regex,
+            middle_regex,
+            end_regex
+        )
+        return re.compile(regex, re.IGNORECASE)

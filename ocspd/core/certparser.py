@@ -56,7 +56,6 @@ class CertParserThread(threading.Thread):
         """
         Start the certificate parser thread.
         """
-
         LOG.info("Started a parser thread.")
         while True:
             context = self.scheduler.get_task("parse")
