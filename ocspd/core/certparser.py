@@ -10,6 +10,7 @@ processed ASAP.
 import threading
 import logging
 import datetime
+import queue
 from ocspd.core.excepthandler import ocsp_except_handle
 from ocspd.core.taskcontext import OCSPTaskContext
 
@@ -36,6 +37,7 @@ class CertParserThread(threading.Thread):
             **(required)**.
         :kwarg bool no_recycle: Don't recycle existing staples (default=False)
         """
+        self.stop = False
         self.models = kwargs.pop('models', None)
         self.minimum_validity = kwargs.pop('minimum_validity', None)
         self.scheduler = kwargs.pop('scheduler', None)
@@ -57,15 +59,19 @@ class CertParserThread(threading.Thread):
         Start the certificate parser thread.
         """
         LOG.info("Started a parser thread.")
-        while True:
-            context = self.scheduler.get_task("parse")
-            with ocsp_except_handle(context):
-                self.parse_certificate(context.model)
-            # If the parsing action fails, the error handler will reschedule it
-            # if it makes sense, if not a log message will be emitted that it
-            # will be ignored, when the certificate file is changed the finder
-            # will schedule it to be parsed again.
-            self.scheduler.task_done("parse")
+        while not self.stop:
+            try:
+                context = self.scheduler.get_task("parse", timeout=0.25)
+                with ocsp_except_handle(context):
+                    self.parse_certificate(context.model)
+                # If the parsing action fails, the error handler will
+                # reschedule it if it makes sense, if not a log message will be
+                # emitted that it  will be ignored, when the certificate file
+                # is changed the finder will schedule it to be parsed again.
+                self.scheduler.task_done("parse")
+            except queue.Empty:
+                pass
+        LOG.debug("Goodbye cruel world..")
 
     def parse_certificate(self, model):
         """

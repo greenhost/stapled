@@ -60,6 +60,7 @@ class OCSPAdder(threading.Thread):
         :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
             where we can get "haproxy-adder" tasks from **(required)**.
         """
+        self.stop = False
         LOG.debug("Starting OCSPAdder thread")
         self.scheduler = kwargs.pop('scheduler', None)
         self.socket_paths = kwargs.pop('socket_paths', None)
@@ -113,7 +114,7 @@ class OCSPAdder(threading.Thread):
         """
         LOG.info("Started an OCSP adder thread.")
 
-        while True:
+        while not self.stop:
             context = self.scheduler.get_task(self.TASK_NAME)
             model = context.model
             LOG.debug("Sending staple for cert:'%s'", model)
@@ -122,6 +123,7 @@ class OCSPAdder(threading.Thread):
             with ocsp_except_handle(context):
                 self.add_staple(model)
             self.scheduler.task_done(self.TASK_NAME)
+        LOG.debug("Goodbye cruel world..")
 
     def add_staple(self, model):
         """

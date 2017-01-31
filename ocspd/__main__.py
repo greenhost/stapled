@@ -233,10 +233,10 @@ def init():
     if args.daemon:
         logger.info("Daemonising now..")
         with daemon.DaemonContext(files_preserve=log_file_handles):
-            ocspd.core.daemon.run(args)
+            ocspd.core.daemon.OCSPDaemon(args)
     else:
         logger.info("Running interactively..")
-        ocspd.core.daemon.run(args)
+        ocspd.core.daemon.OCSPDaemon(args)
 
 if __name__ == '__main__':
     init()

@@ -63,6 +63,7 @@ class CertFinderThread(threading.Thread):
         :kwarg array file_extensions: An array containing the file extensions
             of file types to check for certificate content **(optional)**.
         """
+        self.stop = False
         self.models = kwargs.pop('models', None)
         self.directories = kwargs.pop('directories', None)
         self.scheduler = kwargs.pop('scheduler', None)
@@ -93,7 +94,7 @@ class CertFinderThread(threading.Thread):
 
         LOG.info("Scanning directories: %s", ", ".join(self.directories))
 
-        while True:
+        while not self.stop:
             # Catch any exceptions within this context to protect the thread.
             with ocsp_except_handle():
                 self.refresh()
@@ -122,7 +123,13 @@ class CertFinderThread(threading.Thread):
                         since_last,
                         self.refresh_interval
                     )
-                    time.sleep(self.refresh_interval - since_last)
+                    sleep_time = self.refresh_interval - since_last
+                    while sleep_time > 0:
+                        if self.stop:
+                            break
+                        time.sleep(1)
+                        sleep_time = sleep_time - 1
+        LOG.debug("Goodbye cruel world..")
 
     def refresh(self):
         """
