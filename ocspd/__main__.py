@@ -176,6 +176,23 @@ def get_cli_arg_parser():
         default=False,
         help="Don't re-use existing staples, force renewal."
     )
+    parser.add_argument(
+        '-i',
+        '--ignore',
+        type=str,
+        nargs='+',
+        help=(
+            "Ignore files matching this pattern. "
+            "Multiple paths may be specified separated by a space. "
+            "You can escape the pattern to let the daemon evaluate it "
+            "instead of letting your shell evaluate it. You can use globbing "
+            "patterns with ``*`` or ``?``. Relative paths are also allowed."
+            "If the path starts with ``/`` it will be considered absolute if "
+            "it does not, the pattern will be compared to the last part of "
+            "found files."
+        )
+    )
+
     return parser
 
 
