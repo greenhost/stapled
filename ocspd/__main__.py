@@ -29,7 +29,7 @@ user's process hierarchy node. In any case, it starts up the
 :mod:`ocspd.core.daemon`
 module to bootstrap the application.
 """
-import argparse
+import configargparse
 import logging
 import logging.handlers
 import os
@@ -56,10 +56,11 @@ def get_cli_arg_parser():
     :return: Argument parser with all of ocspd's options configured
     :rtype: argparse.ArgumentParser
     """
-    parser = argparse.ArgumentParser(
+    parser = configargparse.ArgParser(
+        default_config_files=ocspd.DEFAULT_CONFIG_FILE_LOCATIONS,
         description=(
             "Update OCSP staples from CA\'s and store the result so "
-            "HAProxy can serve them to clients."
+            "HAProxy can serve them to clients.\n"
         ),
         conflict_handler='resolve',
         epilog=(
@@ -70,7 +71,19 @@ def get_cli_arg_parser():
             "OCSP staples) to serve the OCSP staples manually."
         )
     )
-    parser.add_argument(
+    parser.add(
+        '-c',
+        '--config',
+        required=False,
+        is_config_file=True,
+        help=(
+            "Override the default config file locations "
+            "(default={})".format(
+                ", ".join(ocspd.DEFAULT_CONFIG_FILE_LOCATIONS)
+            )
+        )
+    )
+    parser.add(
         '--minimum-validity',
         type=int,
         default=7200,
@@ -79,25 +92,33 @@ def get_cli_arg_parser():
             "attempt will be made to get a new, valid staple (default: 7200)."
         )
     )
-    parser.add_argument(
+    parser.add(
         '-t',
         '--renewal-threads',
         type=int,
         default=2,
-        help="Amount of threads to run for renewing staples."
+        help="Amount of threads to run for renewing staples. (default=2)"
     )
-    parser.add_argument(
-        '-v',
-        '--verbose',
-        action='count',
+    parser.add(
+        '--verbosity',
+        type=int,
         default=0,
         help=(
-            "Verbose output, repeat to increase verbosity "
-            "(default: CRITICAL)."
+            "Verbose output argument should be an integer between 0 and 4, can"
+            "be overridden by the ``-v`` argument."
         )
     )
-    parser.add_argument(
-        '-d',
+    parser.add(
+        '-v',
+        action='count',
+        dest="verbose",
+        help=(
+            "Verbose output, repeat to increase verbosity, overrides the "
+            "``verbosity`` argument if provided "
+        )
+    )
+    parser.add(
+        '-D',
         '--daemon',
         action='store_true',
         help=(
@@ -105,7 +126,7 @@ def get_cli_arg_parser():
             "under new process group."
         )
     )
-    parser.add_argument(
+    parser.add(
         '--file-extensions',
         type=str,
         default=ocspd.FILE_EXTENSIONS_DEFAULT,
@@ -114,7 +135,7 @@ def get_cli_arg_parser():
             "list (default: crt,pem,cer)"
         )
     )
-    parser.add_argument(
+    parser.add(
         '-r',
         '--refresh-interval',
         type=int,
@@ -122,30 +143,30 @@ def get_cli_arg_parser():
         help="Minimum time to wait between parsing cert dirs and "
         "certificates (default=60)."
     )
-    parser.add_argument(
+    parser.add(
         '-l',
         '--logdir',
         type=str,
         nargs='?',
         default=None,
-        const=ocspd.core.excepthandler.LOG_DIR,
+        const=ocspd.LOG_DIR,
         help=("Enable logging to '{}'. It is possible to supply "
               "another directory. Traces of unexpected exceptions are placed "
-              "here as well.".format(ocspd.core.excepthandler.LOG_DIR))
+              "here as well.".format(ocspd.LOG_DIR))
     )
-    parser.add_argument(
+    parser.add(
         '--syslog',
         action='store_true',
         default=False,
         help="Output to syslog."
     )
-    parser.add_argument(
+    parser.add(
         '-q',
         '--quiet',
         action='store_true',
         help="Don't print messages to stdout"
     )
-    parser.add_argument(
+    parser.add(
         '-s',
         '--haproxy-sockets',
         type=str,
@@ -167,8 +188,9 @@ def get_cli_arg_parser():
             "/etc/haproxy2.sock``"
         )
     )
-    parser.add_argument(
-        'directories',
+    parser.add(
+        '-d',
+        '--directories',
         type=str,
         nargs='+',
         help=(
@@ -176,13 +198,13 @@ def get_cli_arg_parser():
             "Multiple directories may be specified separated by a space. "
         )
     )
-    parser.add_argument(
+    parser.add(
         '--no-recycle',
         action='store_true',
         default=False,
         help="Don't re-use existing staples, force renewal."
     )
-    parser.add_argument(
+    parser.add(
         '-i',
         '--ignore',
         type=str,
@@ -212,7 +234,8 @@ def init():
     parser = get_cli_arg_parser()
     args = parser.parse_args()
     args.directories = [os.path.abspath(d) for d in args.directories]
-    log_level = max(min(50 - args.verbose * 10, 50), 10)
+    verbose = args.verbose or args.verbosity
+    log_level = max(min(50 - verbose * 10, 50), 10)
     logging.basicConfig()
     logger = logging.getLogger('ocspd')
     logger.propagate = False

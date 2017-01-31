@@ -15,9 +15,9 @@ handler will catch it, generate a stack trace and save if in a file in the
 current working directory. A log entry will be created explaining that there
 was an exception, inform about the location of the stack trace dump and that
 the context will be dropped. It will also kindly request the administrator to
-contact the developers so the exception can be caught in a future relaese which
+contact the developers so the exception can be caught in a future release which
 will probably increase stability and might result in a retry rather than just
-droppingt the context.
+dropping the context.
 
 Dropping the context effectively means that a retry won't occur and since the
 context will have no more references, it will be garbage collected.
@@ -57,8 +57,9 @@ except NameError:
 
 LOG = logging.getLogger(__name__)
 
-# Might be overwritten by :mod:`ocspd.__main__`
-LOG_DIR = configargparse.getArgumentParser().parse_known_args().logdir
+# LOG_DIR = configargparse.getArgumentParser().parse_known_args().logdir
+# FIXME: I am a hardcoded string, therefore I'm bad.
+LOG_DIR = "/var/log/ocspd/"
 
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
 
