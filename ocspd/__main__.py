@@ -127,8 +127,8 @@ def get_cli_arg_parser():
         '--logdir',
         type=str,
         nargs='?',
-        const=None,
-        default="/var/log/ocspd",
+        default=None,
+        const="/var/log/ocspd",
         help=("Enable logging to '/var/log/ocspd'. It is possible to supply "
               "another directory. Traces of unexpected exceptions are placed "
               "here as well.")
