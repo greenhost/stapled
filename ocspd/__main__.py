@@ -36,6 +36,7 @@ import os
 import daemon
 import ocspd
 import ocspd.core.daemon
+import ocspd.core.excepthandler
 from ocspd.colourlog import ColourFormatter
 
 #: :attr:`logging.format` format string for log files and syslog
@@ -123,9 +124,14 @@ def get_cli_arg_parser():
     )
     parser.add_argument(
         '-l',
-        '--logfile',
+        '--logdir',
         type=str,
-        help="File to log output to."
+        nargs='?',
+        default=None,
+        const=ocspd.core.excepthandler.LOG_DIR,
+        help=("Enable logging to '{}'. It is possible to supply "
+              "another directory. Traces of unexpected exceptions are placed "
+              "here as well.".format(ocspd.core.excepthandler.LOG_DIR))
     )
     parser.add_argument(
         '--syslog',
@@ -219,12 +225,14 @@ def init():
         console_handler.setLevel(log_level)
         console_handler.setFormatter(ColourFormatter(COLOUR_LOGFORMAT))
         logger.addHandler(console_handler)
-    if args.logfile:
-        file_handler = logging.FileHandler(args.logfile)
+    if args.logdir:
+        file_handler = logging.FileHandler(
+            os.path.join(args.logdir, 'ocspd.log'))
         file_handler.setLevel(log_level)
         file_handler.setFormatter(logging.Formatter(LOGFORMAT))
         logger.addHandler(file_handler)
         log_file_handles.append(file_handler.stream)
+        ocspd.core.excepthandler.LOG_DIR = args.logdir
     if args.syslog:
         syslog_handler = logging.handlers.SysLogHandler()
         syslog_handler.setLevel(log_level)

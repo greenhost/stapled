@@ -55,6 +55,10 @@ except NameError:
     BrokenPipeError = socket.error
 
 LOG = logging.getLogger(__name__)
+
+# Might be overwritten by :mod:`ocspd.__main__`
+LOG_DIR = "/var/log/ocspd"
+
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
 
 
@@ -203,7 +207,7 @@ def dump_stack_trace(ctx, exc):
     may make the directory writeable.
     """
     trace_file = STACK_TRACE_FILENAME.format(datetime.datetime.now())
-    trace_file = os.path.join(os.getcwd(), trace_file)
+    trace_file = os.path.join(LOG_DIR, trace_file)
     try:
         with open(trace_file, "w") as file_handle:
             traceback.print_exc(file=file_handle)
