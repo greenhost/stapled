@@ -27,11 +27,11 @@ directories=/etc/ssl/private/
 
 # Detach from the current process tree and run in the background, no output
 # will be sent to stdout, when you end your shell's session, it will continue
-# in the background.
-daemon=True
+# in the background. Remove or comment this if you do not want that.
+daemon
 
-# Log to syslog
-syslog=True
+# Log to syslog. Remove or comment this if you do not want that
+syslog
 
 # Log to ocspd.log either in the default directory by setting this to True or
 # to a directory of your choosing by setting it to a path.
@@ -67,4 +67,4 @@ syslog=True
 # Don't output anything to stdout, can be used together with `logdir=true`
 # and/or `syslog=true` to prevent output on stdout while logging the set
 # verbosity level to a file or syslog.
-# quiet=False
+# quiet
