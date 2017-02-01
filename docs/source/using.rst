@@ -66,7 +66,7 @@ the `build` directory.
 .. code-block:: bash
 
     # Install available dependencies
-    apt install python-future python-all
+    apt install python-future python-all python-configargparse
     # Download remaining dependencies and convert them to debian packages
     ./build_deb_pkg.sh
     # Install all packages

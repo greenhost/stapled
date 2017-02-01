@@ -2,9 +2,14 @@
 """
 Python setuptools script for ``ocspd`` application.
 """
+import os
+import shutil
 from setuptools import setup
 from setuptools import find_packages
+from setuptools.command.install import install
 # pylint: disable=invalid-name
+# Disable superfluous-parens, because we want py3 compatibility
+# pylint: disable=superfluous-parens
 
 version = '0.1'
 
@@ -12,10 +17,11 @@ install_requires = [
     'certvalidator>=0.11.1',
     'ocspbuilder>=0.10.2',
     'oscrypto>=0.17.2',
-    'python-daemon==1.5.5',
+    'python-daemon>=2',
     'requests>=2.4.3',
-    'future>=0.16.0',
-    'pylru>=1.0.9'
+    'future>=0.15.0',
+    'pylru>=1.0.9',
+    'configargparse>=0.10.0',
 ]
 
 docs_extras = [
@@ -28,6 +34,51 @@ long_description = (
     "Update OCSP staples from CA's and store the result so "
     "they can be served to clients."
 )
+
+
+class CustomInstallCommand(install):
+    """
+    Installs systemd service to /lib/systemd/system/ocspd.service. Note that
+    this is not installed when installing with --editable or setup.py develop.
+    """
+
+    SERVICE_FILENAME = 'ocspd.service'
+    SERVICE_FILE = os.path.join(os.getcwd(), 'scripts', SERVICE_FILENAME)
+    SERVICE_DESTINATION_DIR = os.path.join('/lib', 'systemd', 'system')
+    CREATE_DIRS = [
+        SERVICE_DESTINATION_DIR,
+        os.path.join('/etc', 'ocspd'),
+        os.path.join('/var', 'log', 'ocspd'),
+    ]
+
+    def run(self):
+        """
+        Installs and then copies the service file to the systemd directory
+        """
+        install.run(self)
+        service_dest = os.path.join(
+            self.SERVICE_DESTINATION_DIR,
+            self.SERVICE_FILENAME)
+        print("Creating needed directories")
+        for directory in self.CREATE_DIRS:
+            if not os.path.exists(directory):
+                try:
+                    os.makedirs(directory)
+                except OSError as exc:
+                    if exc.errno == 13:
+                        print("WARNING! Failed to create directory '{}'. This "
+                              "might cause problems.".format(directory))
+                    else:
+                        raise
+        print("Installing ocspd.service")
+        try:
+            shutil.copy(self.SERVICE_FILE, service_dest)
+        except IOError as exc:
+            if exc.errno == 13:
+                print("WARNING! systemd service was not installed due to "
+                      "permission problems")
+            else:
+                raise
 
 setup(
     name='ocspd',
@@ -67,5 +118,6 @@ setup(
         'console_scripts': [
             'ocspd = ocspd.__main__:init'
         ]
-    }
+    },
+    cmdclass={'install': CustomInstallCommand},
 )
