@@ -57,8 +57,8 @@ except NameError:
 
 LOG = logging.getLogger(__name__)
 
-# LOG_DIR = configargparse.getArgumentParser().parse_known_args().logdir
-# FIXME: I am a hardcoded string, therefore I'm bad.
+#: This is a global variable that is overridden by ocspd.__main__ with
+#: the 
 LOG_DIR = "/var/log/ocspd/"
 
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
