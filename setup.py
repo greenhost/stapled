@@ -8,6 +8,8 @@ from setuptools import setup
 from setuptools import find_packages
 from setuptools.command.install import install
 # pylint: disable=invalid-name
+# Disable superfluous-parens, because we want py3 compatibility
+# pylint: disable=superfluous-parens
 
 version = '0.1'
 
@@ -42,18 +44,32 @@ class CustomInstallCommand(install):
     SERVICE_FILENAME = 'ocspd.service'
     SERVICE_FILE = os.path.join(os.getcwd(), 'scripts', SERVICE_FILENAME)
     SERVICE_DESTINATION_DIR = os.path.join('/lib', 'systemd', 'system')
+    CREATE_DIRS = [
+        SERVICE_DESTINATION_DIR,
+        os.path.join('/etc', 'ocspd'),
+        os.path.join('/var', 'log', 'ocspd'),
+    ]
 
     def run(self):
         """
         Installs and then copies the service file to the systemd directory
         """
-        if not os.path.exists(self.SERVICE_DESTINATION_DIR):
-            os.makedirs(self.SERVICE_DESTINATION_DIR)
         install.run(self)
-        print("Installing ocspd.service")
         service_dest = os.path.join(
             self.SERVICE_DESTINATION_DIR,
             self.SERVICE_FILENAME)
+        print("Creating needed directories")
+        for directory in self.CREATE_DIRS:
+            if not os.path.exists(directory):
+                try:
+                    os.makedirs(directory)
+                except OSError as exc:
+                    if exc.errno == 13:
+                        print("WARNING! Failed to create directory '{}'. This "
+                              "might cause problems.".format(directory))
+                    else:
+                        raise
+        print("Installing ocspd.service")
         try:
             shutil.copy(self.SERVICE_FILE, service_dest)
         except IOError as exc:
