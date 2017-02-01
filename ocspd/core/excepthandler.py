@@ -36,6 +36,7 @@ import datetime
 import logging
 import os
 import traceback
+import configargparse
 import requests.exceptions
 from ocspd.core.exceptions import OCSPBadResponse
 from ocspd.core.exceptions import RenewalRequirementMissing
@@ -55,8 +56,9 @@ except NameError:
 
 LOG = logging.getLogger(__name__)
 
-# Might be overwritten by :mod:`ocspd.__main__`
-LOG_DIR = "/var/log/ocspd"
+#: This is a global variable that is overridden by ocspd.__main__ with
+#: the 
+LOG_DIR = "/var/log/ocspd/"
 
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
 
