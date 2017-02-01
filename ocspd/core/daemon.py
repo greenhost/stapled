@@ -50,6 +50,7 @@ This module bootstraps the ocspd process by starting threads for:
 import logging
 import time
 import threading
+import signal
 from ocspd.core.certfinder import CertFinderThread
 from ocspd.core.certparser import CertParserThread
 from ocspd.core.ocsprenewer import OCSPRenewerThread
@@ -86,6 +87,11 @@ class OCSPDaemon(object):
         self.no_recycle = args.no_recycle
         self.model_cache = {}
         self.all_threads = []
+        self.stop = False
+
+        # Listen to SIGINT and SIGTERM
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
 
         LOG.info(
             "Starting OCSP Stapling daemon, finding files of types: %s with "
@@ -112,6 +118,13 @@ class OCSPDaemon(object):
         self.finder = self.start_finder_thread()
 
         self.monitor_threads()
+
+    def exit_gracefully(self, signum, _frame):
+        """
+        Sets self.stop so the main thread stops
+        """
+        LOG.info("Exiting with signal number %d", signum)
+        self.stop = True
 
     def start_scheduler_thread(self):
         """
@@ -179,48 +192,48 @@ class OCSPDaemon(object):
         MAX_RESTART_THREADS limit is reached. Wait for a KeyBoardInterrupt,
         when it comes, tell all threads to stop and wait for them to stop.
         """
-        try:
-            while True:
-                restart = []
-                # Find crashed threads
-                for key, thread in enumerate(self.all_threads):
-                    if not thread['thread'].is_alive():
-                        restart.append(key)
-                # Respawn crashed threads
-                for key in restart:
-                    thread = self.all_threads.pop(key)
-                    if thread['restarted'] < MAX_RESTART_THREADS:
-                        LOG.error(
-                            "Thread: %s, type: %s was found dead, spawning a "
-                            "new one now..",
-                            thread['name'],
-                            thread['object']
-                        )
-                        self.__spawn_thread(
-                            name=thread['name'],
-                            thread_object=thread['object'],
-                            restarted=thread['restarted']+1,
-                            **thread['kwargs']
-                        )
-                    else:
-                        LOG.critical(
-                            "Thread: %s, type: %s was found dead, it died %s "
-                            "times already, will not respawn again.",
-                            thread['name'],
-                            thread['object'],
-                            thread['restarted']
-                        )
-                time.sleep(0.25)
-        except KeyboardInterrupt:
-            LOG.info("Stopping all threads..")
-            for thread in self.all_threads:
-                thread['thread'].stop = True
-            for thread in threading.enumerate():
-                LOG.info("Waiting for thread %s to stop..", thread.name)
-                try:
-                    thread.join()
-                except RuntimeError:
-                    pass  # cannot join current thread
+        while not self.stop:
+            restart = []
+            # Find crashed threads
+            for key, thread in enumerate(self.all_threads):
+                if not thread['thread'].is_alive():
+                    restart.append(key)
+            # Respawn crashed threads
+            for key in restart:
+                thread = self.all_threads.pop(key)
+                if thread['restarted'] < MAX_RESTART_THREADS:
+                    LOG.error(
+                        "Thread: %s, type: %s was found dead, spawning a "
+                        "new one now..",
+                        thread['name'],
+                        thread['object']
+                    )
+                    self.__spawn_thread(
+                        name=thread['name'],
+                        thread_object=thread['object'],
+                        restarted=thread['restarted']+1,
+                        **thread['kwargs']
+                    )
+                else:
+                    LOG.critical(
+                        "Thread: %s, type: %s was found dead, it died %s "
+                        "times already, will not respawn again.",
+                        thread['name'],
+                        thread['object'],
+                        thread['restarted']
+                    )
+            time.sleep(0.25)
+
+        # This code is executed when self.stop is True
+        LOG.info("Stopping all threads..")
+        for thread in self.all_threads:
+            thread['thread'].stop = True
+        for thread in threading.enumerate():
+            LOG.info("Waiting for thread %s to stop..", thread.name)
+            try:
+                thread.join()
+            except RuntimeError:
+                pass  # cannot join current thread
 
     def __spawn_thread(self, name, thread_object, restarted=0, **kwargs):
         """

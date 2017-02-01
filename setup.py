@@ -20,7 +20,8 @@ install_requires = [
     'python-daemon>=2',
     'requests>=2.4.3',
     'future>=0.15.0',
-    'pylru>=1.0.9'
+    'pylru>=1.0.9',
+    'configargparse>=0.10.0',
 ]
 
 docs_extras = [
