@@ -234,6 +234,7 @@ class OCSPDaemon(object):
                 thread.join()
             except RuntimeError:
                 pass  # cannot join current thread
+        LOG.info("Stopping daemon thread")
 
     def __spawn_thread(self, name, thread_object, restarted=0, **kwargs):
         """

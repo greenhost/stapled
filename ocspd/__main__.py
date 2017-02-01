@@ -258,7 +258,7 @@ def init():
         log_file_handles.append(file_handler.stream)
         ocspd.core.excepthandler.LOG_DIR = args.logdir
     if args.syslog:
-        syslog_handler = logging.handlers.SysLogHandler()
+        syslog_handler = logging.handlers.SysLogHandler(address='/dev/log')
         syslog_handler.setLevel(log_level)
         syslog_handler.setFormatter(logging.Formatter(LOGFORMAT))
         logger.addHandler(syslog_handler)
