@@ -115,7 +115,7 @@ class OCSPAdder(threading.Thread):
         LOG.info("Started an OCSP adder thread.")
 
         while not self.stop:
-            context = self.scheduler.get_task(self.TASK_NAME)
+            context = self.scheduler.get_task(self.TASK_NAME, timeout=0.25)
             model = context.model
             LOG.debug("Sending staple for cert:'%s'", model)
 
