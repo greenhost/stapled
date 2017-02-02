@@ -16,17 +16,17 @@ BUILD=$(pwd)/build
 DEP_BUILD=$(pwd)/dep_build/
 
 which py2dsc
-if [ $? -eq 0 ]; then
-    sudo pip install stdeb
+if [ $? -neq 0 ]; then
+    pip install stdeb
 fi
 
 which dh_make
-if [ $? -eq 0 ]; then
+if [ $? -neq 0 ]; then
     sudo apt-get install dh-make
 fi
 
 which fakeroot
-if [ $? -eq 0 ]; then
+if [ $? -neq 0 ]; then
     sudo apt-get install fakeroot
 fi
 
