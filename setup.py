@@ -17,7 +17,7 @@ install_requires = [
     'certvalidator>=0.11.1',
     'ocspbuilder>=0.10.2',
     'oscrypto>=0.17.2',
-    'python-daemon>=2',
+    'python-daemon>=1.5.5',
     'requests>=2.4.3',
     'future>=0.15.0',
     'pylru>=1.0.9',
@@ -42,11 +42,8 @@ class CustomInstallCommand(install):
     this is not installed when installing with --editable or setup.py develop.
     """
 
-    SERVICE_FILENAME = 'ocspd.service'
-    SERVICE_FILE = os.path.join(os.getcwd(), 'scripts', SERVICE_FILENAME)
-    SERVICE_DESTINATION_DIR = os.path.join('/lib', 'systemd', 'system')
     CREATE_DIRS = [
-        SERVICE_DESTINATION_DIR,
+        os.path.join('/lib', 'systemd', 'system'),
         os.path.join('/etc', 'ocspd'),
         os.path.join('/var', 'log', 'ocspd'),
     ]
@@ -56,9 +53,6 @@ class CustomInstallCommand(install):
         Installs and then copies the service file to the systemd directory
         """
         install.run(self)
-        service_dest = os.path.join(
-            self.SERVICE_DESTINATION_DIR,
-            self.SERVICE_FILENAME)
         print("Creating needed directories")
         for directory in self.CREATE_DIRS:
             if not os.path.exists(directory):
@@ -70,15 +64,6 @@ class CustomInstallCommand(install):
                               "might cause problems.".format(directory))
                     else:
                         raise
-        print("Installing ocspd.service")
-        try:
-            shutil.copy(self.SERVICE_FILE, service_dest)
-        except IOError as exc:
-            if exc.errno == 13:
-                print("WARNING! systemd service was not installed due to "
-                      "permission problems")
-            else:
-                raise
 
 setup(
     name='ocspd',
@@ -119,5 +104,6 @@ setup(
             'ocspd = ocspd.__main__:init'
         ]
     },
+    data_files=[('/lib/systemd/system', ['scripts/ocspd.service'])],
     cmdclass={'install': CustomInstallCommand},
 )
