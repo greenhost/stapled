@@ -21,7 +21,6 @@ mccabe==0.6.0
 ocspbuilder==0.10.2
 oscrypto==0.17.2
 pylint==1.6.5
-pylru==1.0.9
 python-daemon==2.1.2
 pytz==2016.10
 requests==2.12.4

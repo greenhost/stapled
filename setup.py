@@ -20,7 +20,6 @@ install_requires = [
     'python-daemon>=1.5.5',
     'requests>=2.4.3',
     'future>=0.15.0',
-    'pylru>=1.0.9',
     'configargparse>=0.10.0',
 ]
 

@@ -27,11 +27,11 @@ import time
 import logging
 import re
 import os
-from pylru import lrudecorator
 import ocspd
 from ocspd.core.excepthandler import ocsp_except_handle
 from ocspd.core.taskcontext import OCSPTaskContext
 from ocspd.core.certmodel import CertModel
+from ocspd.util.cache import cache
 
 LOG = logging.getLogger(__name__)
 
@@ -247,7 +247,7 @@ class CertFinderThread(threading.Thread):
                 task_name="parse", model=new_model, sched_time=None)
             self.scheduler.add_task(context)
 
-    @lrudecorator(10000)
+    @cache(10000)
     def check_ignore(self, path):
         """
         Check if a file path matches any pattern in the ignore list.
@@ -261,7 +261,7 @@ class CertFinderThread(threading.Thread):
         return False
 
     @staticmethod
-    @lrudecorator(100)
+    @cache(100)
     def compile_pattern(pattern):
         """
         Compile a glob pattern and return a compiled regex object.
