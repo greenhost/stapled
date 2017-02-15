@@ -59,7 +59,7 @@ the `build` directory.
     but we may also stop supporting it at any time, in fact this is highly
     likely.
 
-    __You have been warned__, now please don't continue at your own risk or go
+    **You have been warned**, now please don't continue at your own risk or go
     for the PIP install.
 
 
