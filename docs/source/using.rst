@@ -80,12 +80,4 @@ the `build` directory.
     # Install all packages
     dpkg -i build/*.deb
 
-
-Using ocspd
-===========
-
-.. argparse::
-    :module: ocspd.__main__
-    :func: get_cli_arg_parser
-    :prog: ocspd
-    :nodefault:
+.. include:: cli_args.rst
