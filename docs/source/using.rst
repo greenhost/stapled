@@ -5,6 +5,14 @@ Quick start
 .. contents:: Table of Contents
    :local:
 
+
+Documentation
+=============
+
+Read the full documentation on
+`Read the docs <https://readthedocs.org/projects/ocspd/>`_.
+
+
 System requirements
 ===================
 
