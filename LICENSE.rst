@@ -1,5 +1,6 @@
 **ocspd daemon**
 Copyright 2017 Greenhost BV
+
 Licensed Apache Version 2.0
 
 Apache 2.0 License text
@@ -7,7 +8,7 @@ Apache 2.0 License text
 
 Apache License
 Version 2.0, January 2004
-`http://www.apache.org/licenses/`_
+http://www.apache.org/licenses/
 
 TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
