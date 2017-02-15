@@ -5,8 +5,6 @@ Initialise the ocspd module.
 This file only contains some variables we need in the ``ocspd`` name space.
 """
 
-from os import getcwd
-
 #: The extensions the daemon will try to parse as certificate files
 FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
 
@@ -22,7 +20,6 @@ LOG_DIR = "/var/log/ocspd/"
 
 #: Default locations to look for config files in order of importance.
 DEFAULT_CONFIG_FILE_LOCATIONS = [
-    '/etc/ocspd/ocspd.conf',
     '~/.ocspd.conf',
-    '{}/ocspd.conf'.format(getcwd())
+    '/etc/ocspd/ocspd.conf'
 ]

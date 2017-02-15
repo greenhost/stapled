@@ -11,7 +11,7 @@
 ###############################################################################
 
 set -x
-REPOS="wbond/asn1crypto wbond/oscrypto wbond/ocspbuilder wbond/certvalidator jlhutch/pylru"
+REPOS="wbond/asn1crypto wbond/oscrypto wbond/ocspbuilder wbond/certvalidator"
 BUILD=$(pwd)/build
 DEP_BUILD=$(pwd)/dep_build/
 
