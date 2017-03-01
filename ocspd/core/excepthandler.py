@@ -37,7 +37,6 @@ import logging
 import os
 import traceback
 import configargparse
-import requests.exceptions
 from ocspd.core.exceptions import OCSPBadResponse
 from ocspd.core.exceptions import RenewalRequirementMissing
 from ocspd.core.exceptions import CertFileAccessError
@@ -115,44 +114,12 @@ def ocsp_except_handle(ctx=None):
         else:
             LOG.critical(exc)
             ctx.reschedule(43200)  # twice a day
-    except (requests.Timeout,
-            requests.exceptions.ConnectTimeout,
-            requests.exceptions.ReadTimeout,
-            URLError,
-            requests.exceptions.TooManyRedirects,
-            requests.exceptions.HTTPError,
-            requests.ConnectionError,
-            requests.RequestException) as exc:
-        if isinstance(exc, URLError):
-            LOG.error(
-                "Can't open URL: %s, reason: %s",
-                ctx.model.ocsp_urls[ctx.model.url_index],
-                exc.reason
-            )
-        elif isinstance(exc, requests.exceptions.TooManyRedirects):
-            LOG.error(
-                "Too many redirects for %s: %s", ctx.model.filename, exc)
-        elif isinstance(exc, requests.exceptions.HTTPError):
-            LOG.error(
-                "Received bad HTTP status code %s from OCSP server %s for "
-                " %s: %s",
-                exc.response.status_code,
-                ctx.model.ocsp_urls[ctx.model.url_index],
-                ctx.model.filename,
-                exc
-            )
-        elif isinstance(exc, (
-                requests.ConnectionError,
-                requests.RequestException
-            )
-                       ):
-            LOG.error(
-                "Failed to connect to: %s, for %s",
-                ctx.model.ocsp_urls[ctx.model.url_index],
-                ctx.model.filename
-            )
-        else:
-            LOG.error("Timeout error for %s: %s", ctx.model.filename, exc)
+    except (URLError) as exc:
+        LOG.error(
+            "Can't open URL: %s, reason: %s",
+            ctx.model.ocsp_urls[ctx.model.url_index],
+            exc.reason
+        )
 
         # Iterate over the available OCSP URLs while rescheduling
         len_ocsp_urls = len(ctx.model.ocsp_urls)
