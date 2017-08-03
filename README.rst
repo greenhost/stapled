@@ -16,9 +16,10 @@ Read the full documentation on
 System requirements
 ===================
 
-This application requires **Python 3.3+**  and an installed version of **PIP**
-for Python 3. It is also convenient to have ``virtualenv`` installed so you can
-make a separate environment for ocspd's dependencies.
+This application requires **Python 3.3+** or **Python 2.7.9** and an installed
+version of **PIP** for the Python version you are using. It is also convenient
+to have ``virtualenv`` installed so you can make a separate environment for
+ocspd's dependencies.
 
 Installation
 ============
