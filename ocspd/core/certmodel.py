@@ -105,7 +105,7 @@ class CertModel(object):
         try:
             LOG.info("Seeing if %s is still valid..", ocsp_file)
             with open(ocsp_file, "rb") as file_handle:
-                staple = file_handle.read()
+                raw_staple = file_handle.read()
         except (IOError, OSError):
             # Can't access the staple file, game over.
             LOG.error("Can't access %s, let's schedule a renewal.", ocsp_file)
@@ -115,10 +115,11 @@ class CertModel(object):
         # from with the `set ssl ocsp-response [data]` command if a staple file
         # did not already exist at start-up, an empty file seems to fix that.
         # https://www.mail-archive.com/haproxy@formilux.org/msg24750.html
-        if len(staple) == 0:
+        if len(raw_staple) == 0:
             LOG.info("Staple %s is empty, schedule a renewal.", ocsp_file)
             return False
-
+        # Parse the staple
+        staple = asn1crypto.ocsp.OCSPResponse.load(raw_staple)
         staple = OCSPResponseParser(staple)
         now = datetime.datetime.now()
         until = staple.valid_until
@@ -126,7 +127,7 @@ class CertModel(object):
             LOG.info("Staple has expired %s", self.filename)
             return False
         try:
-            self._validate_cert(staple)
+            self._validate_cert(raw_staple)
             LOG.info(
                 "Staple %s expires %s, we can still use it.",
                 ocsp_file,
