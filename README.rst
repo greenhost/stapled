@@ -56,7 +56,7 @@ Upgrading
 If you had previously installed a version of ocspd from github, to upgrade run
 the following:
 
-.. code-block::bash
+.. code-block:: bash
 
     # Deactivate the virtualenv if active
     deactivate
