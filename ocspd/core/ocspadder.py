@@ -7,6 +7,7 @@ import logging
 import socket
 import errno
 import os
+import queue
 from io import StringIO
 from ocspd.core.excepthandler import ocsp_except_handle
 import ocspd.core.exceptions
@@ -60,6 +61,7 @@ class OCSPAdder(threading.Thread):
         :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
             where we can get "haproxy-adder" tasks from **(required)**.
         """
+        self.stop = False
         LOG.debug("Starting OCSPAdder thread")
         self.scheduler = kwargs.pop('scheduler', None)
         self.socket_paths = kwargs.pop('socket_paths', None)
@@ -113,15 +115,19 @@ class OCSPAdder(threading.Thread):
         """
         LOG.info("Started an OCSP adder thread.")
 
-        while True:
-            context = self.scheduler.get_task(self.TASK_NAME)
-            model = context.model
-            LOG.debug("Sending staple for cert:'%s'", model)
+        while not self.stop:
+            try:
+                context = self.scheduler.get_task(self.TASK_NAME, timeout=0.25)
+                model = context.model
+                LOG.debug("Sending staple for cert:'%s'", model)
 
-            # Open the exception handler context to run tasks likely to fail
-            with ocsp_except_handle(context):
-                self.add_staple(model)
-            self.scheduler.task_done(self.TASK_NAME)
+                # Open the exception handler context to run tasks likely to fail
+                with ocsp_except_handle(context):
+                    self.add_staple(model)
+                self.scheduler.task_done(self.TASK_NAME)
+            except queue.Empty:
+                pass
+        LOG.debug("Goodbye cruel world..")
 
     def add_staple(self, model):
         """

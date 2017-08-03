@@ -24,10 +24,7 @@ This module defines the following objects:
 import threading
 import logging
 import datetime
-try:
-    from Queue import Queue  # Python2.7
-except ImportError:
-    from queue import Queue  # Python3
+from queue import Queue
 import time
 from collections import defaultdict
 
@@ -120,6 +117,7 @@ class SchedulerThread(threading.Thread):
         :raises KeyError: If the queue name is already taken (only when queues
             kwarg is used).
         """
+        self.stop = False
         self._queues = {}
 
         #: The schedule contains items indexed by time.
@@ -273,9 +271,10 @@ class SchedulerThread(threading.Thread):
         Start the scheduler thread.
         """
         LOG.info("Started a scheduler thread.")
-        while True:
+        while not self.stop:
             self._run()
             time.sleep(self.sleep)
+        LOG.debug("Goodbye cruel world..")
 
     def run_all(self):
         """

@@ -15,9 +15,9 @@ handler will catch it, generate a stack trace and save if in a file in the
 current working directory. A log entry will be created explaining that there
 was an exception, inform about the location of the stack trace dump and that
 the context will be dropped. It will also kindly request the administrator to
-contact the developers so the exception can be caught in a future relaese which
+contact the developers so the exception can be caught in a future release which
 will probably increase stability and might result in a retry rather than just
-droppingt the context.
+dropping the context.
 
 Dropping the context effectively means that a retry won't occur and since the
 context will have no more references, it will be garbage collected.
@@ -36,10 +36,7 @@ import datetime
 import logging
 import os
 import traceback
-try:
-    from urllib2 import URLError  # Python2.7
-except ImportError:
-    from urllib.error import URLError  # Python3
+import configargparse
 import requests.exceptions
 from ocspd.core.exceptions import OCSPBadResponse
 from ocspd.core.exceptions import RenewalRequirementMissing
@@ -48,6 +45,9 @@ from ocspd.core.exceptions import CertParsingError
 from ocspd.core.exceptions import CertValidationError
 from ocspd.core.exceptions import OCSPAdderBadResponse
 from ocspd.core.exceptions import SocketError
+from future.standard_library import hooks
+with hooks():
+    from urllib.error import URLError
 try:
     _ = BrokenPipeError
 except NameError:
@@ -55,6 +55,11 @@ except NameError:
     BrokenPipeError = socket.error
 
 LOG = logging.getLogger(__name__)
+
+#: This is a global variable that is overridden by ocspd.__main__ with
+#: the command line argument: ``--logdir``
+LOG_DIR = "/var/log/ocspd/"
+
 STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
 
 
@@ -203,7 +208,7 @@ def dump_stack_trace(ctx, exc):
     may make the directory writeable.
     """
     trace_file = STACK_TRACE_FILENAME.format(datetime.datetime.now())
-    trace_file = os.path.join(os.getcwd(), trace_file)
+    trace_file = os.path.join(LOG_DIR, trace_file)
     try:
         with open(trace_file, "w") as file_handle:
             traceback.print_exc(file=file_handle)

@@ -2,9 +2,14 @@
 """
 Python setuptools script for ``ocspd`` application.
 """
+import os
+import shutil
 from setuptools import setup
 from setuptools import find_packages
+from setuptools.command.install import install
 # pylint: disable=invalid-name
+# Disable superfluous-parens, because we want py3 compatibility
+# pylint: disable=superfluous-parens
 
 version = '0.1'
 
@@ -12,12 +17,15 @@ install_requires = [
     'certvalidator>=0.11.1',
     'ocspbuilder>=0.10.2',
     'oscrypto>=0.17.2',
-    'python-daemon==1.5.5',
+    'python-daemon>=1.5.5',
     'requests>=2.4.3',
+    'future>=0.15.0',
+    'configargparse>=0.10.0',
 ]
 
 docs_extras = [
     'Sphinx>=1.0',  # autodoc_member_order = 'bysource', autodoc_default_flags
+    'sphinx-argparse>=0.1.15',
     'sphinx_rtd_theme',
 ]
 
@@ -25,6 +33,36 @@ long_description = (
     "Update OCSP staples from CA's and store the result so "
     "they can be served to clients."
 )
+
+
+class CustomInstallCommand(install):
+    """
+    Installs systemd service to /lib/systemd/system/ocspd.service. Note that
+    this is not installed when installing with --editable or setup.py develop.
+    """
+
+    CREATE_DIRS = [
+        os.path.join('/lib', 'systemd', 'system'),
+        os.path.join('/etc', 'ocspd'),
+        os.path.join('/var', 'log', 'ocspd'),
+    ]
+
+    def run(self):
+        """
+        Installs and then copies the service file to the systemd directory
+        """
+        install.run(self)
+        print("Creating needed directories")
+        for directory in self.CREATE_DIRS:
+            if not os.path.exists(directory):
+                try:
+                    os.makedirs(directory)
+                except OSError as exc:
+                    if exc.errno == 13:
+                        print("WARNING! Failed to create directory '{}'. This "
+                              "might cause problems.".format(directory))
+                    else:
+                        raise
 
 setup(
     name='ocspd',
@@ -64,5 +102,7 @@ setup(
         'console_scripts': [
             'ocspd = ocspd.__main__:init'
         ]
-    }
+    },
+    data_files=[('/lib/systemd/system', ['scripts/ocspd.service'])],
+    cmdclass={'install': CustomInstallCommand},
 )

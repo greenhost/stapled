@@ -25,11 +25,13 @@ files need to be indexed again (thus files are considered "new").
 import threading
 import time
 import logging
+import re
 import os
 import ocspd
 from ocspd.core.excepthandler import ocsp_except_handle
 from ocspd.core.taskcontext import OCSPTaskContext
 from ocspd.core.certmodel import CertModel
+from ocspd.util.cache import cache
 
 LOG = logging.getLogger(__name__)
 
@@ -61,6 +63,7 @@ class CertFinderThread(threading.Thread):
         :kwarg array file_extensions: An array containing the file extensions
             of file types to check for certificate content **(optional)**.
         """
+        self.stop = False
         self.models = kwargs.pop('models', None)
         self.directories = kwargs.pop('directories', None)
         self.scheduler = kwargs.pop('scheduler', None)
@@ -71,6 +74,7 @@ class CertFinderThread(threading.Thread):
             'file_extensions', ocspd.FILE_EXTENSIONS_DEFAULT
         )
         self.last_refresh = None
+        self.ignore = kwargs.pop('ignore', [])
 
         assert self.models is not None, \
             "You need to pass a dict to hold the certificate model cache."
@@ -90,7 +94,7 @@ class CertFinderThread(threading.Thread):
 
         LOG.info("Scanning directories: %s", ", ".join(self.directories))
 
-        while True:
+        while not self.stop:
             # Catch any exceptions within this context to protect the thread.
             with ocsp_except_handle():
                 self.refresh()
@@ -119,7 +123,13 @@ class CertFinderThread(threading.Thread):
                         since_last,
                         self.refresh_interval
                     )
-                    time.sleep(self.refresh_interval - since_last)
+                    sleep_time = self.refresh_interval - since_last
+                    while sleep_time > 0:
+                        if self.stop:
+                            break
+                        time.sleep(1)
+                        sleep_time = sleep_time - 1
+        LOG.debug("Goodbye cruel world..")
 
     def refresh(self):
         """
@@ -151,6 +161,13 @@ class CertFinderThread(threading.Thread):
                         continue
                     filename = os.path.join(path, filename)
                     if filename in self.models:
+                        continue
+                    if self.check_ignore(filename):
+                        LOG.debug(
+                            "Ignoring file %s, because it's on the ignore "
+                            "list.",
+                            filename
+                        )
                         continue
                     model = CertModel(filename)
                     # Remember the model so we can compare the file later to
@@ -229,3 +246,54 @@ class CertFinderThread(threading.Thread):
             context = OCSPTaskContext(
                 task_name="parse", model=new_model, sched_time=None)
             self.scheduler.add_task(context)
+
+    @cache(10000)
+    def check_ignore(self, path):
+        """
+        Check if a file path matches any pattern in the ignore list.
+
+        :param str path: Path to a file to match.
+        """
+        for pattern in self.ignore:
+            regex = self.compile_pattern(pattern)
+            if regex.match(path):
+                return True
+        return False
+
+    @staticmethod
+    @cache(100)
+    def compile_pattern(pattern):
+        """
+        Compile a glob pattern and return a compiled regex object.
+
+        :param str pattern: Glob pattern.
+        """
+        # Absolute or relative path
+        if not pattern.startswith(os.sep) or pattern.startswith("*"):
+            begin_regex = "^.*"  # relative
+        else:
+            begin_regex = "^{}".format(os.sep)  # absolute
+
+        if pattern.endswith(os.sep) or pattern.endswith("*"):
+            end_regex = ".*$"  # anything below this path matches
+        else:
+            end_regex = "$"  # only exactly this file name matches
+
+        pattern = pattern.lstrip("*{}".format(os.sep))
+        pattern = pattern.rstrip("*")
+
+        # Escape some characters
+        middle_regex = re.escape(pattern)
+        # Question marks replace any 1 character
+        middle_regex = middle_regex.replace("\?", ".")
+        # Double stars replace anything including "/" lazily
+        middle_regex = middle_regex.replace("\*\*", ".*?/?".format(os.sep))
+        # Single star replaces anthing but "/"
+        middle_regex = middle_regex.replace("\*", "[^{}]*".format(os.sep))
+
+        regex = "{}{}{}".format(
+            begin_regex,
+            middle_regex,
+            end_regex
+        )
+        return re.compile(regex, re.IGNORECASE)

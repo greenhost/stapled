@@ -1,0 +1,70 @@
+# #############################################################################
+# OCSPD configuration file                                                    #
+# #############################################################################
+# Read about the config file format here:                                     #
+# https://pypi.python.org/pypi/ConfigArgParse                                 #
+# #############################################################################
+
+# Set a list of file extensions that might contain certificate files in your
+# certificate directories/
+# file-extensions=crt,pem,cer
+
+# Which directories to scan for certificate files.
+# Staples will be saved in the same directory.
+# This is the only mandatory argument/config variable.
+directories=/etc/ssl/private/
+
+# HAProxy sockets that should be informed of new .ocsp files in the
+# corresponding certificate directory.
+# i.e.: /etc/haproxy/pool1/certs => /var/run/haproxy/pool1/haproxy.sock
+# Specify them in the order you specified your certificate directories.
+# haproxy-sockets=/var/run/haproxy/admin.sock
+
+# Ignore file/directory paths, absolute or relative, including wildcards
+# supporting in common globbing patterns: *, ?, **.
+# ignore=**/bad_certfile.pem
+# ignore=/etc/ssl/private/expired/
+
+# Detach from the current process tree and run in the background, no output
+# will be sent to stdout, when you end your shell's session, it will continue
+# in the background. Remove or comment this if you do not want that.
+daemon
+
+# Log to syslog. Remove or comment this if you do not want that
+syslog
+
+# Log to ocspd.log either in the default directory by setting this to True or
+# to a directory of your choosing by setting it to a path.
+# logdir=/var/log/ocspd/
+
+# Force ocspd to renew staples at startup
+# no-recycle=false
+
+# How many threads should be started to handle requests, these have blocking
+# calls that are depending on the OCSP server response time. So you probably
+# want to start some for concurrency if you have multiple domains running on
+# your proxy.
+# renewal-threads=2
+
+# The amount of time before a staple expires, ocspd will try to fetch a new
+# staple, if too long you might get the same staple again, which will cause a
+# loop, after receiving it a new renewal will be scheduled immediately. So you
+# should set this to anything less than a day to be sure.
+# minimum-validity=7200
+# Try to detect new certificate files every `refresh-interval` seconds.
+# refresh-interval=60
+
+# Set the level of verbosity to:
+# 0=CRITICAL
+# 1=ERROR
+# 2=WARNING
+# 3=INFO
+# 4=DEBUG
+# This level applies to any logging as well as the output to stdout when run
+# interactively.
+# verbosity=0
+
+# Don't output anything to stdout, can be used together with `logdir=true`
+# and/or `syslog=true` to prevent output on stdout while logging the set
+# verbosity level to a file or syslog.
+# quiet

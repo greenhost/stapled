@@ -33,13 +33,10 @@ from ocspd.core.exceptions import CertParsingError
 from ocspd.core.exceptions import CertValidationError
 from ocspd.util.ocsp import OCSPResponseParser
 from ocspd.util.functions import pretty_base64
-from pylru import lrudecorator
-
-try:
-    from urllib.parse import urlparse  # Python3
-except ImportError:
-    from urlparse import urlparse  # Python2.7
-
+from ocspd.util.cache import cache
+from future.standard_library import hooks
+with hooks():
+    from urllib.parse import urlparse
 
 LOG = logging.getLogger(__name__)
 
@@ -113,6 +110,14 @@ class CertModel(object):
         except (IOError, OSError):
             # Can't access the staple file, game over.
             LOG.error("Can't access %s, let's schedule a renewal.", ocsp_file)
+            return False
+
+        # For some reason there are reports that haproxy will not accept staples
+        # from with the `set ssl ocsp-response [data]` command if a staple file
+        # did not already exist at start-up, an empty file seems to fix that.
+        # https://www.mail-archive.com/haproxy@formilux.org/msg24750.html
+        if len(staple) == 0:
+            LOG.info("Staple %s is empty, schedule a renewal.", ocsp_file)
             return False
 
         staple = OCSPResponseParser(staple)
@@ -378,7 +383,7 @@ class CertModel(object):
             )
 
     @property
-    @lrudecorator(1)
+    @cache(None)
     def ocsp_request(self):
         """
         Generate an OCSP request or return an already cached request.
