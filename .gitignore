@@ -95,3 +95,5 @@ ENV/
 # Project-specific
 *.ocsp
 ocspd.conf
+# This data can be generated with refresh_testdata.sh
+testdata

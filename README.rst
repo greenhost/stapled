@@ -16,14 +16,15 @@ Read the full documentation on
 System requirements
 ===================
 
-This application requires **Python 3.3+**  and an installed version of **PIP**
-for Python 3. It is also convenient to have ``virtualenv`` installed so you can
-make a separate environment for ocspd's dependencies.
+This application requires **Python 3.3+** or **Python 2.7.9** and an installed
+version of **PIP** for the Python version you are using. It is also convenient
+to have ``virtualenv`` installed so you can make a separate environment for
+ocspd's dependencies.
 
 Installation
 ============
 
-Before installation make sure you have met the :ref:`System Requirements`.
+Before installation make sure you have met the `System requirements`_.
 You can install the ocsp daemon from the source code repository on our gitlab
 instance.
 
@@ -33,7 +34,7 @@ From gitlab (for developers)
 .. code-block:: bash
 
     # Download the source from the repo
-    git clone https://code.greenhost.net/open/ocspd.git
+    git clone https://github.com/greenhost/ocspd.git
     # Enter the source directory
     cd ocspd/
     # Setup a virtualenv
