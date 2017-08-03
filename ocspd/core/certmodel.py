@@ -21,7 +21,6 @@ import os
 import logging
 import binascii
 import datetime
-import requests
 import certvalidator
 import ocspbuilder
 import asn1crypto
@@ -106,7 +105,7 @@ class CertModel(object):
         try:
             LOG.info("Seeing if %s is still valid..", ocsp_file)
             with open(ocsp_file, "rb") as file_handle:
-                staple = file_handle.read()
+                raw_staple = file_handle.read()
         except (IOError, OSError):
             # Can't access the staple file, game over.
             LOG.error("Can't access %s, let's schedule a renewal.", ocsp_file)
@@ -116,10 +115,11 @@ class CertModel(object):
         # from with the `set ssl ocsp-response [data]` command if a staple file
         # did not already exist at start-up, an empty file seems to fix that.
         # https://www.mail-archive.com/haproxy@formilux.org/msg24750.html
-        if len(staple) == 0:
+        if len(raw_staple) == 0:
             LOG.info("Staple %s is empty, schedule a renewal.", ocsp_file)
             return False
-
+        # Parse the staple
+        staple = asn1crypto.ocsp.OCSPResponse.load(raw_staple)
         staple = OCSPResponseParser(staple)
         now = datetime.datetime.now()
         until = staple.valid_until
@@ -127,7 +127,7 @@ class CertModel(object):
             LOG.info("Staple has expired %s", self.filename)
             return False
         try:
-            self._validate_cert(staple)
+            self._validate_cert(raw_staple)
             LOG.info(
                 "Staple %s expires %s, we can still use it.",
                 ocsp_file,
@@ -174,17 +174,10 @@ class CertModel(object):
             not "good".
         :raises urllib.error.URLError: An OCSP url can't be opened (Python3).
         :raises urllib2.URLError: An OCSP url can't be opened (Python2).
-        :raises requests.Timeout: When data doesn't reach us within the
-            expected time frame.
-        :raises requests.exceptions.ConnectTimeout: A connection can't be
-            established because the server doesn't reply within the expected
-            time frame.
-        :raises requests.exceptions.ReadTimeout: Data didn't reach us within
-            the expected time frame.
-        :raises requests.exceptions.TooManyRedirects: The OCSP server redirects
-            us too many times.
-        :raises requests.exceptions.HTTPError: A HTTP error code was returned.
-        :raises requests.ConnectionError: A Connection error occurred.
+        :raises: urllib.error.URLError/urllib2.URLError - when a URL/HTTP error
+            occurs
+        :raises:
+            socket.error - when a socket error occurs
 
         .. TODO:: Send merge request to ocspbuider, for setting the hostname in
             the headers while fetching OCSP records. If accepted the request
@@ -202,24 +195,14 @@ class CertModel(object):
             )
 
         url = self.ocsp_urls[self.url_index]
-        host = urlparse(url).hostname
         LOG.info("Trying to get OCSP staple from url \"%s\"..", url)
-        request = requests.post(
-            url,
-            data=bytes(self.ocsp_request),
-            # Set 'Host' header because Let's Encrypt server might not
-            # react when it's absent
-            headers={
-                'Content-Type': 'application/ocsp-request',
-                'Accept': 'application/ocsp-response',
-                'Host': host
-            },
-            timeout=(10, 5)
+        ocsp_staple = certvalidator.ocsp_client.fetch(
+            self.end_entity,
+            self.chain[-2],
+            hash_algo=u'sha1',
+            nonce=True,
+            timeout=10
         )
-        # Raise HTTP exception if any occurred
-        request.raise_for_status()
-
-        ocsp_staple = request.content
         self.ocsp_staple = self._check_ocsp_response(ocsp_staple, url)
 
         # If we got this far it means we have a staple in self.ocsp_staple
@@ -230,13 +213,13 @@ class CertModel(object):
         # If validation fails, it will raise an exception that should be
         # handled at another level.
         LOG.info("Validating staple..")
-        self._validate_cert(self.ocsp_staple)
+        self._validate_cert(self.ocsp_staple.raw)
         # No exception was raised, so we can assume the staple is ok and write
         # it to disk.
         ocsp_filename = "{}.ocsp".format(self.filename)
         LOG.info("Succesfully validated writing to file \"%s\"", ocsp_filename)
         with open(ocsp_filename, 'wb') as f_obj:
-            f_obj.write(ocsp_staple)
+            f_obj.write(self.ocsp_staple.raw.dump())
         return True
 
     def _check_ocsp_response(self, ocsp_staple, url):
@@ -249,7 +232,7 @@ class CertModel(object):
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug(
                 "Response data: \n%s",
-                pretty_base64(ocsp_staple, line_len=75, prefix=" "*36)
+                pretty_base64(ocsp_staple.dump(), line_len=75, prefix=" "*36)
             )
         if ocsp_staple == b'':
             raise OCSPBadResponse(
@@ -258,17 +241,17 @@ class CertModel(object):
                     self.filename
                 )
             )
-        ocsp_staple = OCSPResponseParser(ocsp_staple)
-        status = ocsp_staple.status
+        parsed_staple = OCSPResponseParser(ocsp_staple)
+        status = parsed_staple.status
         if status == 'good':
             LOG.info(
                 "Received good response from OCSP server %s for %s, "
                 "valid until: %s",
                 url,
                 self.filename,
-                ocsp_staple.valid_until.strftime('%Y-%m-%d %H:%M:%S')
+                parsed_staple.valid_until.strftime('%Y-%m-%d %H:%M:%S')
             )
-            return ocsp_staple
+            return parsed_staple
         elif status == 'revoked':
             raise OCSPBadResponse(
                 "Certificate {} was revoked!".format(self.filename)
@@ -349,7 +332,7 @@ class CertModel(object):
             else:
                 LOG.info("Validating with OCSP staple.")
                 context = certvalidator.ValidationContext(
-                    ocsps=[ocsp_staple.data],
+                    ocsps=[ocsp_staple],
                     allow_fetching=False
                 )
             validator = certvalidator.CertificateValidator(
@@ -381,30 +364,6 @@ class CertModel(object):
                 "Failed to validate certificate path for \"{}\", will not "
                 "try to parse it again.".format(self.filename)
             )
-
-    @property
-    @cache(None)
-    def ocsp_request(self):
-        """
-        Generate an OCSP request or return an already cached request.
-
-        :return bytes: A binary representation of a
-            :class:`asn1crypto.ocsp.OCSPRequest` which is in turn represented
-            by a :class:`asn1crypto.core.Sequence`.
-        """
-        ocsp_request_builder = ocspbuilder.OCSPRequestBuilder(
-            asymmetric.load_certificate(self.end_entity),
-            asymmetric.load_certificate(self.chain[-2])
-        )
-        ocsp_request_builder.nonce = False
-        ocsp_request = ocsp_request_builder.build().dump()
-        # This data can be posted to the OCSP URI to debug further
-        if LOG.isEnabledFor(logging.DEBUG):
-            LOG.debug(
-                "Request data: \n%s",
-                pretty_base64(ocsp_request, line_len=75, prefix=" "*36)
-            )
-        return ocsp_request
 
     def __repr__(self):
         """
