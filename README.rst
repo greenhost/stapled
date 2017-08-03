@@ -28,7 +28,7 @@ Before installation make sure you have met the `System requirements`_.
 You can install the ocsp daemon from the source code repository on our gitlab
 instance.
 
-From gitlab (for developers)
+From github (for developers)
 ----------------------------
 
 .. code-block:: bash
@@ -41,12 +41,35 @@ From gitlab (for developers)
     virtualenv -p python3 env/
     # Load the virtualenv
     source env/bin/activate
+    # Install a dependency that is not yet it PyPi
+    pip install git+https://github.com/wbond/certvalidator.git@4383a4bfd5e769679bc4eedd1e4d334eb0c7d85a
     # Install the current directory with pip. This allows you to edit the code
     pip install .
 
 Every time you want to run ``ocspd`` you will need to run
 ``source env/bin/activate`` to load the virtualenv first. Alternatively you can
 start the daemon by running ``ocspd``
+
+Upgrading
+---------
+
+If you had previously installed a version of ocspd from github, to upgrade run
+the following:
+
+.. code-block::bash
+
+    # Deactivate the virtualenv if active
+    deactivate
+    # Delete the virtualenv (we will start clean)
+    rm -rf ./env
+    # Make a new virtualenv
+    virtualenv -p python3 env/
+    # Update to the latest version
+    git pull
+    # Install a dependency that is not yet it PyPi
+    pip install git+https://github.com/wbond/certvalidator.git@4383a4bfd5e769679bc4eedd1e4d334eb0c7d85a --upgrade
+    # Install the current directory with pip. This allows you to edit the code
+    pip install . --upgrade
 
 Debian package
 --------------
