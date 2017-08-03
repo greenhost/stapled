@@ -34,7 +34,7 @@ From gitlab (for developers)
 .. code-block:: bash
 
     # Download the source from the repo
-    git clone https://code.greenhost.net/open/ocspd.git
+    git clone https://github.com/greenhost/ocspd.git
     # Enter the source directory
     cd ocspd/
     # Setup a virtualenv
