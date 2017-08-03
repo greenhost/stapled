@@ -24,7 +24,7 @@ ocspd's dependencies.
 Installation
 ============
 
-Before installation make sure you have met the :ref:`System Requirements`.
+Before installation make sure you have met the `System requirements`_.
 You can install the ocsp daemon from the source code repository on our gitlab
 instance.
 
