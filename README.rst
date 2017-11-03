@@ -10,7 +10,7 @@ Documentation
 =============
 
 Read the full documentation on
-`Read the docs <https://readthedocs.org/projects/ocspd/>`_.
+`Read the docs <https://ocspd.readthedocs.org/>`_.
 
 
 System requirements
