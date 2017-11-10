@@ -1,0 +1,393 @@
+#!/usr/bin/env python3
+"""
+Get's the current version number or sets a new one by bumping a minor or major
+version point, generates debian changelog from commits since last version.
+"""
+import argparse
+import subprocess
+import re
+import time
+from os import path
+
+# For Python2.7 compatibility
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
+
+def main():
+    """
+    Parse arguments
+    """
+    app_name = path.basename(path.dirname(path.abspath(__file__)))
+
+    parser = argparse.ArgumentParser(
+        description='Display/bump the %s version number.' % app_name,
+        conflict_handler='resolve',
+        epilog="""NOTE: this will only work if are using Git and are using the
+                  following version numbering scheme:
+                  \"v#.#\",
+                  e.g: v1.2
+               """
+    )
+
+    parser.add_argument(
+        '--major',
+        action='store_true',
+        help='Increase the major number with 1.'
+    )
+
+    parser.add_argument(
+        '-m',
+        '--minor',
+        action='store_true',
+        help='Increase the minor version number with 1.'
+    )
+
+    parser.add_argument(
+        '-s',
+        '--save',
+        type=str,
+        nargs='?',
+        default='.version',
+        const='.version',
+        help=(
+            'Save the new number to the a file named .version, optionally pass'
+            'a different filename to the argument.'
+        )
+    )
+
+    parser.add_argument(
+        '-v',
+        '--verbose',
+        action='store_true',
+        help='Print more info.'
+    )
+
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Force saving the file even if it was already changed.'
+    )
+
+    parser.add_argument(
+        '--non-interactive',
+        action='store_true',
+        help='Don\'t ask the user anything, useful for scripting/cron'
+    )
+
+    args = parser.parse_args()
+    GitVersion(**args.__dict__)
+
+
+class NeedInputException(Exception):
+    pass
+
+
+class GitVersion(object):
+    """Class to parse versions"""
+
+    VERSION_REGEX = re.compile(r'[v]*(\d+)\.(\d+).*')
+    # The git message when a commit is "clean", meaning the files have not been
+    # changed
+    CLEAN_COMMIT = 'nothing to commit, working directory clean'
+    DEFAULT_VERSION = [0, 1]
+    CHANGELOG_FILE = 'debian/changelog'
+
+    def __init__(self, **kwargs):
+        """
+        Initialize with argparser arguments
+        Default version would be 0.1
+
+        :param bool major: if true, bump major number
+        :param bool minor: if true, bump minornumber
+        :param bool version_file: if true, update the version file
+        """
+        #: If true, prints some debug statements
+        self.non_interactive = kwargs['non_interactive']
+        self.save = kwargs['save']
+        self.force = kwargs['force']
+        self.verbose = kwargs['verbose']
+        self.file = kwargs['save']
+
+        if sum([kwargs['major'], kwargs['minor']]) > 1:
+            print("You can increase either the major or minor version")
+            exit(1)
+
+        (self.major, self.minor) = self.get_version()
+
+        for part in ('major', 'minor'):
+            if kwargs[part]:
+                self.bump(part)
+                log = self.getchangelog()
+                print(log)
+                if kwargs['save']:
+                    self.write_changelog(log)
+                    self.save_version()
+                break  # can only edit one part at a time anyway
+        print(self)
+
+    def write_changelog(self, log):
+        try:
+            with open(self.CHANGELOG_FILE) as changelog_file:
+                changelog = changelog_file.read()
+        except (FileNotFoundError, IOError, OSError) as exc:
+            print("Error reading changelog file: {}".format(str(exc)))
+            raise
+
+        log = log + changelog
+
+        with open(self.CHANGELOG_FILE, 'w') as changelog_file:
+            changelog_file.write(log)
+
+    def get_version(self):
+        """
+        Get current version information from version file. Sets self.major,
+        and self.minor
+
+        Assumes that the version file contains 1 rule with [v]major.minor
+        """
+        (major, minor) = self.DEFAULT_VERSION
+        try:
+            with open(self.file) as version_file:
+                version = version_file.read()
+                try:
+                    (major, minor) = \
+                        (int(i) for i in self.VERSION_REGEX.findall(version)[0])
+                except ValueError:
+                    print("Malformed version in version file: '%s'. Returning"
+                          " default" % version)
+        except FileNotFoundError:
+            create = self.yn_question(
+                "A version file named \"%s\" does not yet exist, "
+                "do you want to create it?" % self.file
+            )
+            if create:
+                (major, minor) = self.initial_setup()
+            else:
+                print("Can't continue without initial a version file, sorry.")
+                exit(1)
+
+        return (major, minor)
+
+    def initial_setup(self):
+        default = "{}.{}".format(*self.DEFAULT_VERSION)
+        answer = self.question(
+            "Do you want to set the default ({}) [y(es), n(o) or cancel "
+            "[c(ancel)]".format(default),
+            ['y', 'yes', 'n', 'no', 'c', 'cancel']
+        )
+        if answer[0] == 'y':
+            (self.major, self.minor) = self.DEFAULT_VERSION
+            self.save_version()
+            return self.DEFAULT_VERSION
+        elif answer[0] == 'c':
+            print("Can't continue without an initial version, sorry.")
+            exit(1)
+
+        answer = self.question(
+            "Do you want to set a version yourself [y(es), n(o) or cancel "
+            "[c(ancel)]",
+            ['y', 'yes', 'n', 'no', 'c', 'cancel']
+        )
+        if answer[0] == 'y':
+            num_pat = re.compile('^[0-9]+$')
+            print(
+                "You will get three prompts one for each of the version number"
+                " components [major.minor]."
+            )
+            major = self.question("Enter the major number (X.x-x):", [num_pat])
+            minor = self.question("Enter the minor number (x.X-x):", [num_pat])
+            (self.major, self.minor) = (major, minor)
+            self.save_version()
+            return (major, minor)
+        else:
+            print("Can't continue without an initial version, sorry.")
+            exit(1)
+
+    def yn_question(self, prompt):
+        return self.question(
+            "{} [y(es), n(o)]".format(prompt),
+            ['y', 'yes', 'n', 'no']
+        )[0] == 'y'  # boolean return
+
+    def question(self, prompt, valid_answers, case_sensitive=False,
+                 invalid_response="Invalid response"):
+        if self.non_interactive:
+            raise NeedInputException(
+                "User needs to answer a question to continue")
+        try:
+            raw_answer = None
+            while raw_answer is None:
+                raw_answer = input("{} ".format(prompt))
+                matched = False
+                answer = raw_answer if case_sensitive else raw_answer.lower()
+                for valid in valid_answers:
+                    if isinstance(valid, str):
+                        if valid == answer:
+                            matched = True
+                            break
+                    elif isinstance(valid, re._pattern_type):
+                        if valid.match(answer) is not None:
+                            matched = True
+                            break
+                if not matched:
+                    if invalid_response:
+                        print(invalid_response)
+                    raw_answer = None
+            return raw_answer
+        except KeyboardInterrupt:
+            print("Can't continue without an answer, sorry.")
+            exit(1)
+
+    def bump(self, part):
+        """
+        Increase either major or minor. Major sets minor to 0
+
+        :param str part: either 'major' or 'minor'
+        """
+        if self.save and not self.force:
+            try:
+                # If the version file has unstaged changes, we can't update the
+                # patch number
+                version_file_diff = str(subprocess.check_output(
+                    ['git', 'status', self.file],
+                    universal_newlines=True
+                ))
+                if self.CLEAN_COMMIT not in version_file_diff:
+                    print("Version file is already changed, won't update.")
+                    exit(2)
+            except subprocess.CalledProcessError:
+                print(
+                    "Something went getting status from version file",
+                )
+                exit(3)
+
+        if part == 'major':
+            self.major += 1
+            self.minor = 0
+        elif part == 'minor':
+            self.minor += 1
+        else:
+            print("Bump run with invalid argument '%s'" % part)
+
+    def getchangelog(self):
+        """
+        Gets the commit hash of the last time that the version file was
+        touched, and calculates how many commits have been done since.
+
+        Adds 1 to the number of commits, because the current/next commit is
+        not counted by git rev-list
+        """
+        try:
+
+            # The first rule of the output of git log is the commit hash
+            # Take index 7: to strip off 'commit '
+            commit_hash = str(
+                subprocess.check_output(
+                    ['git', 'log', '-n', '1', self.file],
+                    universal_newlines=True
+                )
+            ).split('\n')[0][len('commit '):]
+
+            if not commit_hash:
+                commit_hash = 0
+            if self.verbose:
+                print("commit hash", commit_hash)
+
+            # Get the commit number of the current revision
+            count_head = int(
+                str(
+                    subprocess.check_output(
+                        ['git', 'rev-list', '--count', 'HEAD'],
+                        universal_newlines=True
+                    )
+                ).split('\n')[0]
+            )
+
+            if self.verbose:
+                print("count head", count_head)
+
+            count_hash = 0
+            # Get the commit number of the version change's revision
+            if (commit_hash):
+                count_hash = int(
+                    str(
+                        subprocess.check_output(
+                            ['git', 'rev-list', '--count', commit_hash],
+                            universal_newlines=True
+                        )
+                    ).split('\n')[0]
+                )
+                if self.verbose:
+                    print("count hash", count_hash)
+
+            diff = count_head - count_hash + 1
+            diff = str(diff)
+
+            log = ""
+            p = subprocess.Popen(
+                ['git', 'log', '-n', diff],
+                stdout=subprocess.PIPE
+            )
+            for line in p.stdout:
+                line = str(line)
+                m = re.match(r'.*Resolve "(.*)".*', line)
+                if m:
+                    log = log + "  * " + m.group(1) + "\n"
+
+            name = str(
+                subprocess.check_output(
+                    ['git', 'config', '--global', 'user.name']
+                ).decode("utf-8")
+            ).rstrip()
+
+            email = str(
+                subprocess.check_output(
+                    ['git', 'config', '--global', 'user.email']
+                ).decode("utf-8")
+            ).rstrip()
+
+            # Do we have actually changelog information?
+            if not log:
+                log = " * Bumped version\n"
+
+            log_str = (
+                "{app} ({version}) %(os_version)s; urgency=low\n\n"
+                "%(log)s\n -- %(name)s <%(email)s> %(time)s\n\n"
+            )
+
+            log = log_str.format({
+                'app': self.application,
+                'version': "%s.%s" % (self.major, self.minor),
+                'os_version': self.os_version,  # jessie, stretch, etc.
+                'log': log,
+                'name': name,
+                'email': email,
+                'time': time.strftime('%a, %-d %b %Y %H:%M:%S %z')
+            })
+
+            return log
+        except subprocess.CalledProcessError:
+            print(
+                "Unable to create changelog",
+            )
+            exit(4)
+
+    def save_version(self):
+        """
+            Save version number to VERSION_FILE
+        """
+        version_string = str(self)
+        if self.verbose:
+            print("Saving version '%s'" % version_string)
+        with open(self.file, 'w') as version_file:
+            version_file.write(version_string)
+
+    def __repr__(self):
+        return "%s.%s" % (self.major, self.minor)
+
+
+if __name__ == '__main__':
+    main()
