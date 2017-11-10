@@ -7,6 +7,7 @@ import argparse
 import subprocess
 import re
 import time
+import collections
 from os import path
 
 # For Python2.7 compatibility
@@ -151,13 +152,15 @@ class GitVersion(object):
         (major, minor) = self.DEFAULT_VERSION
         try:
             with open(self.file) as version_file:
-                version = version_file.read()
+                version = version_file.readline()
                 try:
                     (major, minor) = \
-                        (int(i) for i in self.VERSION_REGEX.findall(version)[0])
+                        (int(i) for i in self.VERSION_REGEX.findall(version)[0])  # noqa
                 except ValueError:
                     print("Malformed version in version file: '%s'. Returning"
                           " default" % version)
+                self.app_name = version_file.readline()
+                self.os_name = version_file.readline()
         except FileNotFoundError:
             create = self.yn_question(
                 "A version file named \"%s\" does not yet exist, "
@@ -172,10 +175,35 @@ class GitVersion(object):
         return (major, minor)
 
     def initial_setup(self):
-        default = "{}.{}".format(*self.DEFAULT_VERSION)
+        """
+        If there is no version file yet, help setup one. Add the initial
+        version, a name for the application and the target OS. You can change
+        the version file make it possible to target other OS versions.
+        :return list: Major and minor versions in a list.
+        """
+        self.app_name = self.question(
+            "Please specify the name of your application:",
+            valid_answers=re.compile(r"[a-z0-9_\-.]+"),
+            case_sensitive=False,
+            invalid_response=(
+                "Please enter a name containing only character in "
+                "a-z, 0-9, - _ or _."
+            )
+        )
+        self.os_name = self.question(
+            "Please specify the target OS verion name, e.g. \"stretch\":",
+            valid_answers=re.compile(r"[a-z0-9_\-]+"),
+            case_sensitive=False,
+            invalid_response=(
+                "Please enter a os version name containing only character in "
+                "a-z, 0-9, - _ or _"
+            )
+        )
         answer = self.question(
-            "Do you want to set the default ({}) [y(es), n(o) or cancel "
-            "[c(ancel)]".format(default),
+            "Do you want to set the default version number ({}) "
+            "[y(es), n(o) or cancel [c(ancel)]".format(
+                "{}.{}".format(*self.DEFAULT_VERSION)
+            ),
             ['y', 'yes', 'n', 'no', 'c', 'cancel']
         )
         if answer[0] == 'y':
@@ -194,11 +222,11 @@ class GitVersion(object):
         if answer[0] == 'y':
             num_pat = re.compile('^[0-9]+$')
             print(
-                "You will get three prompts one for each of the version number"
+                "You will get two prompts one for each of the version number"
                 " components [major.minor]."
             )
-            major = self.question("Enter the major number (X.x-x):", [num_pat])
-            minor = self.question("Enter the minor number (x.X-x):", [num_pat])
+            major = self.question("Enter the major number (X.x):", [num_pat])
+            minor = self.question("Enter the minor number (x.X):", [num_pat])
             (self.major, self.minor) = (major, minor)
             self.save_version()
             return (major, minor)
@@ -207,6 +235,11 @@ class GitVersion(object):
             exit(1)
 
     def yn_question(self, prompt):
+        """
+        Ask the user a yes/no question and return only true or false.
+        :param str prompt: The question to ask.
+        :return bool: True for yes, False for no.
+        """
         return self.question(
             "{} [y(es), n(o)]".format(prompt),
             ['y', 'yes', 'n', 'no']
@@ -214,10 +247,21 @@ class GitVersion(object):
 
     def question(self, prompt, valid_answers, case_sensitive=False,
                  invalid_response="Invalid response"):
+        """
+        Ask the user a question and check that the user gives a valid answer.
+        :param str prompt: The question to ask.
+        :param str|iterable valid_answers: Valid answers as strings or
+            regexes in an array or just a string or a regex string.
+        :param bool case_sensitive: Handle answer as case sensitive.
+        :param str invalid_response: String to output for invalid responses.
+        :return str: The answer supplied by the user.
+        """
         if self.non_interactive:
             raise NeedInputException(
                 "User needs to answer a question to continue")
         try:
+            if not isinstance(valid_answers, collections.Iterable):
+                valid_answers = (valid_answers,)
             raw_answer = None
             while raw_answer is None:
                 raw_answer = input("{} ".format(prompt))
@@ -383,7 +427,11 @@ class GitVersion(object):
         if self.verbose:
             print("Saving version '%s'" % version_string)
         with open(self.file, 'w') as version_file:
-            version_file.write(version_string)
+            version_file.write("{}\n".format("\n".join([
+                version_string,
+                self.app_name,
+                self.os_name
+            ])))
 
     def __repr__(self):
         return "%s.%s" % (self.major, self.minor)
