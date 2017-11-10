@@ -398,13 +398,13 @@ class GitVersion(object):
                 log = " * Bumped version\n"
 
             log_str = (
-                "{app} ({version}) %(os_version)s; urgency=low\n\n"
-                "%(log)s\n -- %(name)s <%(email)s> %(time)s\n\n"
+                "{app_name} ({version}) {os_version}; urgency=low\n\n"
+                "{log}\n -- {name} <{email}> {time}\n\n"
             )
 
             log = log_str.format({
-                'app': self.application,
-                'version': "%s.%s" % (self.major, self.minor),
+                'app_name': self.app_name,
+                'version': str(self),
                 'os_version': self.os_version,  # jessie, stretch, etc.
                 'log': log,
                 'name': name,
