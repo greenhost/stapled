@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if test -d /etc/ocspd ; then
+	if ! find /etc/ocspd/ -type f >/dev/null ; then
+		rmdir /etc/ocspd
+	fi
+fi

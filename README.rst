@@ -34,7 +34,9 @@ From github (for developers)
 .. code-block:: bash
 
     # Download the source from the repo
-    git clone https://github.com/greenhost/ocspd.git
+    git clone --recursive https://github.com/greenhost/ocspd.git
+    # OR, as a TIP, which downloads all the repos simultaneously in threads:
+    git clone --recursive -j5 https://github.com/greenhost/ocspd.git
     # Enter the source directory
     cd ocspd/
     # Setup a virtualenv

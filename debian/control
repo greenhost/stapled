@@ -1,0 +1,13 @@
+Source: ocspd
+Section: python
+Priority: optional
+Maintainer: Greenhost <tech@greenhost.nl>
+Homepage: https://github.com/greenhost/ocspd
+
+Package: ocspd
+Section: python
+Priority: optional
+Architecture: all
+Provides: ocspd
+Description: Daemon for fetching OCSP staples from OCSP server and feeding them to proxies to serve.
+Depends: systemd, python2.7, python-daemon, python-future, python-configargparse, openssl, ssl-lib, ${shlibs:Depends}, ${misc:Depends}
