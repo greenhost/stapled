@@ -74,26 +74,9 @@ the following:
 Debian package
 --------------
 
-We package ocspd for Debian, but it will still have depenfencies that are not
-available as debian packages. This means you need to either still use PIP to
-install those dependencies, or you need to package them yourself.
+We have a debian package available for download here:
 
-There is a build script in the root of this project: `build_deb_pkg.sh`. It
-will automatically download the dependencies master branches from Github and
-package them, the finished packages including a package for ocspd will be in
-the `build` directory.
-
-.. Warning:: Do not use this, none of the source code you are about to check
-    out will be audited, you will need to vet it yourself. Also it will cause
-    side effects inluding but not limited to loss of hair, stress and diziness.
-    This is not for production use. We do not take any responsibility for what
-    you do with this script, we provide it as is, it will probably fail anyway
-    but we may also stop supporting it at any time, in fact this is highly
-    likely.
-
-    **You have been warned**, now please don't continue at your own risk or go
-    for the PIP install.
-
+.. TODO: ADD URL OF DEBIAN PACKAGE
 
 .. code-block:: bash
 
