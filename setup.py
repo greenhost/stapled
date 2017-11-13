@@ -37,7 +37,6 @@ class CustomInstallCommand(install):
     """
 
     CREATE_DIRS = [
-        os.path.join('/lib', 'systemd', 'system'),
         os.path.join('/etc', 'ocspd'),
         os.path.join('/var', 'log', 'ocspd'),
     ]
