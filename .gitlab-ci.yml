@@ -5,7 +5,7 @@ stages:
 build:
   stage: build
   script:
-    - make
+    - make build
   artifacts:
     paths:
     - build/ocspd_*

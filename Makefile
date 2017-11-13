@@ -25,5 +25,3 @@ clean:
 	rm -rf deb_dist dist *.egg-info .pybuild
 	rm -rfv debian/ocspd
 	find . -name '*.pyc' -delete
-
-all: build
