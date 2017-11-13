@@ -98,6 +98,8 @@ setup(
             'ocspd = ocspd.__main__:init'
         ]
     },
-    data_files=[('/lib/systemd/system', ['scripts/ocspd.service'])],
+    data_files=[
+        ('/lib/systemd/system', ['scripts/ocspd.service']),
+    ],
     cmdclass={'install': CustomInstallCommand},
 )
