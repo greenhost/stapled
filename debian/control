@@ -9,5 +9,5 @@ Section: python
 Priority: optional
 Architecture: all
 Provides: ocspd
-Description: Daemon for fetching OCSP staples from OCSP server and feeding them to proxies to serve.
-Depends: systemd, python2.7, python-daemon, python-future, python-configargparse, openssl, ssl-lib, ${shlibs:Depends}, ${misc:Depends}
+Description: Update OCSP staples from CA's and store the result so they can be served to clients.
+Depends: systemd, python-setuptools (>= 0.6b3), python-all (>= 2.6.6-3), debhelper (>= 7.4.3), python-daemon, python-future, python-configargparse, openssl, ssl-lib, ${shlibs:Depends}, ${misc:Depends}
