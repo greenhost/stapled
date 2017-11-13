@@ -16,8 +16,8 @@ build:
 	$(PYTHON) setup.py sdist
 	mv "./dist/$(PROJECT)-$(VERSION).tar.gz" "./dist/$(PROJECT)_$(VERSION).orig.tar.gz"
 	dpkg-buildpackage -i -I -rfakeroot -uc -us
-	mkdir -p ./deb_dist
-	mv "./dist/$(PROJECT)-$(VERSION).*" "./deb_dist/"
+	mkdir -p ./build
+	mv "./dist/$(PROJECT)-$(VERSION).*" ./build/
 
 clean:
 	$(PYTHON) setup.py clean
