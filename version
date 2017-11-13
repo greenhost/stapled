@@ -17,71 +17,6 @@ except NameError:
     FileNotFoundError = IOError
 
 
-def main():
-    """
-    Parse arguments
-    """
-    app_name = path.basename(path.dirname(path.abspath(__file__)))
-
-    parser = argparse.ArgumentParser(
-        description='Display/bump the %s version number.' % app_name,
-        conflict_handler='resolve',
-        epilog="""NOTE: this will only work if are using Git and are using the
-                  following version numbering scheme:
-                  \"v#.#\",
-                  e.g: v1.2
-               """
-    )
-
-    parser.add_argument(
-        '--major',
-        action='store_true',
-        help='Increase the major number with 1.'
-    )
-
-    parser.add_argument(
-        '-m',
-        '--minor',
-        action='store_true',
-        help='Increase the minor version number with 1.'
-    )
-
-    parser.add_argument(
-        '-s',
-        '--save',
-        type=str,
-        nargs='?',
-        default='.version',
-        const='.version',
-        help=(
-            'Save the new number to the a file named .version, optionally pass'
-            'a different filename to the argument.'
-        )
-    )
-
-    parser.add_argument(
-        '-v',
-        '--verbose',
-        action='store_true',
-        help='Print more info.'
-    )
-
-    parser.add_argument(
-        '--force',
-        action='store_true',
-        help='Force saving the file even if it was already changed.'
-    )
-
-    parser.add_argument(
-        '--non-interactive',
-        action='store_true',
-        help='Don\'t ask the user anything, useful for scripting/cron'
-    )
-
-    args = parser.parse_args()
-    GitVersion(**args.__dict__)
-
-
 class NeedInputException(Exception):
     pass
 
@@ -92,9 +27,10 @@ class GitVersion(object):
     VERSION_REGEX = re.compile(r'[v]*(\d+)\.(\d+).*')
     # The git message when a commit is "clean", meaning the files have not been
     # changed
-    CLEAN_COMMIT = 'nothing to commit, working directory clean'
+    CLEAN_COMMIT = 'nothing to commit, working tree clean'
     DEFAULT_VERSION = [0, 1]
     CHANGELOG_FILE = 'debian/changelog'
+    DEFAULT_TARGET_OS = "stretch"
 
     def __init__(self, **kwargs):
         """
@@ -112,11 +48,20 @@ class GitVersion(object):
         self.verbose = kwargs['verbose']
         self.file = kwargs['save']
 
+        self.guessed_app_name = path.basename(
+            path.dirname(path.abspath(__file__))
+        )
+
         if sum([kwargs['major'], kwargs['minor']]) > 1:
             print("You can increase either the major or minor version")
             exit(1)
 
-        (self.major, self.minor) = self.get_version()
+        (
+            self.major,
+            self.minor,
+            self.app_name,
+            self.os_version
+        ) = self.get_version()
 
         for part in ('major', 'minor'):
             if kwargs[part]:
@@ -149,7 +94,6 @@ class GitVersion(object):
 
         Assumes that the version file contains 1 rule with [v]major.minor
         """
-        (major, minor) = self.DEFAULT_VERSION
         try:
             with open(self.file) as version_file:
                 version = version_file.readline()
@@ -159,20 +103,12 @@ class GitVersion(object):
                 except ValueError:
                     print("Malformed version in version file: '%s'. Returning"
                           " default" % version)
-                self.app_name = version_file.readline()
-                self.os_name = version_file.readline()
+                app_name = version_file.readline().strip("\n")
+                os_version = version_file.readline().strip("\n")
         except FileNotFoundError:
-            create = self.yn_question(
-                "A version file named \"%s\" does not yet exist, "
-                "do you want to create it?" % self.file
-            )
-            if create:
-                (major, minor) = self.initial_setup()
-            else:
-                print("Can't continue without initial a version file, sorry.")
-                exit(1)
+            (major, minor, app_name, os_version) = self.initial_setup()
 
-        return (major, minor)
+        return (major, minor, app_name, os_version)
 
     def initial_setup(self):
         """
@@ -181,72 +117,89 @@ class GitVersion(object):
         the version file make it possible to target other OS versions.
         :return list: Major and minor versions in a list.
         """
+
+        user_wants_to_create = self.yn_question(
+            "A version file named \"%s\" does not yet exist, "
+            "do you want to create it?" % self.file,
+            default="y"
+        )
+        if not user_wants_to_create:
+            print("Can't continue without initial a version file, sorry.")
+            exit(1)
+
         self.app_name = self.question(
-            "Please specify the name of your application:",
+            "Please specify the name of your application (\"{app}\"):".format(
+                app=self.guessed_app_name
+            ),
             valid_answers=re.compile(r"[a-z0-9_\-.]+"),
             case_sensitive=False,
             invalid_response=(
                 "Please enter a name containing only character in "
                 "a-z, 0-9, - _ or _."
-            )
+            ),
+            default=self.guessed_app_name
         )
-        self.os_name = self.question(
-            "Please specify the target OS verion name, e.g. \"stretch\":",
-            valid_answers=re.compile(r"[a-z0-9_\-]+"),
+        self.os_version = self.question(
+            "Please specify the target OS verion name (\"stretch\"):",
+            valid_answers=re.compile(r"^([a-z0-9_\-]+|$)"),  # version or ""
             case_sensitive=False,
             invalid_response=(
                 "Please enter a os version name containing only character in "
                 "a-z, 0-9, - _ or _"
-            )
+            ),
+            default=self.DEFAULT_TARGET_OS
         )
-        answer = self.question(
-            "Do you want to set the default version number ({}) "
-            "[y(es), n(o) or cancel [c(ancel)]".format(
+        user_wants_default_version = self.yn_question(
+            "Do you want to set the default version number ({})".format(
                 "{}.{}".format(*self.DEFAULT_VERSION)
             ),
-            ['y', 'yes', 'n', 'no', 'c', 'cancel']
+            default="y"
         )
-        if answer[0] == 'y':
+        if user_wants_default_version:
             (self.major, self.minor) = self.DEFAULT_VERSION
-            self.save_version()
-            return self.DEFAULT_VERSION
-        elif answer[0] == 'c':
-            print("Can't continue without an initial version, sorry.")
-            exit(1)
+        else:
+            user_wants_to_set_version = self.yn_question(
+                "Do you want to set a version yourself?",
+                default="y"
+            )
+            if not user_wants_to_set_version:
+                print("Can't continue without an initial version, sorry.")
+                exit(1)
 
-        answer = self.question(
-            "Do you want to set a version yourself [y(es), n(o) or cancel "
-            "[c(ancel)]",
-            ['y', 'yes', 'n', 'no', 'c', 'cancel']
-        )
-        if answer[0] == 'y':
             num_pat = re.compile('^[0-9]+$')
             print(
-                "You will get two prompts one for each of the version number"
-                " components [major.minor]."
+                "You will get two prompts one for each of the version"
+                " number components [major.minor]."
             )
-            major = self.question("Enter the major number (X.x):", [num_pat])
-            minor = self.question("Enter the minor number (x.X):", [num_pat])
-            (self.major, self.minor) = (major, minor)
-            self.save_version()
-            return (major, minor)
-        else:
-            print("Can't continue without an initial version, sorry.")
-            exit(1)
+            self.major = self.question(
+                "Enter the major number (X.x):", [num_pat]
+            )
+            self.minor = self.question(
+                "Enter the minor number (x.X):", [num_pat]
+            )
 
-    def yn_question(self, prompt):
+        self.save_version()
+        return (self.major, self.minor, self.app_name, self.os_version)
+
+    def yn_question(self, prompt, default=None):
         """
         Ask the user a yes/no question and return only true or false.
         :param str prompt: The question to ask.
+        :param NoneType|str default: Default answer for empty response or None
+                                     if an empty response is not allowed.
         :return bool: True for yes, False for no.
         """
         return self.question(
-            "{} [y(es), n(o)]".format(prompt),
-            ['y', 'yes', 'n', 'no']
+            prompt="{prompt} [y(es), n(o)]{default}".format(
+                prompt=prompt,
+                default=(" ({})".format(default) if default else "")
+            ),
+            valid_answers=['y', 'yes', 'n', 'no'],
+            default=default
         )[0] == 'y'  # boolean return
 
     def question(self, prompt, valid_answers, case_sensitive=False,
-                 invalid_response="Invalid response"):
+                 invalid_response="Invalid response", default=None):
         """
         Ask the user a question and check that the user gives a valid answer.
         :param str prompt: The question to ask.
@@ -254,6 +207,8 @@ class GitVersion(object):
             regexes in an array or just a string or a regex string.
         :param bool case_sensitive: Handle answer as case sensitive.
         :param str invalid_response: String to output for invalid responses.
+        :param NoneType|str default: Default answer for empty response or None
+                                     if an empty response is not allowed.
         :return str: The answer supplied by the user.
         """
         if self.non_interactive:
@@ -265,6 +220,9 @@ class GitVersion(object):
             raw_answer = None
             while raw_answer is None:
                 raw_answer = input("{} ".format(prompt))
+                if default and raw_answer == '':
+                    raw_answer = default
+                    break
                 matched = False
                 answer = raw_answer if case_sensitive else raw_answer.lower()
                 for valid in valid_answers:
@@ -370,16 +328,31 @@ class GitVersion(object):
             diff = count_head - count_hash + 1
             diff = str(diff)
 
-            log = ""
+            log = []
             p = subprocess.Popen(
                 ['git', 'log', '-n', diff],
                 stdout=subprocess.PIPE
             )
+            MERGED_MASTER = re.compile(r"\s*Merge branch \'(.*)\' into master")
             for line in p.stdout:
-                line = str(line)
-                m = re.match(r'.*Resolve "(.*)".*', line)
-                if m:
-                    log = log + "  * " + m.group(1) + "\n"
+                match = MERGED_MASTER.match(str(line), re.MULTILINE)
+                if match is None:
+                    continue
+                issue = None
+                reformatted_match = match.group(1).split("-")
+                if reformatted_match[0].isdigit():
+                    issue = reformatted_match[0]
+                    reformatted_match = reformatted_match[1:]
+                reformatted_match = " ".join(reformatted_match).capitalize()
+                if issue:
+                    log.append("  * Resolves issue #{issue}: {msg}".format(
+                        issue=issue,
+                        msg=reformatted_match
+                    ))
+                else:
+                    log.append("  * {}".format(reformatted_match))
+
+            log = "\n".join(log)
 
             name = str(
                 subprocess.check_output(
@@ -394,7 +367,7 @@ class GitVersion(object):
             ).rstrip()
 
             # Do we have actually changelog information?
-            if not log:
+            if log == "":
                 log = " * Bumped version\n"
 
             log_str = (
@@ -402,15 +375,15 @@ class GitVersion(object):
                 "{log}\n -- {name} <{email}> {time}\n\n"
             )
 
-            log = log_str.format({
-                'app_name': self.app_name,
-                'version': str(self),
-                'os_version': self.os_version,  # jessie, stretch, etc.
-                'log': log,
-                'name': name,
-                'email': email,
-                'time': time.strftime('%a, %-d %b %Y %H:%M:%S %z')
-            })
+            log = log_str.format(
+                app_name=self.app_name,
+                version=str(self),
+                os_version=self.os_version,  # jessie, stretch, etc.
+                log=log,
+                name=name,
+                email=email,
+                time=time.strftime('%a, %-d %b %Y %H:%M:%S %z')
+            )
 
             return log
         except subprocess.CalledProcessError:
@@ -430,11 +403,75 @@ class GitVersion(object):
             version_file.write("{}\n".format("\n".join([
                 version_string,
                 self.app_name,
-                self.os_name
+                self.os_version
             ])))
 
     def __repr__(self):
         return "%s.%s" % (self.major, self.minor)
+
+
+def main():
+    """
+    Parse arguments
+    """
+
+    parser = argparse.ArgumentParser(
+        description='Display/bump the version number.',
+        conflict_handler='resolve',
+        epilog="""NOTE: this will only work if are using Git and are using the
+                  following version numbering scheme:
+                  \"v#.#\",
+                  e.g: v1.2
+               """
+    )
+
+    parser.add_argument(
+        '--major',
+        action='store_true',
+        help='Increase the major number with 1.'
+    )
+
+    parser.add_argument(
+        '-m',
+        '--minor',
+        action='store_true',
+        help='Increase the minor version number with 1.'
+    )
+
+    parser.add_argument(
+        '-s',
+        '--save',
+        type=str,
+        nargs='?',
+        default='.version',
+        const='.version',
+        help=(
+            'Save the new number to the a file named .version, optionally pass'
+            'a different filename to the argument.'
+        )
+    )
+
+    parser.add_argument(
+        '-v',
+        '--verbose',
+        action='store_true',
+        help='Print more info.'
+    )
+
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Force saving the file even if it was already changed.'
+    )
+
+    parser.add_argument(
+        '--non-interactive',
+        action='store_true',
+        help='Don\'t ask the user anything, useful for scripting/cron'
+    )
+
+    args = parser.parse_args()
+    GitVersion(**args.__dict__)
 
 
 if __name__ == '__main__':
