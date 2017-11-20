@@ -2,10 +2,8 @@
 """
 Python setuptools script for ``ocspd`` application.
 """
-import os
 from setuptools import setup
 from setuptools import find_packages
-from setuptools.command.install import install
 # pylint: disable=invalid-name
 # Disable superfluous-parens, because we want py3 compatibility
 # pylint: disable=superfluous-parens
@@ -28,36 +26,6 @@ long_description = (
     "Update OCSP staples from CA's and store the result so "
     "they can be served to clients."
 )
-
-
-class CustomInstallCommand(install):
-    """
-    Installs systemd service to /lib/systemd/system/ocspd.service. Note that
-    this is not installed when installing with --editable or setup.py develop.
-    """
-
-    CREATE_DIRS = [
-        os.path.join('/etc', 'ocspd'),
-        os.path.join('/var', 'log', 'ocspd'),
-    ]
-
-    def run(self):
-        """
-        Installs and then copies the service file to the systemd directory
-        """
-        install.run(self)
-        print("Creating needed directories")
-        for directory in self.CREATE_DIRS:
-            if not os.path.exists(directory):
-                try:
-                    os.makedirs(directory)
-                except OSError as exc:
-                    if exc.errno == 13:
-                        print("WARNING! Failed to create directory '{}'. This "
-                              "might cause problems.".format(directory))
-                    else:
-                        raise
-
 
 setup(
     name='ocspd',
@@ -99,7 +67,8 @@ setup(
         ]
     },
     data_files=[
-        ('/lib/systemd/system', ['scripts/ocspd.service']),
-    ],
-    cmdclass={'install': CustomInstallCommand},
+        ('/lib/systemd/system', ['config/ocspd.service'])
+        ('/etc/ocspd/', ['config/ocspd.conf']),
+        ('/var/log/ocspd', ['']),
+    ]
 )
