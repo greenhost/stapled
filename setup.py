@@ -2,9 +2,16 @@
 """
 Python setuptools script for ``ocspd`` application.
 """
+import os
 from setuptools import setup
 from setuptools import find_packages
 from __version__ import VERSION, APP_NAME
+
+build_requires = [
+    'rpm>=4.12'
+    'tar',
+    'gzip'
+]
 
 install_requires = [
     'python-daemon>=1.5.5',

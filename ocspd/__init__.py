@@ -25,7 +25,7 @@ LOG_DIR = "/var/log/ocspd/"
 
 #: Default locations to look for config files in order of importance.
 DEFAULT_CONFIG_FILE_LOCATIONS = [
-    os.path.join(os.path.realpath('..'), 'ocspd.conf'),
+    os.path.join(os.path.realpath(''), 'ocspd.conf'),
     '~/.ocspd.conf',
     '/etc/ocspd/ocspd.conf'
 ]

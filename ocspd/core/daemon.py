@@ -51,6 +51,7 @@ import logging
 import time
 import threading
 import signal
+import re
 from ocspd.core.certfinder import CertFinderThread
 from ocspd.core.certparser import CertParserThread
 from ocspd.core.ocsprenewer import OCSPRenewerThread
@@ -84,6 +85,24 @@ class OCSPDaemon(object):
         self.renewal_threads = args.renewal_threads
         self.refresh_interval = args.refresh_interval
         self.minimum_validity = args.minimum_validity
+        self.recursive_dirs = args.recursive
+        rel_path_re = re.compile(r'^\.+\/')
+        self.ignore = []
+        if args.ignore is not None:
+            # Filter out patterns that look like relative paths, e.g.:
+            # ./cert.pem and ../certs/*.crt, i.e. starts with one or more
+            # ``.`` followed by ``/``.
+            for pattern in args.ignore:
+                if rel_path_re.match(pattern) is not None:
+                    LOG.warn(
+                        "Pattern %s seems to be a relative path, rather than a"
+                        "pattern, ignoring this pattern.",
+                        pattern
+                    )
+                else:
+                    self.ignore.append(pattern)
+
+        self.ignore = args.ignore
         self.no_recycle = args.no_recycle
         self.model_cache = {}
         self.all_threads = []
@@ -159,7 +178,9 @@ class OCSPDaemon(object):
             directories=self.directories,
             refresh_interval=self.refresh_interval,
             file_extensions=self.file_extensions,
-            scheduler=self.scheduler
+            scheduler=self.scheduler,
+            ignore=self.ignore,
+            recursive_dirs=self.recursive_dirs
         )
 
     def start_renewer_thread(self, tid):

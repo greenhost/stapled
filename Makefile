@@ -4,21 +4,29 @@ VERSION=`head -n1 .version`
 PROJECT=`sed '2q;d' .version`
 BUILDIR=$(CURDIR)/debian/$(PROJECT)
 
-.PHONY : all build clean source builddeb install
 
-source:
+
+.PHONY: install
+install:
+	$(PYTHON) setup.py install
+
+.PHONY: build-source
+build-source:
 	$(PYTHON) setup.py sdist
 
-install:
-	$(PYTHON) setup.py install --root $(DESTDIR)
+.PHONY: build-rpm
+build-rpm:
+	$(PYTHON) setup.py bdist --formats=rpm
 
-build:
+.PHONY: build-deb
+build-deb:
 	$(PYTHON) setup.py sdist
 	mv "./dist/$(PROJECT)-$(VERSION).tar.gz" "./dist/$(PROJECT)_$(VERSION).orig.tar.gz"
 	dpkg-buildpackage -i -I -rfakeroot -uc -us
 	mkdir -p ./build
 	mv "./dist/$(PROJECT)-$(VERSION).*" ./build/
 
+.PHONY: clean
 clean:
 	$(PYTHON) setup.py clean
 	$(MAKE) -f $(CURDIR)/debian/rules clean
