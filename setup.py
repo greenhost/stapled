@@ -4,16 +4,14 @@ Python setuptools script for ``ocspd`` application.
 """
 from setuptools import setup
 from setuptools import find_packages
-# pylint: disable=invalid-name
-# Disable superfluous-parens, because we want py3 compatibility
-# pylint: disable=superfluous-parens
-
-version = '0.1'
+from __version__ import VERSION, APP_NAME
 
 install_requires = [
     'python-daemon>=1.5.5',
     'future>=0.15.0',
     'configargparse>=0.10.0',
+#   'certvalidator',
+#   'asn1
 ]
 
 docs_extras = [
@@ -28,15 +26,14 @@ long_description = (
 )
 
 setup(
-    name='ocspd',
-    version=version,
+    name=APP_NAME,
+    version=VERSION,
     description='Daemon for updating OCSP staples',
     long_description=long_description,
     author='Greenhost BV',
     author_email='info@greenhost.nl',
     url='https://code.greenhost.net/open/ocspd',
     packages=find_packages(),
-    include_package_data=True,
     install_requires=install_requires,
     extras_require={
         'docs': docs_extras,
@@ -67,8 +64,8 @@ setup(
         ]
     },
     data_files=[
-        ('/lib/systemd/system', ['config/ocspd.service'])
+        ('/lib/systemd/system', ['config/ocspd.service']),
         ('/etc/ocspd/', ['config/ocspd.conf']),
-        ('/var/log/ocspd', ['']),
+        ('/var/log/ocspd', []),
     ]
 )

@@ -8,7 +8,15 @@ import subprocess
 import re
 import time
 import collections
-from os import path
+import os
+from six.moves import input
+
+try:
+    from __version__ import VERSION, APP_NAME, DEB_OS_VERSION
+except ImportError as exc:
+    VERSION = None
+    APP_NAME = None
+    DEB_OS_VERSION = None
 
 # For Python2.7 compatibility
 try:
@@ -16,6 +24,7 @@ try:
 except NameError:
     FileNotFoundError = IOError
 
+from six.moves import input
 
 class NeedInputException(Exception):
     pass
@@ -30,7 +39,7 @@ class GitVersion(object):
     CLEAN_COMMIT = 'nothing to commit, working tree clean'
     DEFAULT_VERSION = [0, 1]
     CHANGELOG_FILE = 'debian/changelog'
-    DEFAULT_TARGET_OS = "stretch"
+    DEFAULT_TARGET_DEB_OS = "stretch"
 
     def __init__(self, **kwargs):
         """
@@ -48,9 +57,7 @@ class GitVersion(object):
         self.verbose = kwargs['verbose']
         self.file = kwargs['save']
 
-        self.guessed_app_name = path.basename(
-            path.dirname(path.abspath(__file__))
-        )
+        self.guessed_app_name = os.path.basename(os.path.realpath(''))
 
         if sum([kwargs['major'], kwargs['minor']]) > 1:
             print("You can increase either the major or minor version")
@@ -60,7 +67,7 @@ class GitVersion(object):
             self.major,
             self.minor,
             self.app_name,
-            self.os_version
+            self.deb_os_version
         ) = self.get_version()
 
         for part in ('major', 'minor'):
@@ -91,24 +98,23 @@ class GitVersion(object):
         """
         Get current version information from version file. Sets self.major,
         and self.minor
-
-        Assumes that the version file contains 1 rule with [v]major.minor
         """
-        try:
-            with open(self.file) as version_file:
-                version = version_file.readline()
-                try:
-                    (major, minor) = \
-                        (int(i) for i in self.VERSION_REGEX.findall(version)[0])  # noqa
-                except ValueError:
-                    print("Malformed version in version file: '%s'. Returning"
-                          " default" % version)
-                app_name = version_file.readline().strip("\n")
-                os_version = version_file.readline().strip("\n")
-        except FileNotFoundError:
-            (major, minor, app_name, os_version) = self.initial_setup()
+        if VERSION is None or APP_NAME is None or DEB_OS_VERSION is None:
+            (major, minor, app_name, deb_os_version) = self.initial_setup()
+        else:
+            version = VERSION
+            app_name = APP_NAME
+            deb_os_version = DEB_OS_VERSION
+            try:
+                (major, minor) = \
+                    (int(i) for i in self.VERSION_REGEX.findall(version)[0])
+            except ValueError:
+                print(
+                    "Malformed version in version file: '{}'. "
+                    "Returning default".format(version)
+                )
 
-        return (major, minor, app_name, os_version)
+        return (major, minor, app_name, deb_os_version)
 
     def initial_setup(self):
         """
@@ -139,7 +145,7 @@ class GitVersion(object):
             ),
             default=self.guessed_app_name
         )
-        self.os_version = self.question(
+        self.deb_os_version = self.question(
             "Please specify the target OS verion name (\"stretch\"):",
             valid_answers=re.compile(r"^([a-z0-9_\-]+|$)"),  # version or ""
             case_sensitive=False,
@@ -147,7 +153,7 @@ class GitVersion(object):
                 "Please enter a os version name containing only character in "
                 "a-z, 0-9, - _ or _"
             ),
-            default=self.DEFAULT_TARGET_OS
+            default=self.DEFAULT_TARGET_DEB_OS
         )
         user_wants_default_version = self.yn_question(
             "Do you want to set the default version number ({})".format(
@@ -179,7 +185,7 @@ class GitVersion(object):
             )
 
         self.save_version()
-        return (self.major, self.minor, self.app_name, self.os_version)
+        return (self.major, self.minor, self.app_name, self.deb_os_version)
 
     def yn_question(self, prompt, default=None):
         """
@@ -371,14 +377,14 @@ class GitVersion(object):
                 log = " * Bumped version\n"
 
             log_str = (
-                "{app_name} ({version}) {os_version}; urgency=low\n\n"
+                "{app_name} ({version}) {deb_os_version}; urgency=low\n\n"
                 "{log}\n -- {name} <{email}> {time}\n\n"
             )
 
             log = log_str.format(
                 app_name=self.app_name,
                 version=str(self),
-                os_version=self.os_version,  # jessie, stretch, etc.
+                deb_os_version=self.deb_os_version,  # jessie, stretch, etc.
                 log=log,
                 name=name,
                 email=email,
@@ -398,13 +404,22 @@ class GitVersion(object):
         """
         version_string = str(self)
         if self.verbose:
-            print("Saving version '%s'" % version_string)
-        with open(self.file, 'w') as version_file:
-            version_file.write("{}\n".format("\n".join([
-                version_string,
+            print("Saving version '{} v{}'".format(
                 self.app_name,
-                self.os_version
-            ])))
+                version_string
+            ))
+        with open(self.file, 'w') as version_file:
+            version_file.write(
+                (
+                    "VERSION = '{version}'\n"
+                    "APP_NAME = '{app_name}'\n"
+                    "DEB_OS_VERSION = '{DEB_OS_VERSION}'\n"
+                ).format(
+                    version=version_string,
+                    app_name=self.app_name,
+                    DEB_OS_VERSION=self.deb_os_version
+                )
+            )
 
     def __repr__(self):
         return "%s.%s" % (self.major, self.minor)
@@ -443,8 +458,8 @@ def main():
         '--save',
         type=str,
         nargs='?',
-        default='.version',
-        const='.version',
+        default='__version__.py',
+        const='__version__.py',
         help=(
             'Save the new number to the a file named .version, optionally pass'
             'a different filename to the argument.'
