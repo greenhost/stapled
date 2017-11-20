@@ -74,7 +74,7 @@ class CertFinderThread(threading.Thread):
             'file_extensions', ocspd.FILE_EXTENSIONS_DEFAULT
         )
         self.last_refresh = None
-        self.ignore = kwargs.pop('ignore', [])
+        self.ignore = kwargs.pop('ignore', []) or []
 
         assert self.models is not None, \
             "You need to pass a dict to hold the certificate model cache."
@@ -255,6 +255,11 @@ class CertFinderThread(threading.Thread):
         :param str path: Path to a file to match.
         """
         for pattern in self.ignore:
+            pattern = pattern.strip()
+            if len(pattern) == 0:
+                continue
+            if pattern[0] != '/':
+                pattern = "**{}".format(pattern)
             if fnmatch.fnmatch(path, pattern):
                 return True
         return False
