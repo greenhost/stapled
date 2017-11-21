@@ -1,17 +1,22 @@
 Source: ocspd
+Maintainer: Greenhost BV <info@greenhost.nl>
 Section: python
 Priority: optional
-Maintainer: Greenhost <tech@greenhost.nl>
-Build-Depends: debhelper (>=7.0.50~), python-support (>= 0.6), cdbs (>= 0.4.49), python-all-dev
-XS-Python-Version: >=2.7
-Standards-Version: 3.9.8.0
+Build-Depends: python-setuptools (>= 0.6b3), python3-setuptools, python-all (>= 2.6.6-3), python3-all, debhelper (>= 7.4.3)
+Standards-Version: 3.9.1
 
-Package: ocspd
+
+
+Package: python-ocspd
 Architecture: all
-Provides: ocspd
-Homepage: https://github.com/greenhost/ocspd
-XB-Python-Version: ${python:Versions}
 Depends: ${misc:Depends}, ${python:Depends}
-Description: Fetch OCSP staples from CA's and pass them to proxies
- Update OCSP staples from CA's and store the result so they can be served to
- clients.
+Description: Daemon for updating OCSP staples
+ Update OCSP staples from CA's and store the result so they can be served to clients.
+
+
+
+Package: python3-ocspd
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}
+Description: Daemon for updating OCSP staples
+ Update OCSP staples from CA's and store the result so they can be served to clients.

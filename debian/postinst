@@ -2,11 +2,6 @@
 
 set -e
 
-# Create required directories for logging,
-for DIR in /etc/ocspd/ /var/log/ocspd; do
-	install -m 755 -d $DIR
-done
-
 systemctl start ocspd
 
 set +e

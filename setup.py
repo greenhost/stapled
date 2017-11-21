@@ -2,55 +2,46 @@
 """
 Python setuptools script for ``ocspd`` application.
 """
-import os
 from setuptools import setup
 from setuptools import find_packages
 from __version__ import VERSION, APP_NAME
-
-build_requires = [
-    'rpm>=4.12'
-    'tar',
-    'gzip'
-]
-
-install_requires = [
-    'python-daemon>=1.5.5',
-    'future>=0.15.0',
-    'configargparse>=0.10.0',
-#   'certvalidator',
-#   'asn1
-]
-
-docs_extras = [
-    'Sphinx>=1.0',  # autodoc_member_order = 'bysource', autodoc_default_flags
-    'sphinx-argparse>=0.1.15',
-    'sphinx_rtd_theme',
-]
-
-long_description = (
-    "Update OCSP staples from CA's and store the result so "
-    "they can be served to clients."
-)
 
 setup(
     name=APP_NAME,
     version=VERSION,
     description='Daemon for updating OCSP staples',
-    long_description=long_description,
+    long_description=(
+        "Update OCSP staples from CA's and store the result so "
+        "they can be served to clients."
+    ),
     author='Greenhost BV',
     author_email='info@greenhost.nl',
-    url='https://code.greenhost.net/open/ocspd',
+    url='https://github.com/greenhost/ocspd',
     packages=find_packages(),
-    install_requires=install_requires,
+    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
+    install_requires=[
+        'python-daemon>=1.5.5',
+        'future>=0.15.0',
+        'configargparse>=0.10.0'
+    ],
     extras_require={
-        'docs': docs_extras,
+        'docs': [
+            'Sphinx>=1.0',
+            'sphinx-argparse>=0.1.15',
+            'sphinx_rtd_theme',
+        ],
+        'build': [
+            'rpm>=4.12'
+            'tar',
+            'gzip'
+        ]
     },
-    license='MIT License',
+    license='Apache Version 2.0',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: No Input/Output (Daemon)',
         'Intended Audience :: System Administrators',
-        'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: Apache Version 2.0',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 2',
@@ -65,6 +56,7 @@ setup(
         'Topic :: System :: Systems Administration',
         'Topic :: Utilities',
     ],
+    keywords='ocsp proxy ssl tls haproxy',
     entry_points={
         'console_scripts': [
             'ocspd = ocspd.__main__:init'
@@ -74,5 +66,6 @@ setup(
         ('/lib/systemd/system', ['config/ocspd.service']),
         ('/etc/ocspd/', ['config/ocspd.conf']),
         ('/var/log/ocspd', []),
+        ('./', ['__version__.py'])
     ]
 )
