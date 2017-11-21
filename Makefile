@@ -8,12 +8,24 @@ install:
 
 .PHONY: build-deps
 build-deps:
+	TMPDIR=$(pwd)/build-deps
+	TMPDEBDIST="${TMPDIR}/dep_dist"
+	TARGET=$(pwd)/dist
+	mkdir -p $TMPDEBDIST
+	mkdir -p $TARGET
 	for PACKAGE in certvalidator oscrypto asn1crypto ocspbuilder ; do \
-		pypi-download $(PACKAGE); \
-		py2dsc-deb \
-			--with-python2=True \
-			--with-python3=True \
-			$(PACKAGE)*.tar.gz; \
+	    rm -rf $TMPDEBDIST/*; \
+	    cd $TMPDIR/; \
+	    pypi-download --verbose=2 $PACKAGE; \
+	    PACKAGE=$(ls $PACKAGE-*.tar.gz|sed -e 's/.tar.gz$//' ); \
+	    tar -xzf $PACKAGE.tar.gz; \
+	    cd $PACKAGE; \
+		# TODO: THIS FAILS BECAUSE OF A CUSTOMER CLEAN COMMAND IN THE DEPS.
+	    python setup.py --command-packages=stdeb.command sdist_dsc \
+	        --with-python2=True \
+	        --with-python3=True \
+	        --use-premade-distfile=../$PACKAGE.tar.gz \
+	        --dist-dir $TMPDEBDIST bdist_deb; \
 	done
 
 .PHONY: build-sdist
@@ -47,7 +59,7 @@ build-deb:
 
 .PHONY: build
 build:
-	make build-deps
+	#make build-deps
 	make build-sdist
 	make build-bdist
 	make build-wheel
