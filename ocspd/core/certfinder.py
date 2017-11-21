@@ -255,9 +255,12 @@ class CertFinderThread(threading.Thread):
         :param str path: Path to a file to match.
         """
         for pattern in self.ignore:
+            # Strip spaces, check if length still greater than 0
             pattern = pattern.strip()
             if len(pattern) == 0:
                 continue
+            # If pattern starts with / it is absolute, do nothing, if not, add
+            # ``**`` to make fnmatch match any parent directory.
             if pattern[0] != '/':
                 pattern = "**{}".format(pattern)
             if fnmatch.fnmatch(path, pattern):
