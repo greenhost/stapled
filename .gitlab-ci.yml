@@ -2,7 +2,9 @@ stages:
   - build
 
 before_script:
-  -  make clean
+  - apt-get update -qq
+  - apt-get install -q -y build-essential
+  - make clean
 
 build-jessie:
   stage: build
