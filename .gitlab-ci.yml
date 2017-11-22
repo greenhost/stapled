@@ -5,11 +5,13 @@ before_script:
   - apt-get update -qq
   - apt-get install -q -y build-essential
   - apt-get install -q -y python-all python3-all
-  - apt-get install -q -y python-setuptools python3-setuptools
+  - apt-get install -q -y python-setuptools python3-setuptools python-pip
+  - pip install -U pip
   - pip install -r requirements.txt
   - make clean
 
 build-jessie:
+  when: always
   stage: build
   image: debian:jessie
   script:
@@ -23,6 +25,7 @@ build-jessie:
       - dist/ocspd*.deb
 
 build-stretch:
+  when: always
   stage: build
   image: debian:stretch
   script:
