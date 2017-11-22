@@ -4,8 +4,9 @@ stages:
 before_script:
   - apt-get update -qq
   - apt-get install -q -y build-essential
-  - apt-get install -q -y python python-all python3 python3-all
+  - apt-get install -q -y python-all python3-all
   - apt-get install -q -y python-setuptools python3-setuptools
+  - pip install -r requirements.txt
   - make clean
 
 build-jessie:
@@ -20,7 +21,6 @@ build-jessie:
       - dist/ocspd*.whl
       - dist/ocspd*.tar.bz2
       - dist/ocspd*.deb
-
 
 build-stretch:
   stage: build
