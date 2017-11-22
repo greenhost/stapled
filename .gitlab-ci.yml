@@ -1,17 +1,27 @@
-
 stages:
-  - clean
   - build
 
-clean:
-  script:
-    - make clean
+before_script:
+  -  make clean
 
-build:
+build-jessie:
   stage: build
-      - make build
+  image: debian:jessie-slim
+  script:
+    - make
   artifacts:
     paths:
-    - dist/ocspd_*
-    - dist/python-ocspd_*
-    - dist/python3-ocspd_*
+      - dist/ocspd_*
+      - dist/python-ocspd_*
+      - dist/python3-ocspd_*
+
+build-stretch:
+  stage: build
+  image: debian:stretch-slim
+  script:
+    - make
+  artifacts:
+    paths:
+      - dist/ocspd_*
+      - dist/python-ocspd_*
+      - dist/python3-ocspd_*

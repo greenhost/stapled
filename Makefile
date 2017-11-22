@@ -1,70 +1,62 @@
-PYTHON=`which python`
-TWINE=python -m twine
-GPG=`which gpg`
+TWINE = python -m twine
+GPG := $(shell which gpg)
+TARGET := $(shell pwd)/dist
+BUILD_DEPS = oscrypto certvalidator asn1crypto ocspbuilder
+
+.PHONY: default
+default: all;
 
 .PHONY: install
 install:
 	python setup.py install
 
 .PHONY: build-deps
-build-deps:
-	TMPDIR=$(pwd)/build-deps
-	TMPDEBDIST="${TMPDIR}/dep_dist"
-	TARGET=$(pwd)/dist
-	mkdir -p $TMPDEBDIST
-	mkdir -p $TARGET
-	for PACKAGE in certvalidator oscrypto asn1crypto ocspbuilder ; do \
-	    rm -rf $TMPDEBDIST/*; \
-	    cd $TMPDIR/; \
-	    pypi-download --verbose=2 $PACKAGE; \
-	    PACKAGE=$(ls $PACKAGE-*.tar.gz|sed -e 's/.tar.gz$//' ); \
-	    tar -xzf $PACKAGE.tar.gz; \
-	    cd $PACKAGE; \
-		# TODO: THIS FAILS BECAUSE OF A CUSTOMER CLEAN COMMAND IN THE DEPS.
-	    python setup.py --command-packages=stdeb.command sdist_dsc \
-	        --with-python2=True \
-	        --with-python3=True \
-	        --use-premade-distfile=../$PACKAGE.tar.gz \
-	        --dist-dir $TMPDEBDIST bdist_deb; \
-	done
+build-deps: ${BUILD_DEPS}
 
-.PHONY: build-sdist
-build-sdist:
+${BUILD_DEPS}:
+	mkdir -p "$(TARGET)"
+	@echo Building $@
+	mkdir -p build_deps/tmp/${@}
+	rm -rf build_deps/tmp/${@}/*
+	cd build_deps/tmp/${@}
+	pypi-download --verbose=2 $@
+	py2dsc-deb \
+		--with-python2=True \
+		--with-python3=True \
+		--dist-dir=build_deps/tmp/${@}/deb_dist \
+		${@}*.tar.gz
+
+.PHONY: sdist
+sdist:
 	python setup.py sdist
 
-.PHONY: build-bdist
-build-bdist:
+.PHONY: bdist
+bdist:
 	python setup.py bdist --formats=gztar,bztar
 
-.PHONY: build-wheel
-build-wheel:
+.PHONY: wheel
+wheel:
 	python setup.py bdist_wheel
 
-.PHONY: build-rpm
-build-rpm:
+.PHONY: rpm
+rpm:
 	python setup.py bdist --formats=rpm -u root -g root
 
-.PHONY: build-deb-src
-build-deb-src:
+.PHONY: deb-src
+deb-src:
 	python setup.py --command-packages=stdeb.command sdist_dsc \
-	 				   --with-python2=True --with-python3=True
+	 				--with-python2=True --with-python3=True
 
-.PHONY: build-deb
-build-deb:
-	make build-deb-src
-	python setup.py --command-packages=stdeb.command bdist_deb
-	echo "Moving binary packages from 'deb_dist' to 'dist'."
-	mv deb_dist/python*-ocspd_*.deb dist/
-	rm -rfv deb_dist
+.PHONY: deb
+deb: deb-src
+	python setup.py --command-packages=stdeb.command sdist_dsc \
+	 				--with-python2=True --with-python3=True bdist_deb
+	@echo "Moving binary packages from 'deb_dist' to 'dist'."
+	mv deb_dist/ocspd*.deb dist/
+	#rm -rfv deb_dist
 
-.PHONY: build
-build:
-	#make build-deps
-	make build-sdist
-	make build-bdist
-	make build-wheel
-	make build-rpm
-	make build-deb
+.PHONY: all
+all: sdist bdist wheel rpm deb #build-deps
 
 .PHONY: distribute
 distribute:
@@ -76,5 +68,5 @@ clean:
 	python setup.py clean
 	make -f $(CURDIR)/debian/rules override_dh_auto_clean
 	rm -rf deb_dist dist *.egg-info .pybuild
-	rm -rf build-deps
+	rm -rf build_deps
 	find . -name '*.pyc' -delete
