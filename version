@@ -12,11 +12,11 @@ import os
 from six.moves import input
 
 try:
-    from __version__ import VERSION, APP_NAME, DEB_OS_VERSION
+    from version import __version__, __app_name__, __debian_version__
 except ImportError as exc:
-    VERSION = None
-    APP_NAME = None
-    DEB_OS_VERSION = None
+    __version__ = None
+    __app_name__ = None
+    __debian_version__ = None
 
 # For Python2.7 compatibility
 try:
@@ -99,12 +99,12 @@ class GitVersion(object):
         Get current version information from version file. Sets self.major,
         and self.minor
         """
-        if VERSION is None or APP_NAME is None or DEB_OS_VERSION is None:
+        if __version__ is None or __app_name__ is None or __debian_version__ is None:
             (major, minor, app_name, deb_os_version) = self.initial_setup()
         else:
-            version = VERSION
-            app_name = APP_NAME
-            deb_os_version = DEB_OS_VERSION
+            version = __version__
+            app_name = __app_name__
+            deb_os_version = __debian_version__
             try:
                 (major, minor) = \
                     (int(i) for i in self.VERSION_REGEX.findall(version)[0])
@@ -411,13 +411,13 @@ class GitVersion(object):
         with open(self.file, 'w') as version_file:
             version_file.write(
                 (
-                    "VERSION = '{version}'\n"
-                    "APP_NAME = '{app_name}'\n"
-                    "DEB_OS_VERSION = '{DEB_OS_VERSION}'\n"
+                    "__version__ = '{version}'\n"
+                    "__app_name__ = '{app_name}'\n"
+                    "__debian_version__ = '{__debian_version__}'\n"
                 ).format(
                     version=version_string,
                     app_name=self.app_name,
-                    DEB_OS_VERSION=self.deb_os_version
+                    __debian_version__=self.deb_os_version
                 )
             )
 

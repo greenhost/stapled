@@ -4,11 +4,11 @@ Python setuptools script for ``ocspd`` application.
 """
 from setuptools import setup
 from setuptools import find_packages
-from __version__ import VERSION, APP_NAME
+from version import __version__, __app_name__
 
 setup(
-    name=APP_NAME,
-    version=VERSION,
+    name=__app_name__,
+    version=__version__,
     description='Daemon for updating OCSP staples',
     long_description=(
         "Update OCSP staples from CA's and store the result so "
