@@ -32,7 +32,7 @@ sdist:
 
 .PHONY: bdist
 bdist:
-	python setup.py bdist --formats=gztar,bztar
+	python setup.py bdist --formats=gztar,bztar -u root -g root
 
 .PHONY: wheel
 wheel:
@@ -48,7 +48,7 @@ deb-src:
 	 				--with-python2=True --with-python3=True
 
 .PHONY: deb
-deb: deb-src
+deb:
 	python setup.py --command-packages=stdeb.command sdist_dsc \
 	 				--with-python2=True --with-python3=True bdist_deb
 	@echo "Moving binary packages from 'deb_dist' to 'dist'."
