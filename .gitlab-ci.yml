@@ -4,12 +4,13 @@ stages:
 before_script:
   - apt-get update -qq
   - apt-get install -q -y build-essential
-  - make -v
+  - apt-get install -q -y python python-all python3 python3-all
+  - apt-get install -q -y python-setuptools python3-setuptools
   - make clean
 
 build-jessie:
   stage: build
-  image: debian:jessie-slim
+  image: debian:jessie
   script:
     - make
   artifacts:
@@ -23,7 +24,7 @@ build-jessie:
 
 build-stretch:
   stage: build
-  image: debian:stretch-slim
+  image: debian:stretch
   script:
     - make
   artifacts:
