@@ -6,6 +6,7 @@ before_script:
   - apt-get install -q -y build-essential
   - apt-get install -q -y python-all python3-all
   - apt-get install -q -y python-setuptools python3-setuptools python-pip
+  - apt-get install -q -y rpm tar gzip bzip2
   - pip install -U pip
   - pip install -r requirements.txt
   - make clean
