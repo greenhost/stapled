@@ -38,7 +38,7 @@ import ocspd
 import ocspd.core.daemon
 import ocspd.core.excepthandler
 from ocspd.colourlog import ColourFormatter
-from version import __version__, __app_name__
+from ocspd.version import __version__, __app_name__
 
 #: :attr:`logging.format` format string for log files and syslog
 LOGFORMAT = '[%(levelname)s] %(threadName)+10s/%(name)-16.20s %(message)s'
@@ -238,7 +238,7 @@ def get_cli_arg_parser():
         '-V', '--version',
         action='version',
         version="%(app_name)s v%(version)s" % {
-            'app_name': __app_name__, 'version': VERSION
+            'app_name': __app_name__, 'version': __version__
         },
         help="Show the version number and exit."
     )

@@ -12,7 +12,7 @@ import os
 from six.moves import input
 
 try:
-    from version import __version__, __app_name__, __debian_version__
+    from ocspd.version import __version__, __app_name__, __debian_version__
 except ImportError as exc:
     __version__ = None
     __app_name__ = None
@@ -458,8 +458,8 @@ def main():
         '--save',
         type=str,
         nargs='?',
-        default='__version__.py',
-        const='__version__.py',
+        default='ocspd/version.py',
+        const='ocspd/version.py',
         help=(
             'Save the new number to the a file named .version, optionally pass'
             'a different filename to the argument.'
