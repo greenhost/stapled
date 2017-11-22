@@ -10,8 +10,8 @@ default: all;
 install:
 	python setup.py install
 
-.PHONY: build-deps
-build-deps: ${BUILD_DEPS}
+.PHONY: deps ${BUILD_DEPS}
+deps: ${BUILD_DEPS}
 
 ${BUILD_DEPS}:
 	mkdir -p "$(TARGET)"
@@ -53,7 +53,7 @@ deb: deb-src
 	 				--with-python2=True --with-python3=True bdist_deb
 	@echo "Moving binary packages from 'deb_dist' to 'dist'."
 	mv deb_dist/ocspd*.deb dist/
-	#rm -rfv deb_dist
+	rm -rfv deb_dist
 
 .PHONY: all
 all: sdist bdist wheel rpm deb #build-deps

@@ -29,11 +29,6 @@ setup(
             'Sphinx>=1.0',
             'sphinx-argparse>=0.1.15',
             'sphinx_rtd_theme',
-        ],
-        'build': [
-            'rpm>=4.12'
-            'tar',
-            'gzip'
         ]
     },
     license='Apache Version 2.0',
