@@ -4,6 +4,7 @@ stages:
 before_script:
   - apt-get update -qq
   - apt-get install -q -y build-essential
+  - make -v
   - make clean
 
 build-jessie:
@@ -13,9 +14,12 @@ build-jessie:
     - make
   artifacts:
     paths:
-      - dist/ocspd_*
-      - dist/python-ocspd_*
-      - dist/python3-ocspd_*
+      - dist/ocspd*.tar.gz
+      - dist/ocspd*.rpm
+      - dist/ocspd*.whl
+      - dist/ocspd*.tar.bz2
+      - dist/ocspd*.deb
+
 
 build-stretch:
   stage: build
@@ -24,6 +28,8 @@ build-stretch:
     - make
   artifacts:
     paths:
-      - dist/ocspd_*
-      - dist/python-ocspd_*
-      - dist/python3-ocspd_*
+      - dist/ocspd*.tar.gz
+      - dist/ocspd*.rpm
+      - dist/ocspd*.whl
+      - dist/ocspd*.tar.bz2
+      - dist/ocspd*.deb
