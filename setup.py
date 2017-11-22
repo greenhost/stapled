@@ -64,7 +64,6 @@ setup(
     data_files=[
         ('/lib/systemd/system', ['config/ocspd.service']),
         ('/etc/ocspd/', ['config/ocspd.conf']),
-        ('/var/log/ocspd', []),
-        ('./', ['__version__.py'])
+        ('/var/log/ocspd', [])
     ]
 )
