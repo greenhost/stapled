@@ -22,7 +22,7 @@ build-jessie:
   script:
     - git submodule update --init --recursive
     - make clean
-    - make -j 4
+    - make
     - make install
   artifacts:
     paths:
@@ -39,7 +39,7 @@ build-stretch:
   script:
     - git submodule update --init --recursive
     - make clean
-    - make -j 4
+    - make
     - make install
   artifacts:
     paths:
