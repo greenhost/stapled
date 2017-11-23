@@ -1,7 +1,7 @@
 TWINE = python -m twine
 GPG := $(shell which gpg)
 TARGET := $(shell pwd)/dist
-BUILD_DEPS = oscrypto certvalidator asn1crypto ocspbuilder
+# BUILD_DEPS = oscrypto certvalidator asn1crypto ocspbuilder
 
 .PHONY: default
 default: all;
@@ -10,21 +10,21 @@ default: all;
 install:
 	python setup.py install
 
-.PHONY: deps ${BUILD_DEPS}
-deps: ${BUILD_DEPS}
-
-${BUILD_DEPS}:
-	mkdir -p "$(TARGET)"
-	@echo Building $@
-	mkdir -p build_deps/tmp/${@}
-	rm -rf build_deps/tmp/${@}/*
-	cd build_deps/tmp/${@}
-	pypi-download --verbose=2 $@
-	py2dsc-deb \
-		--with-python2=True \
-		--with-python3=True \
-		--dist-dir=build_deps/tmp/${@}/deb_dist \
-		${@}*.tar.gz
+#.PHONY: deps ${BUILD_DEPS}
+#deps: ${BUILD_DEPS}
+#
+#${BUILD_DEPS}:
+#	mkdir -p "$(TARGET)"
+#	@echo Building $@
+#	mkdir -p build_deps/tmp/${@}
+#	rm -rf build_deps/tmp/${@}/*
+#	cd build_deps/tmp/${@}
+#	pypi-download --verbose=2 $@
+#	py2dsc-deb \
+#		--with-python2=True \
+#		--with-python3=True \
+#		--dist-dir=build_deps/tmp/${@}/deb_dist \
+#		${@}*.tar.gz
 
 .PHONY: sdist
 sdist:

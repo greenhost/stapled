@@ -17,7 +17,12 @@ setup(
     author='Greenhost BV',
     author_email='info@greenhost.nl',
     url='https://github.com/greenhost/ocspd',
-    packages=find_packages(),
+    packages=find_packages()+[
+        'lib/asn1crypto/asn1crypto',
+        'lib/oscrypto/oscrypto',
+        'lib/certvalidator/certvalidator',
+        'lib/ocspbuilder/ocspbuilder'
+    ],
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
     install_requires=[
         'python-daemon>=1.5.5',

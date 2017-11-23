@@ -9,6 +9,7 @@ import sys
 import os
 
 sys.path.append(os.path.abspath("../lib/"))
+from ocspd.version import __version__, __app_name__
 
 #: The extensions the daemon will try to parse as certificate files
 FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
