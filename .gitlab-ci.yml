@@ -3,8 +3,8 @@ stages:
 
 before_script:
   - apt-get update -qq
-  - apt-get install -q -y build-essential python-cffi
-  - apt-get install -q -y python-all python3-all
+  - apt-get install -q -y build-essential python-cffi python3-cffi
+  - apt-get install -q -y python-all python3-all python-dev python3-dev
   - apt-get install -q -y python-setuptools python3-setuptools python-pip
   - apt-get install -q -y rpm tar gzip bzip2
   - pip install -U pip
