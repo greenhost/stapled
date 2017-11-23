@@ -16,6 +16,7 @@ build-jessie:
   stage: build
   image: debian:jessie
   script:
+    - git submodule update --init --recursive
     - make -j 4
     - make install
   artifacts:
@@ -31,6 +32,7 @@ build-stretch:
   stage: build
   image: debian:stretch
   script:
+    - git submodule update --init --recursive
     - make -j 4
     - make install
   artifacts:
