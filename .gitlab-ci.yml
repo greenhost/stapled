@@ -6,10 +6,14 @@ before_script:
   - apt-get install -q -y build-essential python-cffi python3-cffi libffi-dev
   - apt-get install -q -y python-all python3-all python-dev python3-dev
   - apt-get install -q -y python-setuptools python3-setuptools python-pip
-  - apt-get install -q -y rpm tar gzip bzip2
+  - apt-get install -q -y rpm tar gzip bzip2 git
   - pip install -U pip
   - pip install -r requirements.txt
   - make clean
+
+cache:
+  key: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+  untracked: true
 
 build-jessie:
   when: always
@@ -17,6 +21,7 @@ build-jessie:
   image: debian:jessie
   script:
     - git submodule update --init --recursive
+    - make clean
     - make -j 4
     - make install
   artifacts:
@@ -33,6 +38,7 @@ build-stretch:
   image: debian:stretch
   script:
     - git submodule update --init --recursive
+    - make clean
     - make -j 4
     - make install
   artifacts:
