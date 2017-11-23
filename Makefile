@@ -70,3 +70,23 @@ clean:
 	rm -rf deb_dist dist *.egg-info .pybuild
 	rm -rf build_deps
 	find . -name '*.pyc' -delete
+
+.PHONY: docker-build
+docker-build:
+	sudo docker build -t build-ocspd .
+	sudo docker run -it -d --name ocspd build-ocspd
+
+.PHONY: docker-compile
+docker-compile:
+	sudo docker start ocspd
+	sudo docker exec -it ocspd make clean
+	sudo docker exec -it ocspd make -j 4
+	sudo docker exec -it ocspd make install
+	sudo docker stop ocspd
+
+.PHONY: docker-test
+docker-test:
+	sudo docker start ocspd
+	sudo docker exec -it ocspd ./refresh_testdata.sh
+	sudo docker exec -it ocspd ocspd -d testdata/ --recursive
+	sudo docker stop ocspd

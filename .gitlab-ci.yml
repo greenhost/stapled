@@ -6,7 +6,7 @@ before_script:
   - apt-get install -q -y build-essential python-cffi python3-cffi libffi-dev
   - apt-get install -q -y python-all python3-all python-dev python3-dev
   - apt-get install -q -y python-setuptools python3-setuptools python-pip
-  - apt-get install -q -y rpm tar gzip bzip2 git
+  - apt-get install -q -y rpm tar gzip bzip2 git debhelper
   - pip install -U pip
   - pip install -r requirements.txt
   - make clean
