@@ -16,11 +16,9 @@ build:stretch:
   - apt-get install -q -y rpm tar gzip bzip2 git debhelper
   - pip install -U pip
   - pip install -r requirements.txt
-  - make clean
   - git submodule update --init --recursive
   - make clean
   - make
-  - make install
   artifacts:
     paths:
     - dist/ocspd*.tar.gz
