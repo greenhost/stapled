@@ -10,10 +10,7 @@ build:stretch:
   image: debian:stretch
   script:
   - apt-get update -qq
-  - apt-get install -q -y build-essential python-cffi python3-cffi libffi-dev
-  - apt-get install -q -y python-all python3-all python-dev python3-dev
-  - apt-get install -q -y python-setuptools python3-setuptools python-pip
-  - apt-get install -q -y rpm tar gzip bzip2 git debhelper
+  - apt-get install -q -y build-essential python-cffi python3-cffi libffi-dev python-all python3-all python-dev python3-dev python-setuptools python3-setuptools python-pip rpm tar gzip bzip2 git debhelper
   - pip install -U pip
   - pip install -r requirements.txt
   - git submodule update --init --recursive
@@ -45,7 +42,8 @@ test:jessie:python3:
   image: debian:jessie
   script:
   - apt-get update
-  - apt-get install -y -q  ./dist/ocspd_*all.deb
+  - apt-get install -y python3-configargparse python3-daemon python3-future python3-six python3-cffi
+  - dpkg -i ./dist/ocspd-py2_*all.deb
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
@@ -58,7 +56,7 @@ test:stretch:python2:
   image: debian:stretch
   script:
   - apt-get update
-  - apt-get install -y -q  ./dist/ocspd-py2_*all.deb
+  - apt-get install -y -q  ./dist/ocspd_*all.deb
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
@@ -70,8 +68,9 @@ test:jessie:python2:
   stage: test
   image: debian:jessie
   script:
-  - apt-get update 
-  - apt-get install -y -q  ./dist/ocspd-py2_*all.deb
+  - apt-get update
+  - apt-get install -y python-configargparse python-daemon python-future python-six python-cffi
+  - dpkg -i ./dist/ocspd-py2_*all.deb
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
