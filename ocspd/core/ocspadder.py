@@ -138,7 +138,7 @@ class OCSPAdder(threading.Thread):
             and a filename `filename`.
         """
         command = self.OCSP_ADD.format(
-            ocspd.util.functions.base64(model.ocsp_staple.data))
+            ocspd.util.functions.base64(model.ocsp_staple.raw))
         LOG.debug("Setting OCSP staple with command '%s'", command)
         directory = os.path.dirname(model.filename)
         response = self.send(directory, command)
