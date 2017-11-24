@@ -51,8 +51,10 @@ test:jessie:python3:
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
-  artifacts:always:
-  - testdata/
+  artifacts:
+    when: always
+    paths:
+    - testdata/
 
 test:stretch:python2:
   stage: test
