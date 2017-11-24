@@ -31,12 +31,17 @@ test:stretch:python3:
   - apt-get update
   - apt-get install -y openssl
   - apt-get install -y -q ./dist/ocspd_*all.deb
+  - openssl version
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
+  artifacts:
+    when: always
+    paths:
+    - testdata/
 
 test:jessie:python3:
   stage: test
@@ -47,6 +52,7 @@ test:jessie:python3:
   - apt-get install -y -t jessie-backports python3-configargparse python3-daemon python3-future
   - apt-get install -y openssl python3-six python3-cffi
   - dpkg -i ./dist/ocspd-py2_*all.deb
+  - openssl version
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
@@ -65,13 +71,17 @@ test:stretch:python2:
   - apt-get update
   - apt-get install -y openssl
   - apt-get install -y -q ./dist/ocspd_*all.deb
+  - openssl version
   - ./refresh_testdata.sh
-  - cat testdata/**/*.pem
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
+  artifacts:
+    when: always
+    paths:
+    - testdata/
 
 test:jessie:python2:
   stage: test
@@ -82,9 +92,14 @@ test:jessie:python2:
   - apt-get install -y -t jessie-backports python-configargparse python-daemon python-future
   - apt-get install -y openssl python-six python-cffi
   - dpkg -i ./dist/ocspd-py2_*all.deb
+  - openssl version
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
+  artifacts:
+    when: always
+    paths:
+    - testdata/
