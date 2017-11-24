@@ -31,6 +31,7 @@ test:stretch:python3:
   stage: test
   image: debian:stretch
   script:
+  - apt-get update
   - apt-get install -y -q  ./dist/ocspd_*all.deb
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
@@ -43,6 +44,7 @@ test:jessie:python3:
   stage: test
   image: debian:jessie
   script:
+  - apt-get update
   - apt-get install -y -q  ./dist/ocspd_*all.deb
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
@@ -55,6 +57,7 @@ test:stretch:python2:
   stage: test
   image: debian:stretch
   script:
+  - apt-get update
   - apt-get install -y -q  ./dist/ocspd-py2_*all.deb
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
@@ -67,6 +70,7 @@ test:jessie:python2:
   stage: test
   image: debian:jessie
   script:
+  - apt-get update 
   - apt-get install -y -q  ./dist/ocspd-py2_*all.deb
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
