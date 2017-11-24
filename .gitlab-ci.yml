@@ -1,7 +1,14 @@
 stages:
-  - build
+- build
+- test
 
-before_script:
+cache:
+  key: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+
+build:stretch:
+  stage: build
+  image: debian:stretch
+  script:
   - apt-get update -qq
   - apt-get install -q -y build-essential python-cffi python3-cffi libffi-dev
   - apt-get install -q -y python-all python3-all python-dev python3-dev
@@ -10,41 +17,62 @@ before_script:
   - pip install -U pip
   - pip install -r requirements.txt
   - make clean
-
-cache:
-  key: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
-  untracked: true
-
-build-jessie:
-  when: always
-  stage: build
-  image: debian:jessie
-  script:
-    - git submodule update --init --recursive
-    - make clean
-    - make
-    - make install
+  - git submodule update --init --recursive
+  - make clean
+  - make
+  - make install
   artifacts:
     paths:
-      - dist/ocspd*.tar.gz
-      - dist/ocspd*.rpm
-      - dist/ocspd*.whl
-      - dist/ocspd*.tar.bz2
-      - dist/ocspd*.deb
+    - dist/ocspd*.tar.gz
+    - dist/ocspd*.rpm
+    - dist/ocspd*.whl
+    - dist/ocspd*.tar.bz2
+    - dist/ocspd*.deb
 
-build-stretch:
-  when: always
-  stage: build
+test:stretch:python3:
+  stage: test
   image: debian:stretch
   script:
-    - git submodule update --init --recursive
-    - make clean
-    - make
-    - make install
-  artifacts:
-    paths:
-      - dist/ocspd*.tar.gz
-      - dist/ocspd*.rpm
-      - dist/ocspd*.whl
-      - dist/ocspd*.tar.bz2
-      - dist/ocspd*.deb
+  - apt-get install -y -q  build/dist/ocspd_*all.deb
+  - ./refresh_testdata.sh
+  - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - sleep 30
+  - ls testdata/**/chain.pem.ocsp
+  dependencies:
+  - build:stretch
+
+test:jessie:python3:
+  stage: test
+  image: debian:jessie
+  script:
+  - apt-get install -y -q  build/dist/ocspd_*all.deb
+  - ./refresh_testdata.sh
+  - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - sleep 30
+  - ls testdata/**/chain.pem.ocsp
+  dependencies:
+  - build:stretch
+
+test:stretch:python2:
+  stage: test
+  image: debian:stretch
+  script:
+  - apt-get install -y -q  build/dist/ocspd-py2_*all.deb
+  - ./refresh_testdata.sh
+  - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - sleep 30
+  - ls testdata/**/chain.pem.ocsp
+  dependencies:
+  - build:stretch
+
+test:jessie:python2:
+  stage: test
+  image: debian:jessie
+  script:
+  - apt-get install -y -q  build/dist/ocspd-py2_*all.deb
+  - ./refresh_testdata.sh
+  - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - sleep 30
+  - ls testdata/**/chain.pem.ocsp
+  dependencies:
+  - build:stretch
