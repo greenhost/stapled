@@ -45,7 +45,7 @@ test:jessie:python3:
   - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
   - apt-get update
   - apt-get install -y -t jessie-backports python3-configargparse python3-daemon python3-future
-  - apt-get install -y openssl python3-configargparse python3-daemon python3-future python3-six python3-cffi
+  - apt-get install -y openssl python3-six python3-cffi
   - dpkg -i ./dist/ocspd-py2_*all.deb
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
