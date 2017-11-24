@@ -123,9 +123,20 @@ def get_cli_arg_parser():
         '-D',
         '--daemon',
         action='store_true',
+        default=False,
         help=(
             "Daemonise the process, release from shell and process group, run "
             "under new process group."
+        )
+    )
+    parser.add(
+        '--interactive',
+        '--no-daemon',
+        action='store_false',
+        dest='daemon',
+        help=(
+            "Disable daemon mode, overrides daemon mode if enabled in the "
+            "config file, effectively starting interactive mode."
         )
     )
     parser.add(
@@ -188,6 +199,15 @@ def get_cli_arg_parser():
             "follows:"
             "``./ocspd /etc/haproxy1 /etc/haproxy2 -s /etc/haproxy1.sock "
             "/etc/haproxy2.sock``"
+        )
+    )
+    parser.add(
+        '--no-haproxy-sockets',
+        action='store_false',
+        dest='haproxy_sockets',
+        help=(
+            "Disable HAProxy sockets, overrides ``--haproxy-sockets`` if "
+            "specified in the config file."
         )
     )
     parser.add(
