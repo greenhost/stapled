@@ -24,13 +24,15 @@ build:stretch:
     - dist/ocspd*.tar.bz2
     - dist/ocspd*.deb
 
-test:stretch:python3:
+test:jessie:python2:
   stage: test
-  image: debian:stretch
+  image: debian:jessie
   script:
+  - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
   - apt-get update
-  - apt-get install -y openssl
-  - apt-get install -y -q ./dist/ocspd_*all.deb
+  - apt-get install -y -t jessie-backports python-configargparse python-daemon python-future
+  - apt-get install -y openssl cacertificates python-six python-cffi
+  - dpkg -i ./dist/ocspd-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
@@ -50,7 +52,7 @@ test:jessie:python3:
   - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
   - apt-get update
   - apt-get install -y -t jessie-backports python3-configargparse python3-daemon python3-future
-  - apt-get install -y openssl python3-six python3-cffi
+  - apt-get install -y openssl cacertificates python3-six python3-cffi
   - dpkg -i ./dist/ocspd-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -69,7 +71,7 @@ test:stretch:python2:
   image: debian:stretch
   script:
   - apt-get update
-  - apt-get install -y openssl
+  - apt-get install -y openssl cacertificates
   - apt-get install -y -q ./dist/ocspd_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -83,15 +85,13 @@ test:stretch:python2:
     paths:
     - testdata/
 
-test:jessie:python2:
+test:stretch:python3:
   stage: test
-  image: debian:jessie
+  image: debian:stretch
   script:
-  - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
   - apt-get update
-  - apt-get install -y -t jessie-backports python-configargparse python-daemon python-future
-  - apt-get install -y openssl python-six python-cffi
-  - dpkg -i ./dist/ocspd-py2_*all.deb
+  - apt-get install -y openssl cacertificates
+  - apt-get install -y -q ./dist/ocspd_*all.deb
   - openssl version
   - ./refresh_testdata.sh
   - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
@@ -103,3 +103,5 @@ test:jessie:python2:
     when: always
     paths:
     - testdata/
+
+
