@@ -31,7 +31,7 @@ test:jessie:python2:
   - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
   - apt-get update
   - apt-get install -y -t jessie-backports python-configargparse python-daemon python-future
-  - apt-get install -y openssl cacertificates python-six python-cffi
+  - apt-get install -y openssl ca-certificates python-six python-cffi
   - dpkg -i ./dist/ocspd-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -52,7 +52,7 @@ test:jessie:python3:
   - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
   - apt-get update
   - apt-get install -y -t jessie-backports python3-configargparse python3-daemon python3-future
-  - apt-get install -y openssl cacertificates python3-six python3-cffi
+  - apt-get install -y openssl ca-certificates python3-six python3-cffi
   - dpkg -i ./dist/ocspd_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -71,7 +71,7 @@ test:stretch:python2:
   image: debian:stretch
   script:
   - apt-get update
-  - apt-get install -y openssl cacertificates
+  - apt-get install -y openssl ca-certificates
   - apt-get install -y -q ./dist/ocspd-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -90,7 +90,7 @@ test:stretch:python3:
   image: debian:stretch
   script:
   - apt-get update
-  - apt-get install -y openssl cacertificates
+  - apt-get install -y openssl ca-certificates
   - apt-get install -y -q ./dist/ocspd_*all.deb
   - openssl version
   - ./refresh_testdata.sh
