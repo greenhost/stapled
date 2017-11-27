@@ -28,8 +28,8 @@ import logging
 import fnmatch
 import os
 import stapled
-from stapled.core.excepthandler import ocsp_except_handle
-from stapled.core.taskcontext import OCSPTaskContext
+from stapled.core.excepthandler import stapled_except_handle
+from stapled.core.taskcontext import StapleTaskContext
 from stapled.core.certmodel import CertModel
 from stapled.util.cache import cache
 
@@ -40,7 +40,7 @@ class CertFinderThread(threading.Thread):
     """
     This searches directories for certificate files.
     When found, models are created for the certificate files, which are wrapped
-    in a :class:`stapled.core.taskcontext.OCSPTaskContext` which are then
+    in a :class:`stapled.core.taskcontext.StapleTaskContext` which are then
     scheduled to be processed by the
     :class:`stapled.core.certparser.CertParserThread` ASAP.
 
@@ -97,7 +97,7 @@ class CertFinderThread(threading.Thread):
 
         while not self.stop:
             # Catch any exceptions within this context to protect the thread.
-            with ocsp_except_handle():
+            with stapled_except_handle():
                 self.refresh()
                 if self.refresh_interval is None:
                     # Stop refreshing if it is not wanted.
@@ -180,7 +180,7 @@ class CertFinderThread(threading.Thread):
                     # see if it changed.
                     self.models[entry] = model
                     # Schedule the certificate for parsing.
-                    context = OCSPTaskContext(
+                    context = StapleTaskContext(
                         task_name="parse",
                         model=model,
                         sched_time=None
@@ -249,7 +249,7 @@ class CertFinderThread(threading.Thread):
             # Make a new model.
             LOG.info("File %s changed, parsing it again.", filename)
             new_model = CertModel(filename)
-            context = OCSPTaskContext(
+            context = StapleTaskContext(
                 task_name="parse", model=new_model, sched_time=None)
             self.scheduler.add_task(context)
 

@@ -9,7 +9,7 @@ import errno
 import os
 import queue
 from io import StringIO
-from stapled.core.excepthandler import ocsp_except_handle
+from stapled.core.excepthandler import stapled_except_handle
 import stapled.core.exceptions
 import stapled.util.functions
 
@@ -72,7 +72,7 @@ class StapleAdder(threading.Thread):
             "The StapleAdder needs a socket_paths dict"
 
         self.socks = {}
-        with ocsp_except_handle():
+        with stapled_except_handle():
             for key, socket_path in self.socket_paths.items():
                 self._open_socket(key, socket_path)
         super(StapleAdder, self).__init__(*args, **kwargs)
@@ -122,7 +122,7 @@ class StapleAdder(threading.Thread):
                 LOG.debug("Sending staple for cert:'%s'", model)
 
                 # Open the exception handler context to run tasks likely to fail
-                with ocsp_except_handle(context):
+                with stapled_except_handle(context):
                     self.add_staple(model)
                 self.scheduler.task_done(self.TASK_NAME)
             except queue.Empty:
@@ -183,7 +183,7 @@ class StapleAdder(threading.Thread):
         #             break
 
         # Send command
-        with ocsp_except_handle():
+        with stapled_except_handle():
             try:
                 self.socks[socket_key].sendall((command + "\n").encode())
             except BrokenPipeError:
@@ -193,7 +193,7 @@ class StapleAdder(threading.Thread):
                 self.socks[socket_key].close()
                 self._open_socket(socket_key, self.socket_paths[socket_key])
                 # Try again, if this results in a BrokenPipeError *again*, it
-                # will be caught by ocsp_except_handle
+                # will be caught by stapled_except_handle
                 self.socks[socket_key].sendall((command + "\n").encode())
 
         buff = StringIO()

@@ -63,13 +63,13 @@ STACK_TRACE_FILENAME = "stapled_exception{:%Y%m%d-%H%M%s%f}.trace"
 
 
 @contextmanager
-def ocsp_except_handle(ctx=None):
+def stapled_except_handle(ctx=None):
     """
     Handle lots of potential errors and reschedule failed action contexts.
     """
     # pylint: disable=too-many-branches,too-many-statements
     try:
-        yield  # do the "with ocsp_except_handle(ctx):" code block
+        yield  # do the "with stapled_except_handle(ctx):" code block
     except (CertFileAccessError, StapleAdderBadResponse) as exc:
         # Can't access the certificate file or the response from HAPRoxy was
         # not "OCSP Response updated", we can try again a bit later..

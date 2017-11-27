@@ -1,4 +1,4 @@
-==================
+Staple==================
 Module description
 ==================
 
@@ -25,7 +25,8 @@ keep OCSP staples up-to-date. In short, these are the modules:
     staples without restarting HAProxy.
 
 This graph explains their interaction. Every arrow passes a
-:class:`~stapled.core.taskcontext.OCSPTaskContext` instance to the other module.
+:class:`~stapled.core.taskcontext.StapleTaskContext` instance to the other
+module.
 
 .. graphviz::
 
@@ -36,7 +37,7 @@ This graph explains their interaction. Every arrow passes a
        scheduler [label="\nSchedulerThread\n\n🕐" URL="core.html#stapled.scheduling.SchedulerThread"]
        finder [label="CertFinderThread" URL="core.html#stapled.core.certfinder.CertFinderThread"]
        parser [label="CertParserThread" URL="core.html#stapled.core.certparser.CertParserThread"]
-       renewer [label="OCSPRenewerThread" URL="core.html#stapled.core.ocsprenewer.OCSPRenewerThread"]
+       renewer [label="StapleRenewerThread" URL="core.html#stapled.core.staplerenewer.StapleRenewerThread"]
        adder [label="StapleAdder" URL="core.html#stapled.core.stapleadder.StapleAdder"]
        haproxy [label=HAProxy shape=box URL="https://www.haproxy.com/"]
        ca[label="Certificate Authority" shape=box URL="https://en.wikipedia.org/wiki/Certificate_authority"]

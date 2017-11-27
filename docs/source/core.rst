@@ -22,7 +22,7 @@ stapled.core.taskcontext
 ----------------------
 .. automodule:: stapled.core.taskcontext
 
-   .. autoclass:: OCSPTaskContext
+   .. autoclass:: StapleTaskContext
       :members:
       :special-members:
       :private-members:
@@ -45,11 +45,11 @@ stapled.core.certparser
       :special-members:
       :private-members:
 
-stapled.core.ocsprenewer
+stapled.core.staplerenewer
 ----------------------
-.. automodule:: stapled.core.ocsprenewer
+.. automodule:: stapled.core.staplerenewer
 
-   .. autoclass:: OCSPRenewerThread
+   .. autoclass:: StapleRenewerThread
       :members:
       :special-members:
       :private-members:
@@ -71,4 +71,3 @@ stapled.core.certmodel
       :members:
       :special-members:
       :private-members:
-

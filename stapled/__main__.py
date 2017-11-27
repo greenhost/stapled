@@ -6,7 +6,7 @@ the OCSP Staple daemon, which searches your certificate directories and
 requests staples for all certificates in them. They will then be saved as
 ``certificatename.pem.ocsp`` in the same directories that are being indexed.
 
-Type ``ocsp.py -h`` for all command line arguments.
+Type ``stapled.py -h`` for all command line arguments.
 
 This module parses the command line arguments and detaches the process
 from the user's context if ``-d`` (daemon mode) is specified, then spawns a

@@ -23,7 +23,7 @@ This module bootstraps the stapled process by starting threads for:
     for requesting or renewing the OCSP staple.
 
 - 2x (or more depending on the ``-t`` CLI argument)
-  :class:`stapled.core.ocsprenewer.OCSPRenewerThread`
+  :class:`stapled.core.staplerenewer.StapleRenewerThread`
 
   - Gets tasks from the scheduler in :attr:`self.scheduler` which is a
     :class:`stapled.scheduling.Scheduler` object passed by this module.
@@ -54,7 +54,7 @@ import signal
 import re
 from stapled.core.certfinder import CertFinderThread
 from stapled.core.certparser import CertParserThread
-from stapled.core.ocsprenewer import OCSPRenewerThread
+from stapled.core.staplerenewer import StapleRenewerThread
 from stapled.core.stapleadder import StapleAdder
 from stapled.scheduling import SchedulerThread
 from stapled import MAX_RESTART_THREADS
@@ -124,7 +124,7 @@ class Stapledaemon(object):
 
         # Start proxy adder thread if sockets were supplied
         if self.socket_paths:
-            self.start_ocsp_adder_thread()
+            self.start_staple_adder_thread()
 
         # Start ocsp response gathering threads
         threads_list = []
@@ -155,10 +155,10 @@ class Stapledaemon(object):
             queues=["parse", "renew", "proxy-add"]
         )
 
-    def start_ocsp_adder_thread(self):
+    def start_staple_adder_thread(self):
         """
-        Spawns a OCSP Proxy adder thread with the appropriate keyword
-        arguments.
+        Spawns a StapleAdder thread, that adds staples to HAProxy, with the
+        appropriate keyword arguments.
         """
         return self.__spawn_thread(
             name="proxy-adder",
@@ -185,11 +185,11 @@ class Stapledaemon(object):
 
     def start_renewer_thread(self, tid):
         """
-        Spawns an OCSP renewer thread with the appropriate keyword arguments.
+        Spawns a Staple renewer thread with the appropriate keyword arguments.
         """
         return self.__spawn_thread(
             name="renewer-{:02d}".format(tid),
-            thread_object=OCSPRenewerThread,
+            thread_object=StapleRenewerThread,
             minimum_validity=self.minimum_validity,
             scheduler=self.scheduler
         )

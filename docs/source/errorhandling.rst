@@ -19,10 +19,10 @@ The following is an overview of what can be expected when exceptions occur.
 |                                      |               | doesn't parse or part of the chain       |                                                                           |
 |                                      |               | is missing.                              |                                                                           |
 +--------------------------------------+---------------+------------------------------------------+---------------------------------------------------------------------------+
-| OCSPBadResponse                      | ocsprenewer   | The response is empty, invalid or the    | Schedule retry 3x *n*\*60s, then 3x, every hour, then twice a day.        |
+| StapleBadResponse                    | staplerenewer | The response is empty, invalid or the    | Schedule retry 3x *n*\*60s, then 3x, every hour, then twice a day.        |
 |                                      |               | status is not "good".                    | indefinately. If it's not a server issue, wait for the file to change [1]_|
 +--------------------------------------+---------------+------------------------------------------+---------------------------------------------------------------------------+
-| urllib.error.URLError                | ocsprenewer   | An OCSP url can't be opened.             | We can try again later, maybe there is a server side issue.               |
+| urllib.error.URLError                | staplerenewer | An OCSP url can't be opened.             | We can try again later, maybe there is a server side issue.               |
 +--------------------------------------+               +------------------------------------------+ Some certificates contain multiple URL's so we will try each one with     |
 | requests.exceptions.Timeout          |               | Data didn't reach us within the expected | 10 seconds intervals and then start from the first again.                 |
 +--------------------------------------+               | time frame.                              | Schedule retry 3x *n*\*60s, then 3x, every hour, then then twice a day.   |
@@ -43,12 +43,12 @@ The following is an overview of what can be expected when exceptions occur.
 | requests.exceptions.ConnectionError  |               | A connection to the OCSP server can't be |                                                                           |
 |                                      |               | established.                             |                                                                           |
 +--------------------------------------+---------------+------------------------------------------+---------------------------------------------------------------------------+
-| SocketError                          | stapleadder     | A HAProxy socket can not be opened       | Log a critical error. Every "send" action will try to re-open the socket. |
+| SocketError                          | stapleadder   | A HAProxy socket can not be opened       | Log a critical error. Every "send" action will try to re-open the socket. |
 +--------------------------------------+               +------------------------------------------+                                                                           +
 | BrokenPipeError                      |               | A HAProxy socket consistently has a      |                                                                           |
 |                                      |               | broken pipe                              |                                                                           |
 +--------------------------------------+               +------------------------------------------+---------------------------------------------------------------------------+
-| StapleAdderBadResponse                 |               | HAProxy does not respond with            | Schedule a retry 3x *n*\*60s, then 3x, every hour, then ignore.           |
+| StapleAdderBadResponse                 |             | HAProxy does not respond with            | Schedule a retry 3x *n*\*60s, then 3x, every hour, then ignore.           |
 |                                      |               | 'OCSP Response updated!'                 |                                                                           |
 +--------------------------------------+---------------+------------------------------------------+---------------------------------------------------------------------------+
 

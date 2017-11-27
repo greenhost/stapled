@@ -6,7 +6,7 @@ This module defines an extended version of the general purpose
 from stapled.scheduling import ScheduledTaskContext
 
 
-class OCSPTaskContext(ScheduledTaskContext):
+class StapleTaskContext(ScheduledTaskContext):
     """
     Adds the following functionality to the
     :class:`scheduling.ScheduledTaskContext`:
@@ -18,7 +18,7 @@ class OCSPTaskContext(ScheduledTaskContext):
     """
     def __init__(self, task_name, model, sched_time=None, **attributes):
         """
-        Initialise a OCSPTaskContext with a task name, cert model, and optional
+        Initialise a StapleTaskContext with a task name, cert model, and optional
         scheduled time.
 
         :param str task_name: A task name corresponding to an existing queue in
@@ -34,7 +34,7 @@ class OCSPTaskContext(ScheduledTaskContext):
         self.last_exception = None
         self.last_exception_count = 0
 
-        super(OCSPTaskContext, self).__init__(
+        super(StapleTaskContext, self).__init__(
             task_name=task_name,
             subject=model,
             sched_time=sched_time,

@@ -4,9 +4,9 @@ This module defines the :class:`stapled.core.certmodel.CertModel` class which is
 used to keep track of certificates that are found by the
 :class:`stapled.core.certfinder.CertFinderThread`, then parsed by the
 :class:`stapled.core.certparser.CertParserThread`, an OCSP request is generated
-by the :class:`stapled.core.ocsprenewer.OCSPRenewer`, a response from an OCSP
-server is returned. All data generated and returned like the request and the
-response are stored in the context.
+by the :class:`stapled.core.staplerenewer.StapleRenewer`, a response from an
+OCSP server is returned. All data generated and returned like the request and
+the response are stored in the context.
 
 The following logic is contained within the context class:
 
@@ -160,7 +160,7 @@ class CertModel(object):
         .. Note:: This method handles a lot of exceptions, some of then are
             non-fatal and might lead to retries. When they are fatal,
             one of the exceptions documented below is raised. Exceptions are
-            handled by the :meth:`stapled.core.excepthandler.ocsp_except_handle`
+            handled by the :meth:`stapled.core.excepthandler.stapled_except_handle`
             context.
 
         .. Note:: There can be several OCSP URLs. When the first URL fails,

@@ -5,9 +5,9 @@ certificate models that consist of parsed certificates. It then generates an
 OCSP request and sends it to the OCSP server(s) that is/are found in the
 certificate and saves both the request and the response in the model. It also
 generates a file containing the respone (the OCSP staple) and creates a new
-:class:`stapled.core.taskcontext.OCSPTaskContext` to schedule a renewal before
+:class:`stapled.core.taskcontext.StapleTaskContext` to schedule a renewal before
 the staple expires. Optionally creates a
-:class:`stapled.core.taskcontext.OCSPTaskContext` task context for the
+:class:`stapled.core.taskcontext.StapleTaskContext` task context for the
 :class:`stapled.core.oscpadder.StapleAdder` and schedules it to be run ASAP.
 """
 
@@ -15,19 +15,20 @@ import threading
 import logging
 import datetime
 import queue
-from stapled.core.taskcontext import OCSPTaskContext
-from stapled.core.excepthandler import ocsp_except_handle
+from stapled.core.taskcontext import StapleTaskContext
+from stapled.core.excepthandler import stapled_except_handle
 
 LOG = logging.getLogger(__name__)
 
 
-class OCSPRenewerThread(threading.Thread):
+class StapleRenewerThread(threading.Thread):
     """
     This object requests OCSP responses for certificates, after which a new
-    task context is created for the :class:`stapled.core.oscprenewer.OCSPRenewer`
-    which is scheduled to be executed before the new staple expires. Optionally
-    a task is created for the :class:`stapled.core.oscpadder.StapleAdder` to tell
-    HAProxy about the new staple.
+    task context is created for the
+    :class:`stapled.core.oscprenewer.StapleRenewer` which is scheduled to be
+    executed before the new staple expires. Optionally a task is created for
+    the :class:`stapled.core.stapleadder.StapleAdder` to tell HAProxy about the
+    new staple.
     """
 
     def __init__(self, *args, **kwargs):
@@ -51,7 +52,7 @@ class OCSPRenewerThread(threading.Thread):
         assert self.scheduler is not None, \
             "Please pass a scheduler to get tasks from and add tasks to."
 
-        super(OCSPRenewerThread, self).__init__(*args, **kwargs)
+        super(StapleRenewerThread, self).__init__(*args, **kwargs)
 
     def run(self):
         """
@@ -61,7 +62,7 @@ class OCSPRenewerThread(threading.Thread):
         while not self.stop:
             try:
                 context = self.scheduler.get_task("renew", timeout=0.25)
-                with ocsp_except_handle(context):
+                with stapled_except_handle(context):
                     model = context.model
                     LOG.info("Renewing OCSP staple for \"%s\"..", model)
                     model.renew_ocsp_staple()
@@ -74,7 +75,7 @@ class OCSPRenewerThread(threading.Thread):
                     # Adds the proxy-add command to the scheduler to run ASAP.
                     # This updates the running HAProxy instance's OCSP staple
                     # by running `set ssl ocsp-response {}`
-                    proxy_add_context = OCSPTaskContext(
+                    proxy_add_context = StapleTaskContext(
                         task_name="proxy-add", model=model, sched_time=None)
                     self.scheduler.add_task(proxy_add_context)
             except queue.Empty:
@@ -101,6 +102,6 @@ class OCSPRenewerThread(threading.Thread):
             valid_until = model.ocsp_staple.valid_until
             sched_time = valid_until - before_sched_time
         # Make a fresh task context to reset exception counters
-        new_context = OCSPTaskContext(
+        new_context = StapleTaskContext(
             task_name="renew", model=model, sched_time=sched_time)
         self.scheduler.add_task(new_context)
