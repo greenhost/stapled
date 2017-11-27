@@ -4,4 +4,7 @@ if test -d /etc/ocspd ; then
 	if ! find /etc/ocspd/ -type f >/dev/null ; then
 		rmdir /etc/ocspd
 	fi
+	rm lib/systemd/system/ocspd.service
+	systemctl disable ocspd
+	systemctl daemon-reload
 fi
