@@ -258,12 +258,15 @@ class CertFinderThread(threading.Thread):
         """
         Check if a file path matches any pattern in the ignore list.
 
-        :param str path: Path to a file to match.
+        :param str path: Path to match a pattern in ``self.ignore``.
         """
         for pattern in self.ignore:
+            # Strip spaces, check if length still greater than 0
             pattern = pattern.strip()
             if len(pattern) == 0:
                 continue
+            # If pattern starts with / it is absolute, do nothing, if not, add
+            # ``**`` to make fnmatch match any parent directory.
             if pattern[0] != '/':
                 pattern = "**{}".format(pattern)
             if fnmatch.fnmatch(path, pattern):
