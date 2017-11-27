@@ -14,12 +14,12 @@ thread.
 
 This module defines the following objects:
 
- - :class:`ocspd.scheduling.ScheduledTaskContext`
+ - :class:`stapled.scheduling.ScheduledTaskContext`
     A context that wraps around any data you want to pass to the scheduler and
     which will be added to the task queue when the schedule time expires.
- - :class:`ocspd.scheduling.SchedulerThread`
+ - :class:`stapled.scheduling.SchedulerThread`
     An object that is capable of scheduling and unscheduling tasks that you
-    can define with :class:`ocspd.scheduling.ScheduledTaskContext`.
+    can define with :class:`stapled.scheduling.ScheduledTaskContext`.
 """
 import threading
 import logging
@@ -40,7 +40,7 @@ class ScheduledTaskContext(object):
     # pylint: disable=too-few-public-methods
     def __init__(self, task_name, subject, sched_time=None, **attributes):
         """
-        Initialise a :class:`~ocspd.scheduling.ScheduledTaskContext` with a
+        Initialise a :class:`~stapled.scheduling.ScheduledTaskContext` with a
         task name, subject and optional scheduled time. Any remaining keyword
         arguments are set as attributes of the task context.
 

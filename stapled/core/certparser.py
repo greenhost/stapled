@@ -2,8 +2,8 @@
 """
 This module parses certificate in a queue so the data contained in the
 certificate can be used to request OCSP responses. After parsing a new
-:class:`ocspd.core.taskcontext.OCSPTaskContext` is created for the
-:class:`ocspd.core.oscprenewe.OCSPRenewer` which is then scheduled to be
+:class:`stapled.core.taskcontext.OCSPTaskContext` is created for the
+:class:`stapled.core.oscprenewe.OCSPRenewer` which is then scheduled to be
 processed ASAP.
 """
 
@@ -11,8 +11,8 @@ import threading
 import logging
 import datetime
 import queue
-from ocspd.core.excepthandler import ocsp_except_handle
-from ocspd.core.taskcontext import OCSPTaskContext
+from stapled.core.excepthandler import ocsp_except_handle
+from stapled.core.taskcontext import OCSPTaskContext
 
 LOG = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ LOG = logging.getLogger(__name__)
 class CertParserThread(threading.Thread):
     """
     This object makes sure certificate files are parsed, after which a task
-    context is created for the :class:`ocspd.core.oscprenewer.OCSPRenewer`
+    context is created for the :class:`stapled.core.oscprenewer.OCSPRenewer`
     which is scheduled to be executed ASAP.
     """
 
@@ -32,7 +32,7 @@ class CertParserThread(threading.Thread):
         :kwarg dict models: A dict to maintain a model cache **(required)**.
         :kwarg int minimum_validity: The amount of seconds the OCSP staple
             should be valid for before a renewal is scheduled **(required)**.
-        :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
+        :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler object
             where we can get parser tasks from and add renew tasks to.
             **(required)**.
         :kwarg bool no_recycle: Don't recycle existing staples (default=False)

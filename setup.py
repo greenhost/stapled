@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Python setuptools script for ``ocspd`` application.
+Python setuptools script for ``stapled`` application.
 """
 from setuptools import setup
 from setuptools import find_packages
-from ocspd.version import __version__
+from stapled.version import __version__
 
 setup(
-    name='ocspd',
+    name='stapled',
     version=__version__,
     description='Daemon for updating OCSP staples',
     long_description=(
@@ -16,7 +16,7 @@ setup(
     ),
     author='Greenhost BV',
     author_email='info@greenhost.nl',
-    url='https://github.com/greenhost/ocspd',
+    url='https://github.com/greenhost/stapled',
     packages=find_packages()+[
         'lib/asn1crypto/asn1crypto',
         'lib/oscrypto/oscrypto',
@@ -63,12 +63,12 @@ setup(
     keywords='ocsp proxy ssl tls haproxy',
     entry_points={
         'console_scripts': [
-            'ocspd = ocspd.__main__:init'
+            'stapled = stapled.__main__:init'
         ]
     },
     data_files=[
-        ('/lib/systemd/system', ['config/ocspd.service']),
-        ('/etc/ocspd/', ['config/ocspd.conf']),
-        ('/var/log/ocspd', [])
+        ('/lib/systemd/system', ['config/stapled.service']),
+        ('/etc/stapled/', ['config/stapled.conf']),
+        ('/var/log/stapled', [])
     ]
 )

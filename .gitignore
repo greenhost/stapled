@@ -94,7 +94,7 @@ ENV/
 
 # Project-specific
 *.ocsp
-/ocspd.conf
+/stapled.conf
 # This data can be generated with refresh_testdata.sh
 testdata
 build_deps

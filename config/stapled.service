@@ -1,0 +1,17 @@
+[Unit]
+Description=Stapled - OCSP staple renewer
+After=network.target auditd.service
+ConditionPathExists=/etc/stapled/stapled.conf
+Documentation=https://readthedocs.org/projects/stapled/
+
+[Install]
+WantedBy=haproxy.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/stapled
+TimeoutStopSec=30s
+Restart=on-failure
+WorkingDirectory=/var/log/stapled/
+#User=haproxy
+#Group=haproxy

@@ -1,4 +1,4 @@
-ocspd (0.1-1) UNRELEASED; urgency=medium
+stapled (0.1-1) UNRELEASED; urgency=medium
   * Initial release. (Closes: #XXXXXX)
 
  -- Chris Snijder <chris@greenhost.nl>  Mon, 13 Nov 2017 17:35:12 +0100

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-This module defines the :class:`ocspd.core.certmodel.CertModel` class which is
+This module defines the :class:`stapled.core.certmodel.CertModel` class which is
 used to keep track of certificates that are found by the
-:class:`ocspd.core.certfinder.CertFinderThread`, then parsed by the
-:class:`ocspd.core.certparser.CertParserThread`, an OCSP request is generated
-by the :class:`ocspd.core.ocsprenewer.OCSPRenewer`, a response from an OCSP
+:class:`stapled.core.certfinder.CertFinderThread`, then parsed by the
+:class:`stapled.core.certparser.CertParserThread`, an OCSP request is generated
+by the :class:`stapled.core.ocsprenewer.OCSPRenewer`, a response from an OCSP
 server is returned. All data generated and returned like the request and the
 response are stored in the context.
 
@@ -25,14 +25,14 @@ import certvalidator
 import ocspbuilder
 import asn1crypto
 from oscrypto import asymmetric
-from ocspd.core.exceptions import CertFileAccessError
-from ocspd.core.exceptions import OCSPBadResponse
-from ocspd.core.exceptions import RenewalRequirementMissing
-from ocspd.core.exceptions import CertParsingError
-from ocspd.core.exceptions import CertValidationError
-from ocspd.util.ocsp import OCSPResponseParser
-from ocspd.util.functions import pretty_base64
-from ocspd.util.cache import cache
+from stapled.core.exceptions import CertFileAccessError
+from stapled.core.exceptions import OCSPBadResponse
+from stapled.core.exceptions import RenewalRequirementMissing
+from stapled.core.exceptions import CertParsingError
+from stapled.core.exceptions import CertValidationError
+from stapled.util.ocsp import OCSPResponseParser
+from stapled.util.functions import pretty_base64
+from stapled.util.cache import cache
 from future.standard_library import hooks
 with hooks():
     from urllib.parse import urlparse
@@ -50,7 +50,7 @@ class CertModel(object):
         Initialise the CertModel model object, and read the certificate data
         from the passed filename.
 
-        :raises ocspd.core.exceptions.CertFileAccessError: When the certificate
+        :raises stapled.core.exceptions.CertFileAccessError: When the certificate
             file can't be accessed.
         """
         self.filename = filename
@@ -72,8 +72,8 @@ class CertModel(object):
     def parse_crt_file(self):
         """
         Parse certificate, wraps the
-        :meth:`~ocspd.core.certmodel.CertModel._read_full_chain()` and the
-        :meth:`~ocspd.core.certmodel.CertModel._validate_cert()` methods.
+        :meth:`~stapled.core.certmodel.CertModel._read_full_chain()` and the
+        :meth:`~stapled.core.certmodel.CertModel._validate_cert()` methods.
         Wicth extract the certificate (*end_entity*) and the chain
         intermediates*), and validates the certificate chain.
         """
@@ -160,7 +160,7 @@ class CertModel(object):
         .. Note:: This method handles a lot of exceptions, some of then are
             non-fatal and might lead to retries. When they are fatal,
             one of the exceptions documented below is raised. Exceptions are
-            handled by the :meth:`ocspd.core.excepthandler.ocsp_except_handle`
+            handled by the :meth:`stapled.core.excepthandler.ocsp_except_handle`
             context.
 
         .. Note:: There can be several OCSP URLs. When the first URL fails,
@@ -225,7 +225,7 @@ class CertModel(object):
     def _check_ocsp_response(self, ocsp_staple, url):
         """
         Check that the OCSP response says that the status is ``good``. Also
-        sets :attr:`ocspd.core.certmodel.CertModel.ocsp_staple.valid_until`.
+        sets :attr:`stapled.core.certmodel.CertModel.ocsp_staple.valid_until`.
 
         :raises OCSPBadResponse: If an empty response is received.
         """

@@ -8,64 +8,64 @@ Daemon documentation
 Source code
 ===========
 
-ocspd.main
+stapled.main
 ----------
-.. automodule:: ocspd
+.. automodule:: stapled
    :members:
 
-ocspd.core.daemon
+stapled.core.daemon
 -----------------
-.. automodule:: ocspd.core.daemon
+.. automodule:: stapled.core.daemon
    :members:
 
-ocspd.core.taskcontext
+stapled.core.taskcontext
 ----------------------
-.. automodule:: ocspd.core.taskcontext
+.. automodule:: stapled.core.taskcontext
 
    .. autoclass:: OCSPTaskContext
       :members:
       :special-members:
       :private-members:
 
-ocspd.core.certfinder
+stapled.core.certfinder
 ---------------------
-.. automodule:: ocspd.core.certfinder
+.. automodule:: stapled.core.certfinder
 
    .. autoclass:: CertFinderThread
       :members:
       :special-members:
       :private-members:
 
-ocspd.core.certparser
+stapled.core.certparser
 ---------------------
-.. automodule:: ocspd.core.certparser
+.. automodule:: stapled.core.certparser
 
    .. autoclass:: CertParserThread
       :members:
       :special-members:
       :private-members:
 
-ocspd.core.ocsprenewer
+stapled.core.ocsprenewer
 ----------------------
-.. automodule:: ocspd.core.ocsprenewer
+.. automodule:: stapled.core.ocsprenewer
 
    .. autoclass:: OCSPRenewerThread
       :members:
       :special-members:
       :private-members:
 
-ocspd.core.ocspadder
+stapled.core.stapleadder
 --------------------
-.. automodule:: ocspd.core.ocspadder
+.. automodule:: stapled.core.stapleadder
 
-   .. autoclass:: OCSPAdder
+   .. autoclass:: StapleAdder
       :members:
       :special-members:
       :private-members:
 
-ocspd.core.certmodel
+stapled.core.certmodel
 --------------------
-.. automodule:: ocspd.core.certmodel
+.. automodule:: stapled.core.certmodel
 
    .. autoclass:: CertModel
       :members:

@@ -4,8 +4,8 @@ This module locates certificate files in the supplied directories and parses
 them. It then keeps track of the following:
 
 - If cert is found for the first time (thus also when the daemon is started),
-  the cert is added to the :attr:`ocspd.core.certfinder.CertFinder.scheduler`
-  so the :class:`~ocspd.core.certparser.CertParserThread` can parse the
+  the cert is added to the :attr:`stapled.core.certfinder.CertFinder.scheduler`
+  so the :class:`~stapled.core.certparser.CertParserThread` can parse the
   certificate. The file modification time is recorded so file changes can be
   detected.
 
@@ -15,7 +15,7 @@ them. It then keeps track of the following:
   are cancelled.
 
 - When certificates are deleted from the directories, the entries are removed
-  from the cache in :attr:`ocspd.core.daemon.run.models`. Any scheduled actions
+  from the cache in :attr:`stapled.core.daemon.run.models`. Any scheduled actions
   for deleted files are cancelled.
 
 The cache of parsed files is volatile so every time the process is killed
@@ -27,11 +27,11 @@ import time
 import logging
 import fnmatch
 import os
-import ocspd
-from ocspd.core.excepthandler import ocsp_except_handle
-from ocspd.core.taskcontext import OCSPTaskContext
-from ocspd.core.certmodel import CertModel
-from ocspd.util.cache import cache
+import stapled
+from stapled.core.excepthandler import ocsp_except_handle
+from stapled.core.taskcontext import OCSPTaskContext
+from stapled.core.certmodel import CertModel
+from stapled.util.cache import cache
 
 LOG = logging.getLogger(__name__)
 
@@ -40,9 +40,9 @@ class CertFinderThread(threading.Thread):
     """
     This searches directories for certificate files.
     When found, models are created for the certificate files, which are wrapped
-    in a :class:`ocspd.core.taskcontext.OCSPTaskContext` which are then
+    in a :class:`stapled.core.taskcontext.OCSPTaskContext` which are then
     scheduled to be processed by the
-    :class:`ocspd.core.certparser.CertParserThread` ASAP.
+    :class:`stapled.core.certparser.CertParserThread` ASAP.
 
     Pass ``refresh_interval=None`` if you want to run it only once (e.g. for
     testing)
@@ -55,7 +55,7 @@ class CertFinderThread(threading.Thread):
 
         :kwarg dict models: A dict to maintain a model cache **(required)**.
         :kwarg iter directories: The directories to index **(required)**.
-        :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
+        :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler object
             where we add new parse tasks to. **(required)**.
         :kwarg int refresh_interval: The minimum amount of time (s)
             between search runs, defaults to 10 seconds. Set to None to run
@@ -68,10 +68,10 @@ class CertFinderThread(threading.Thread):
         self.directories = kwargs.pop('directories', None)
         self.scheduler = kwargs.pop('scheduler', None)
         self.refresh_interval = kwargs.pop(
-            'refresh_interval', ocspd.DEFAULT_REFRESH_INTERVAL
+            'refresh_interval', stapled.DEFAULT_REFRESH_INTERVAL
         )
         self.file_extensions = kwargs.pop(
-            'file_extensions', ocspd.FILE_EXTENSIONS_DEFAULT
+            'file_extensions', stapled.FILE_EXTENSIONS_DEFAULT
         )
         self.last_refresh = None
         self.ignore = kwargs.pop('ignore', []) or []
@@ -150,7 +150,7 @@ class CertFinderThread(threading.Thread):
         """
         Locate new files, schedule them for parsing.
 
-        :raises ocspd.core.exceptions.CertFileAccessError: When the certificate
+        :raises stapled.core.exceptions.CertFileAccessError: When the certificate
             file can't be accessed.
         """
         for path in paths:
@@ -197,7 +197,7 @@ class CertFinderThread(threading.Thread):
 
     def _del_model(self, filename):
         """
-        Delete model from :attr:`ocspd.core.daemon.run.models` in a thread-safe
+        Delete model from :attr:`stapled.core.daemon.run.models` in a thread-safe
         manner, if another thread deleted it, we should ignore the KeyError
         making this function omnipotent.
 
@@ -217,10 +217,10 @@ class CertFinderThread(threading.Thread):
         scheduler to get the new certificate data parsed.
 
         Deleted files are removed from the model cache in
-        :attr:`ocspd.core.daemon.run.models`. Any scheduled tasks for the
+        :attr:`stapled.core.daemon.run.models`. Any scheduled tasks for the
         model's task context are cancelled.
 
-        :raises ocspd.core.exceptions.CertFileAccessError: When the certificate
+        :raises stapled.core.exceptions.CertFileAccessError: When the certificate
             file can't be accessed.
         """
         deleted = []

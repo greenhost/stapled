@@ -26,7 +26,7 @@ bunch of threads for:
 If the ``-d`` argument is specified, this module is responsible for starting
 the application in daemonised mode, and disconnecting the process from the
 user's process hierarchy node. In any case, it starts up the
-:mod:`ocspd.core.daemon`
+:mod:`stapled.core.daemon`
 module to bootstrap the application.
 """
 import configargparse
@@ -34,11 +34,11 @@ import logging
 import logging.handlers
 import os
 import daemon
-import ocspd
-import ocspd.core.daemon
-import ocspd.core.excepthandler
-from ocspd.colourlog import ColourFormatter
-from ocspd.version import __version__, __app_name__
+import stapled
+import stapled.core.daemon
+import stapled.core.excepthandler
+from stapled.colourlog import ColourFormatter
+from stapled.version import __version__, __app_name__
 
 #: :attr:`logging.format` format string for log files and syslog
 LOGFORMAT = '[%(levelname)s] %(threadName)+10s/%(name)-16.20s %(message)s'
@@ -54,11 +54,11 @@ def get_cli_arg_parser():
     Make a CLI argument parser and return it. It does not parse the arguments
     because a plain parser object is used for documentation purposes.
 
-    :return: Argument parser with all of ocspd's options configured
+    :return: Argument parser with all of stapled's options configured
     :rtype: argparse.ArgumentParser
     """
     parser = configargparse.ArgParser(
-        default_config_files=ocspd.DEFAULT_CONFIG_FILE_LOCATIONS,
+        default_config_files=stapled.DEFAULT_CONFIG_FILE_LOCATIONS,
         description=(
             "Update OCSP staples from CA\'s and store the result so "
             "HAProxy can serve them to clients.\n"
@@ -81,7 +81,7 @@ def get_cli_arg_parser():
         help=(
             "Override the default config file locations "
             "(default={})".format(
-                ", ".join(ocspd.DEFAULT_CONFIG_FILE_LOCATIONS)
+                ", ".join(stapled.DEFAULT_CONFIG_FILE_LOCATIONS)
             )
         )
     )
@@ -142,7 +142,7 @@ def get_cli_arg_parser():
     parser.add(
         '--file-extensions',
         type=str,
-        default=ocspd.FILE_EXTENSIONS_DEFAULT,
+        default=stapled.FILE_EXTENSIONS_DEFAULT,
         help=(
             "Files with which extensions should be scanned? Comma separated "
             "list (default: crt,pem,cer)"
@@ -162,10 +162,10 @@ def get_cli_arg_parser():
         type=str,
         nargs='?',
         default=None,
-        const=ocspd.LOG_DIR,
+        const=stapled.LOG_DIR,
         help=("Enable logging to '{}'. It is possible to supply "
               "another directory. Traces of unexpected exceptions are placed "
-              "here as well.".format(ocspd.LOG_DIR))
+              "here as well.".format(stapled.LOG_DIR))
     )
     parser.add(
         '--syslog',
@@ -195,9 +195,9 @@ def get_cli_arg_parser():
             "``/etc/haproxy1/haproxy.sock``. I have another directory "
             "``/etc/haproxy2`` with certificates and another haproxy instance "
             "that serves these and has stats socket "
-            "``/etc/haproxy2/haproxy.sock``. I would then start ocspd as "
+            "``/etc/haproxy2/haproxy.sock``. I would then start stapled as "
             "follows:"
-            "``./ocspd /etc/haproxy1 /etc/haproxy2 -s /etc/haproxy1.sock "
+            "``./stapled /etc/haproxy1 /etc/haproxy2 -s /etc/haproxy1.sock "
             "/etc/haproxy2.sock``"
         )
     )
@@ -242,7 +242,7 @@ def get_cli_arg_parser():
         help=(
             "Ignore files matching this pattern. "
             "Multiple patterns may be specified separated by a space. "
-            "You can put the pattern in quotes to let ocspd evaluate it "
+            "You can put the pattern in quotes to let stapled evaluate it "
             "instead of letting your shell evaluate it. You can use globbing "
             "patterns with ``*`` or ``?``. If a pattern starts with ``/`` it "
             "will be considered absolute, if it does not start with a ``/``, "
@@ -270,7 +270,7 @@ def get_cli_arg_parser():
 def init():
     """
     Configures logging and log level, then calls
-    :func:`ocspd.core.daemon.run()` either in daemonised mode if the ``-d``
+    :func:`stapled.core.daemon.run()` either in daemonised mode if the ``-d``
     argument was supplied, or in the current context if ``-d`` wasn't supplied.
     """
     log_file_handles = []
@@ -280,7 +280,7 @@ def init():
     verbose = args.verbose or args.verbosity
     log_level = max(min(50 - verbose * 10, 50), 10)
     logging.basicConfig()
-    logger = logging.getLogger('ocspd')
+    logger = logging.getLogger('stapled')
     logger.propagate = False
     # Don't allow dependencies to log anything but fatal errors
     logging.getLogger("urllib3").setLevel(logging.FATAL)
@@ -292,12 +292,12 @@ def init():
         logger.addHandler(console_handler)
     if args.logdir:
         file_handler = logging.FileHandler(
-            os.path.join(args.logdir, 'ocspd.log'))
+            os.path.join(args.logdir, 'stapled.log'))
         file_handler.setLevel(log_level)
         file_handler.setFormatter(logging.Formatter(LOGFORMAT))
         logger.addHandler(file_handler)
         log_file_handles.append(file_handler.stream)
-        ocspd.core.excepthandler.LOG_DIR = args.logdir
+        stapled.core.excepthandler.LOG_DIR = args.logdir
     if args.syslog:
         syslog_handler = logging.handlers.SysLogHandler(address='/dev/log')
         syslog_handler.setLevel(log_level)
@@ -306,10 +306,10 @@ def init():
     if args.daemon:
         logger.info("Daemonising now..")
         with daemon.DaemonContext(files_preserve=log_file_handles):
-            ocspd.core.daemon.OCSPDaemon(args)
+            stapled.core.daemon.Stapledaemon(args)
     else:
         logger.info("Running interactively..")
-        ocspd.core.daemon.OCSPDaemon(args)
+        stapled.core.daemon.Stapledaemon(args)
 
 
 if __name__ == '__main__':

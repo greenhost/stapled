@@ -1,32 +1,32 @@
 # -*- coding: utf-8 -*-
 """
-This module bootstraps the ocspd process by starting threads for:
+This module bootstraps the stapled process by starting threads for:
 
-- 1x :class:`ocspd.scheduling.SchedulerThread`
+- 1x :class:`stapled.scheduling.SchedulerThread`
 
   Can be used to create action queues that where tasks can be added that are
   either added to the action queue immediately or at a set time in the future.
 
-- 1x :class:`ocspd.core.certfinder.CertFinderThread`
+- 1x :class:`stapled.core.certfinder.CertFinderThread`
 
   - Finds certificate files in the specified directories at regular intervals.
   - Removes deleted certificates from the context cache in
-    :attr:`ocspd.core.daemon.run.models`.
+    :attr:`stapled.core.daemon.run.models`.
   - Add the found certificate to the the parse action queue of the scheduler
     for parsing the certificate file.
 
-- 1x :class:`ocspd.core.certparser.CertParserThread`
+- 1x :class:`stapled.core.certparser.CertParserThread`
 
   - Parses certificates and caches parsed certificates in
-    :attr:`ocspd.core.daemon.run.models`.
+    :attr:`stapled.core.daemon.run.models`.
   - Add the parsed certificate to the the renew action queue of the scheduler
     for requesting or renewing the OCSP staple.
 
 - 2x (or more depending on the ``-t`` CLI argument)
-  :class:`ocspd.core.ocsprenewer.OCSPRenewerThread`
+  :class:`stapled.core.ocsprenewer.OCSPRenewerThread`
 
   - Gets tasks from the scheduler in :attr:`self.scheduler` which is a
-    :class:`ocspd.scheduling.Scheduler` object passed by this module.
+    :class:`stapled.scheduling.Scheduler` object passed by this module.
   - For each task:
      - Validates the certificate chains.
      - Renews the OCSP staples.
@@ -41,7 +41,7 @@ This module bootstraps the ocspd process by starting threads for:
   If any of these request stall for long, the entire daemon doesn't stop
   working until it is no longer stalled.
 
-- 1x :class:`ocspd.core.ocspadder.OCSPAdder` **(optional)**
+- 1x :class:`stapled.core.stapleadder.StapleAdder` **(optional)**
 
   Takes tasks ``haproxy-add`` from the scheduler and communicates OCSP staples
   updates to HAProxy through a HAProxy socket.
@@ -52,17 +52,17 @@ import time
 import threading
 import signal
 import re
-from ocspd.core.certfinder import CertFinderThread
-from ocspd.core.certparser import CertParserThread
-from ocspd.core.ocsprenewer import OCSPRenewerThread
-from ocspd.core.ocspadder import OCSPAdder
-from ocspd.scheduling import SchedulerThread
-from ocspd import MAX_RESTART_THREADS
+from stapled.core.certfinder import CertFinderThread
+from stapled.core.certparser import CertParserThread
+from stapled.core.ocsprenewer import OCSPRenewerThread
+from stapled.core.stapleadder import StapleAdder
+from stapled.scheduling import SchedulerThread
+from stapled import MAX_RESTART_THREADS
 
 LOG = logging.getLogger(__name__)
 
 
-class OCSPDaemon(object):
+class Stapledaemon(object):
 
     def __init__(self, args):
         """
@@ -162,7 +162,7 @@ class OCSPDaemon(object):
         """
         return self.__spawn_thread(
             name="proxy-adder",
-            thread_object=OCSPAdder,
+            thread_object=StapleAdder,
             socket_paths=self.socket_paths,
             scheduler=self.scheduler
         )

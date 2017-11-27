@@ -10,7 +10,7 @@ Scheduler source code
 
 scheduling
 ----------
-.. automodule:: ocspd.scheduling
+.. automodule:: stapled.scheduling
    :members:
    :special-members:
    :private-members:

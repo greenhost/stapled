@@ -5,18 +5,18 @@ certificate models that consist of parsed certificates. It then generates an
 OCSP request and sends it to the OCSP server(s) that is/are found in the
 certificate and saves both the request and the response in the model. It also
 generates a file containing the respone (the OCSP staple) and creates a new
-:class:`ocspd.core.taskcontext.OCSPTaskContext` to schedule a renewal before
+:class:`stapled.core.taskcontext.OCSPTaskContext` to schedule a renewal before
 the staple expires. Optionally creates a
-:class:`ocspd.core.taskcontext.OCSPTaskContext` task context for the
-:class:`ocspd.core.oscpadder.OCSPAdder` and schedules it to be run ASAP.
+:class:`stapled.core.taskcontext.OCSPTaskContext` task context for the
+:class:`stapled.core.oscpadder.StapleAdder` and schedules it to be run ASAP.
 """
 
 import threading
 import logging
 import datetime
 import queue
-from ocspd.core.taskcontext import OCSPTaskContext
-from ocspd.core.excepthandler import ocsp_except_handle
+from stapled.core.taskcontext import OCSPTaskContext
+from stapled.core.excepthandler import ocsp_except_handle
 
 LOG = logging.getLogger(__name__)
 
@@ -24,9 +24,9 @@ LOG = logging.getLogger(__name__)
 class OCSPRenewerThread(threading.Thread):
     """
     This object requests OCSP responses for certificates, after which a new
-    task context is created for the :class:`ocspd.core.oscprenewer.OCSPRenewer`
+    task context is created for the :class:`stapled.core.oscprenewer.OCSPRenewer`
     which is scheduled to be executed before the new staple expires. Optionally
-    a task is created for the :class:`ocspd.core.oscpadder.OCSPAdder` to tell
+    a task is created for the :class:`stapled.core.oscpadder.StapleAdder` to tell
     HAProxy about the new staple.
     """
 
@@ -38,7 +38,7 @@ class OCSPRenewerThread(threading.Thread):
         :kwarg int minimum_validity: The amount of seconds the OCSP staple is
             still valid for, before starting to attempt to request a new OCSP
             staple **(required)**.
-        :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
+        :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler object
             where we can get tasks from and add new tasks to. **(required)**.
         """
         self.stop = False
@@ -86,7 +86,7 @@ class OCSPRenewerThread(threading.Thread):
         Schedule to renew this certificate's OCSP staple in ``sched_time``
         seconds.
 
-        :param ocspd.core.certmodel.CertModel context: CertModel
+        :param stapled.core.certmodel.CertModel context: CertModel
             instance None to calculate it automatically.
         :param int shed_time: Amount of seconds to wait for renewal or None
             to calculate it automatically.

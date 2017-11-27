@@ -53,7 +53,7 @@ deb:
 	 				--with-python2=True --with-python3=True bdist_deb
 	@echo "Moving binary packages from 'deb_dist' to 'dist'."
 	mkdir -p dist/
-	mv deb_dist/ocspd*.deb dist/
+	mv deb_dist/stapled*.deb dist/
 	#rm -rfv deb_dist
 
 .PHONY: all
@@ -75,36 +75,36 @@ clean:
 .PHONY: docker-build
 docker-build:
 	mkdir -p dist-docker/
-	docker build -t build-ocspd .
-	docker run -it -d --name ocspd --mount type=bind,source="$$(pwd)/dist-docker/",target=/_dist build-ocspd
+	docker build -t build-stapled .
+	docker run -it -d --name stapled --mount type=bind,source="$$(pwd)/dist-docker/",target=/_dist build-stapled
 
 .PHONY: docker-compile
 docker-compile:
-	docker start ocspd
-	docker exec -it ocspd rm -rfv "/_dist/*"
-	docker exec -it ocspd make clean
-	docker exec -it ocspd make
-	docker exec -it ocspd bash -c 'mv dist/* /_dist/ || echo nothing to move.'
+	docker start stapled
+	docker exec -it stapled rm -rfv "/_dist/*"
+	docker exec -it stapled make clean
+	docker exec -it stapled make
+	docker exec -it stapled bash -c 'mv dist/* /_dist/ || echo nothing to move.'
 
 .PHONY: docker-install
 docker-install:
-	docker start ocspd
-	docker exec -it ocspd bash -c 'apt-get install -y -q  /_dist/ocspd_*all.deb'
+	docker start stapled
+	docker exec -it stapled bash -c 'apt-get install -y -q  /_dist/stapled_*all.deb'
 
 .PHONY: docker-run
 docker-run:
-	docker start ocspd
-	docker exec -it ocspd ./refresh_testdata.sh
-	docker exec -it ocspd ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv
-	docker stop ocspd
+	docker start stapled
+	docker exec -it stapled ./refresh_testdata.sh
+	docker exec -it stapled stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv
+	docker stop stapled
 
 .PHONY: docker-stop
 docker-stop:
-	docker stop ocspd
+	docker stop stapled
 
 .PHONY: docker-nuke
 docker-nuke:
-	bash -c 'CONTAINERS=$$(docker container ls --all --filter=name=ocspd -q | xargs); \
+	bash -c 'CONTAINERS=$$(docker container ls --all --filter=name=stapled -q | xargs); \
     if [ ! -z $$CONTAINERS ]; then \
         echo "Stopping and deleting containers: $${CONTAINERS}"; \
         docker stop $$CONTAINERS; \
@@ -112,7 +112,7 @@ docker-nuke:
     else \
         echo "No matching containers found."; \
     fi; \
-    IMAGES=$$(docker images | grep ocspd | awk "{print $$1}"); \
+    IMAGES=$$(docker images | grep stapled | awk "{print $$1}"); \
     if [ ! -z $$IMAGES ]; then \
         echo "Deleting images: $${IMAGES}"; \
         echo $$IMAGES | xargs docker rmi; \

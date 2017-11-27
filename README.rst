@@ -10,7 +10,7 @@ Documentation
 =============
 
 Read the full documentation on
-`Read the docs <https://ocspd.readthedocs.org/>`_.
+`Read the docs <https://stapled.readthedocs.org/>`_.
 
 
 System requirements
@@ -19,7 +19,7 @@ System requirements
 This application requires **Python 3.3+** or **Python 2.7.9** and an installed
 version of **PIP** for the Python version you are using. It is also convenient
 to have ``virtualenv`` installed so you can make a separate environment for
-ocspd's dependencies.
+stapled's dependencies.
 
 Installation
 ============
@@ -34,11 +34,11 @@ From github (for developers)
 .. code-block:: bash
 
     # Download the source from the repo
-    git clone --recursive https://github.com/greenhost/ocspd.git
+    git clone --recursive https://github.com/greenhost/stapled.git
     # OR, as a TIP, which downloads all the repos simultaneously in threads:
-    git clone --recursive -j5 https://github.com/greenhost/ocspd.git
+    git clone --recursive -j5 https://github.com/greenhost/stapled.git
     # Enter the source directory
-    cd ocspd/
+    cd stapled/
     # Setup a virtualenv
     virtualenv -p python3 env/
     # Load the virtualenv
@@ -48,14 +48,14 @@ From github (for developers)
     # Install the current directory with pip. This allows you to edit the code
     pip install .
 
-Every time you want to run ``ocspd`` you will need to run
+Every time you want to run ``stapled`` you will need to run
 ``source env/bin/activate`` to load the virtualenv first. Alternatively you can
-start the daemon by running ``ocspd``
+start the daemon by running ``stapled``
 
 Upgrading
 ---------
 
-If you had previously installed a version of ocspd from github, to upgrade run
+If you had previously installed a version of stapled from github, to upgrade run
 the following:
 
 .. code-block:: bash
@@ -136,14 +136,14 @@ build a package.
 ```
 make docker-all
 ```
-Remove any previous docker image and/or container named `ocspd` then buil the
+Remove any previous docker image and/or container named `stapled` then buil the
 image with the same dependencies we used. Then compile the packages, then
 place them in the `./docker-dist` dir.
 
 ```
 make docker-nuke
 ```
-Throw away any previous docker image and/or container named `ocspd`.
+Throw away any previous docker image and/or container named `stapled`.
 This is part of the `make docker-all` target.
 
 ```
@@ -172,4 +172,4 @@ in the docker container, this runs the installed binary to test if it works.
 Packages
 --------
 
-You can download packages here: https://github.com/greenhost/ocspd/releases
+You can download packages here: https://github.com/greenhost/stapled/releases

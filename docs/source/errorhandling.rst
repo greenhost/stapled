@@ -43,25 +43,25 @@ The following is an overview of what can be expected when exceptions occur.
 | requests.exceptions.ConnectionError  |               | A connection to the OCSP server can't be |                                                                           |
 |                                      |               | established.                             |                                                                           |
 +--------------------------------------+---------------+------------------------------------------+---------------------------------------------------------------------------+
-| SocketError                          | ocspadder     | A HAProxy socket can not be opened       | Log a critical error. Every "send" action will try to re-open the socket. |
+| SocketError                          | stapleadder     | A HAProxy socket can not be opened       | Log a critical error. Every "send" action will try to re-open the socket. |
 +--------------------------------------+               +------------------------------------------+                                                                           +
 | BrokenPipeError                      |               | A HAProxy socket consistently has a      |                                                                           |
 |                                      |               | broken pipe                              |                                                                           |
 +--------------------------------------+               +------------------------------------------+---------------------------------------------------------------------------+
-| OCSPAdderBadResponse                 |               | HAProxy does not respond with            | Schedule a retry 3x *n*\*60s, then 3x, every hour, then ignore.           |
+| StapleAdderBadResponse                 |               | HAProxy does not respond with            | Schedule a retry 3x *n*\*60s, then 3x, every hour, then ignore.           |
 |                                      |               | 'OCSP Response updated!'                 |                                                                           |
 +--------------------------------------+---------------+------------------------------------------+---------------------------------------------------------------------------+
 
 .. [1] When the certificate file is changed, `certfinder` will add the file back to the parsing queue.
 
-ocspd.core.exceptions
+stapled.core.exceptions
 ---------------------
 
-.. automodule:: ocspd.core.exceptions
+.. automodule:: stapled.core.exceptions
    :members:
 
-ocspd.core.excepthandler
+stapled.core.excepthandler
 ------------------------
 
-.. automodule:: ocspd.core.excepthandler
+.. automodule:: stapled.core.excepthandler
     :members:

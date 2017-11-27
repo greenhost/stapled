@@ -37,13 +37,13 @@ import logging
 import os
 import traceback
 import configargparse
-from ocspd.core.exceptions import OCSPBadResponse
-from ocspd.core.exceptions import RenewalRequirementMissing
-from ocspd.core.exceptions import CertFileAccessError
-from ocspd.core.exceptions import CertParsingError
-from ocspd.core.exceptions import CertValidationError
-from ocspd.core.exceptions import OCSPAdderBadResponse
-from ocspd.core.exceptions import SocketError
+from stapled.core.exceptions import OCSPBadResponse
+from stapled.core.exceptions import RenewalRequirementMissing
+from stapled.core.exceptions import CertFileAccessError
+from stapled.core.exceptions import CertParsingError
+from stapled.core.exceptions import CertValidationError
+from stapled.core.exceptions import StapleAdderBadResponse
+from stapled.core.exceptions import SocketError
 from future.standard_library import hooks
 with hooks():
     from urllib.error import URLError
@@ -55,11 +55,11 @@ except NameError:
 
 LOG = logging.getLogger(__name__)
 
-#: This is a global variable that is overridden by ocspd.__main__ with
+#: This is a global variable that is overridden by stapled.__main__ with
 #: the command line argument: ``--logdir``
-LOG_DIR = "/var/log/ocspd/"
+LOG_DIR = "/var/log/stapled/"
 
-STACK_TRACE_FILENAME = "ocspd_exception{:%Y%m%d-%H%M%s%f}.trace"
+STACK_TRACE_FILENAME = "stapled_exception{:%Y%m%d-%H%M%s%f}.trace"
 
 
 @contextmanager
@@ -70,7 +70,7 @@ def ocsp_except_handle(ctx=None):
     # pylint: disable=too-many-branches,too-many-statements
     try:
         yield  # do the "with ocsp_except_handle(ctx):" code block
-    except (CertFileAccessError, OCSPAdderBadResponse) as exc:
+    except (CertFileAccessError, StapleAdderBadResponse) as exc:
         # Can't access the certificate file or the response from HAPRoxy was
         # not "OCSP Response updated", we can try again a bit later..
         err_count = ctx.set_last_exception(str(exc))
@@ -84,7 +84,7 @@ def ocsp_except_handle(ctx=None):
             LOG.critical("%s, giving up..", exc)
     except (SocketError, BrokenPipeError) as exc:
         # This is a fatal exception that can occur during initialisation of a
-        # OCSPAdder or when an OCSPAdder uses a socket that consistently has a
+        # StapleAdder or when an StapleAdder uses a socket that consistently has a
         # broken pipe
         LOG.critical(exc)
     except (RenewalRequirementMissing,
