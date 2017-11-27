@@ -38,7 +38,7 @@ test:jessie:python2:
   - openssl version
   - ./refresh_testdata.sh
   - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
+  - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
@@ -61,7 +61,7 @@ test:jessie:python3:
   - openssl version
   - ./refresh_testdata.sh
   - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
+  - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
@@ -78,7 +78,7 @@ test:stretch:python2:
   - openssl version
   - ./refresh_testdata.sh
   - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
+  - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
@@ -95,7 +95,7 @@ test:stretch:python3:
   - openssl version
   - ./refresh_testdata.sh
   - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
+  - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
@@ -113,7 +113,7 @@ test:pypy2:
   - dpkg -i ./dist/stapled-py2_*all.deb
   - ./refresh_testdata.sh
   - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
+  - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
@@ -131,7 +131,7 @@ test:pypy3:
   - dpkg -i ./dist/stapled_*all.deb
   - ./refresh_testdata.sh
   - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
+  - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
