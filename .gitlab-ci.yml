@@ -93,7 +93,7 @@ test:stretch:python3:
   dependencies:
   - build:stretch
 
-test:jessie:pypy:
+test:pypy2:
   stage: test
   image: pypy:2-5
   script:
@@ -109,7 +109,7 @@ test:jessie:pypy:
   dependencies:
   - build:stretch
 
-test:stretch:pypy:
+test:pypy3:
   stage: test
   image: pypy:3-5
   script:
