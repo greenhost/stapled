@@ -25,7 +25,7 @@ files need to be indexed again (thus files are considered "new").
 import threading
 import time
 import logging
-import re
+import fnmatch
 import os
 import ocspd
 from ocspd.core.excepthandler import ocsp_except_handle
@@ -74,7 +74,7 @@ class CertFinderThread(threading.Thread):
             'file_extensions', ocspd.FILE_EXTENSIONS_DEFAULT
         )
         self.last_refresh = None
-        self.ignore = kwargs.pop('ignore', [])
+        self.ignore = kwargs.pop('ignore', []) or []
 
         assert self.models is not None, \
             "You need to pass a dict to hold the certificate model cache."
@@ -252,48 +252,17 @@ class CertFinderThread(threading.Thread):
         """
         Check if a file path matches any pattern in the ignore list.
 
-        :param str path: Path to a file to match.
+        :param str path: Path to match a pattern in ``self.ignore``.
         """
         for pattern in self.ignore:
-            regex = self.compile_pattern(pattern)
-            if regex.match(path):
+            # Strip spaces, check if length still greater than 0
+            pattern = pattern.strip()
+            if len(pattern) == 0:
+                continue
+            # If pattern starts with / it is absolute, do nothing, if not, add
+            # ``**`` to make fnmatch match any parent directory.
+            if pattern[0] != '/':
+                pattern = "**{}".format(pattern)
+            if fnmatch.fnmatch(path, pattern):
                 return True
         return False
-
-    @staticmethod
-    @cache(100)
-    def compile_pattern(pattern):
-        """
-        Compile a glob pattern and return a compiled regex object.
-
-        :param str pattern: Glob pattern.
-        """
-        # Absolute or relative path
-        if not pattern.startswith(os.sep) or pattern.startswith("*"):
-            begin_regex = "^.*"  # relative
-        else:
-            begin_regex = "^{}".format(os.sep)  # absolute
-
-        if pattern.endswith(os.sep) or pattern.endswith("*"):
-            end_regex = ".*$"  # anything below this path matches
-        else:
-            end_regex = "$"  # only exactly this file name matches
-
-        pattern = pattern.lstrip("*{}".format(os.sep))
-        pattern = pattern.rstrip("*")
-
-        # Escape some characters
-        middle_regex = re.escape(pattern)
-        # Question marks replace any 1 character
-        middle_regex = middle_regex.replace("\?", ".")
-        # Double stars replace anything including "/" lazily
-        middle_regex = middle_regex.replace("\*\*", ".*?/?".format(os.sep))
-        # Single star replaces anthing but "/"
-        middle_regex = middle_regex.replace("\*", "[^{}]*".format(os.sep))
-
-        regex = "{}{}{}".format(
-            begin_regex,
-            middle_regex,
-            end_regex
-        )
-        return re.compile(regex, re.IGNORECASE)

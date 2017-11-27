@@ -212,13 +212,18 @@ def get_cli_arg_parser():
         nargs='+',
         help=(
             "Ignore files matching this pattern. "
-            "Multiple paths may be specified separated by a space. "
-            "You can escape the pattern to let the daemon evaluate it "
+            "Multiple patterns may be specified separated by a space. "
+            "You can put the pattern in quotesto let ocspd evaluate it "
             "instead of letting your shell evaluate it. You can use globbing "
-            "patterns with ``*`` or ``?``. Relative paths are also allowed."
-            "If the path starts with ``/`` it will be considered absolute if "
-            "it does not, the pattern will be compared to the last part of "
-            "found files."
+            "patterns with ``*`` or ``?``. If a pattern starts with ``/`` it "
+            "will be considered absolute, if it does not start with a ``/``, "
+            "the pattern will be compared to the last part of found files. "
+            "e.g. the pattern ``cert/snakeoil.pem`` matches with path "
+            "``/etc/ssl/cert/snakeoil.pem``. Don't define relative *paths* as "
+            "patterns, paths are not patterns, e.g. ``../certs/*.pem`` will "
+            "not cause pem files in a directory named ``certs``, one "
+            "directory up from ``$PATH`` to be ignored. Instead your pattern "
+            "will cause a warning and will be ignored."
         )
     )
 
