@@ -1,19 +1,67 @@
 stages:
-- build
+- build-container
+- build-compile
 - test
 
 variables:
   DOCKER_DRIVER: overlay2
-  
-build:stretch:
-  stage: build
-  image: debian:stretch
+  GIT_SUBMODULE_STRATEGY: recursive
+  DOCKER_FILES_URL: code.greenhost.net/open/ocspd/docker
+
+build:build-container:
+  image: docker:latest
+  services:
+  - docker:dind
+  stage: build-container
   script:
-  - apt-get update -qq
-  - apt-get install -q -y build-essential python-cffi python3-cffi libffi-dev python-all python3-all python-dev python3-dev python-setuptools python3-setuptools python-pip rpm tar gzip bzip2 git debhelper
-  - pip install -U pip
-  - pip install -r requirements.txt
-  - git submodule update --init --recursive
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN code.greenhost.net
+  - docker build -t $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME ./docker/build-stretch/
+  - docker push $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
+
+build:test-jessie:
+  image: docker:latest
+  services:
+  - docker:dind
+  stage: build-container
+  script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN code.greenhost.net
+  - docker build -t $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME ./docker/test-jessie/
+  - docker push $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
+
+build:test-stretch:
+  image: docker:latest
+  services:
+  - docker:dind
+  stage: build-container
+  script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN code.greenhost.net
+  - docker build -t $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME ./docker/test-stretch/
+  - docker push $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
+
+build:test-pypy25:
+  image: docker:latest
+  services:
+  - docker:dind
+  stage: build-container
+  script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN code.greenhost.net
+  - docker build -t $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME ./docker/test-pypy25/
+  - docker push $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME
+
+build:test-pypy35:
+  image: docker:latest
+  services:
+  - docker:dind
+  stage: build-container
+  script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN code.greenhost.net
+  - docker build -t $DOCKER_FILES_URL/test-pypy35:$CI_COMMIT_REF_NAME ./docker/test-pypy35/
+  - docker push $DOCKER_FILES_URL/test-pypy35:$CI_COMMIT_REF_NAME
+
+build:stretch:
+  stage: build-compile
+  image: build-container:$CI_COMMIT_REF_NAME
+  script:
   - make clean
   - make
   artifacts:
@@ -28,12 +76,8 @@ build:stretch:
 
 test:jessie:python2:
   stage: test
-  image: debian:jessie
+  image: test-jessie:$CI_COMMIT_REF_NAME
   script:
-  - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
-  - apt-get update
-  - apt-get install -y -t jessie-backports python-configargparse python-daemon python-future
-  - apt-get install -y openssl ca-certificates python-six python-cffi
   - dpkg -i ./dist/stapled-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -51,12 +95,8 @@ test:jessie:python2:
 
 test:jessie:python3:
   stage: test
-  image: debian:jessie
+  image: test-jessie:$CI_COMMIT_REF_NAME
   script:
-  - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
-  - apt-get update
-  - apt-get install -y -t jessie-backports python3-configargparse python3-daemon python3-future
-  - apt-get install -y openssl ca-certificates python3-six python3-cffi
   - dpkg -i ./dist/stapled_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -70,10 +110,8 @@ test:jessie:python3:
 
 test:stretch:python2:
   stage: test
-  image: debian:stretch
+  image: test-stretch:$CI_COMMIT_REF_NAME
   script:
-  - apt-get update
-  - apt-get install -y openssl ca-certificates
   - apt-get install -y -q ./dist/stapled-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -87,10 +125,8 @@ test:stretch:python2:
 
 test:stretch:python3:
   stage: test
-  image: debian:stretch
+  image: test-stretch:$CI_COMMIT_REF_NAME
   script:
-  - apt-get update
-  - apt-get install -y openssl ca-certificates
   - apt-get install -y -q ./dist/stapled_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -104,12 +140,8 @@ test:stretch:python3:
 
 test:pypy2:
   stage: test
-  image: pypy:2-5
+  image: test-pypy25:$CI_COMMIT_REF_NAME
   script:
-  - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
-  - apt-get update
-  - apt-get install -y -t jessie-backports python-configargparse python-daemon python-future
-  - apt-get install -y openssl ca-certificates python-six python-cffi
   - dpkg -i ./dist/stapled-py2_*all.deb
   - ./refresh_testdata.sh
   - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
@@ -122,12 +154,8 @@ test:pypy2:
 
 test:pypy3:
   stage: test
-  image: pypy:3-5
+  image: test-pypy35:$CI_COMMIT_REF_NAME
   script:
-  - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
-  - apt-get update
-  - apt-get install -y -t jessie-backports python3-configargparse python3-daemon python3-future
-  - apt-get install -y openssl ca-certificates python3-six python3-cffi
   - dpkg -i ./dist/stapled_*all.deb
   - ./refresh_testdata.sh
   - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
