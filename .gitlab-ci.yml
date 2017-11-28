@@ -58,7 +58,7 @@ build:test-pypy35:
 
 build:stretch:
   stage: build-compile
-  image: build-containers:$CI_COMMIT_REF_NAME
+  image: $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
   script:
   - git submodule update --init --recursive
   - pip install --user -r requirements.txt
@@ -74,7 +74,7 @@ build:stretch:
 
 test:jessie:python2:
   stage: test
-  image: test-jessie:$CI_COMMIT_REF_NAME
+  image: $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
   script:
   - dpkg -i ./dist/stapled-py2_*all.deb
   - openssl version
@@ -91,7 +91,7 @@ test:jessie:python2:
 
 test:jessie:python3:
   stage: test
-  image: test-jessie:$CI_COMMIT_REF_NAME
+  image: $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
   script:
   - dpkg -i ./dist/stapled_*all.deb
   - openssl version
@@ -104,7 +104,7 @@ test:jessie:python3:
 
 test:stretch:python2:
   stage: test
-  image: test-stretch:$CI_COMMIT_REF_NAME
+  image: $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
   script:
   - apt-get install -y -q ./dist/stapled-py2_*all.deb
   - openssl version
@@ -117,7 +117,7 @@ test:stretch:python2:
 
 test:stretch:python3:
   stage: test
-  image: test-stretch:$CI_COMMIT_REF_NAME
+  image: $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
   script:
   - apt-get install -y -q ./dist/stapled_*all.deb
   - openssl version
@@ -130,7 +130,7 @@ test:stretch:python3:
 
 test:pypy2:
   stage: test
-  image: test-pypy25:$CI_COMMIT_REF_NAME
+  image: $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME
   script:
   - dpkg -i ./dist/stapled-py2_*all.deb
   - ./refresh_testdata.sh
