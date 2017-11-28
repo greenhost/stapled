@@ -71,8 +71,6 @@ build:stretch:
     - dist/stapled*.whl
     - dist/stapled*.tar.bz2
     - dist/stapled*.deb
-  tags:
-  - docker
 
 test:jessie:python2:
   stage: test
@@ -90,8 +88,6 @@ test:jessie:python2:
     when: always
     paths:
     - testdata/
-  tags:
-  - docker
 
 test:jessie:python3:
   stage: test
@@ -105,8 +101,6 @@ test:jessie:python3:
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
-  tags:
-  - docker
 
 test:stretch:python2:
   stage: test
@@ -120,8 +114,6 @@ test:stretch:python2:
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
-  tags:
-  - docker
 
 test:stretch:python3:
   stage: test
@@ -135,8 +127,6 @@ test:stretch:python3:
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
-  tags:
-  - docker
 
 test:pypy2:
   stage: test
@@ -149,8 +139,6 @@ test:pypy2:
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
-  tags:
-  - docker
 
 test:pypy3:
   stage: test
@@ -163,5 +151,3 @@ test:pypy3:
   - ls testdata/**/chain.pem.ocsp
   dependencies:
   - build:stretch
-  tags:
-  - docker
