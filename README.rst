@@ -1,3 +1,8 @@
+`|pipeline|`_
+
+.. |pipeline| image::
+    https://code.greenhost.net/open/ocspd/badges/master/pipeline.svg
+.. _|pipeline|: https://code.greenhost.net/open/ocspd/commits/master
 ===========
 Quick start
 ===========
