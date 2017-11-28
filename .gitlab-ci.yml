@@ -57,7 +57,7 @@ build:test-pypy25:
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $PYPY25_TEST_CONTAINER
-  - docker build --pull --cache-from $PYPY25_TEST_CONTAINER -t $PYPY25_TEST_CONTAINER ./docker/test-py25/
+  - docker build --pull --cache-from $PYPY25_TEST_CONTAINER -t $PYPY25_TEST_CONTAINER ./docker/test-pypy25/
   - docker push $PYPY25_TEST_CONTAINER
 
 build:test-pypy35:
@@ -68,7 +68,7 @@ build:test-pypy35:
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $PYPY35_TEST_CONTAINER
-  - docker build --pull --cache-from $PYPY35_TEST_CONTAINER -t $PYPY35_TEST_CONTAINER ./docker/test-py35/
+  - docker build --pull --cache-from $PYPY35_TEST_CONTAINER -t $PYPY35_TEST_CONTAINER ./docker/test-pypy35/
   - docker push $PYPY35_TEST_CONTAINER
 
 build:compile:
