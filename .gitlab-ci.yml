@@ -93,11 +93,7 @@ test:jessie:python2:
   - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
-  artifacts:
-    when: always
-    paths:
-    - testdata/
+  - build:compile
 
 test:jessie:python3:
   stage: test
@@ -110,7 +106,7 @@ test:jessie:python3:
   - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
+  - build:compile
 
 test:stretch:python2:
   stage: test
@@ -123,7 +119,7 @@ test:stretch:python2:
   - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
+  - build:compile
 
 test:stretch:python3:
   stage: test
@@ -136,7 +132,7 @@ test:stretch:python3:
   - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
+  - build:compile
 
 test:pypy2:
   stage: test
@@ -148,7 +144,7 @@ test:pypy2:
   - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
+  - build:compile
 
 test:pypy3:
   stage: test
@@ -160,4 +156,4 @@ test:pypy3:
   - sleep 30
   - ls testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
+  - build:compile
