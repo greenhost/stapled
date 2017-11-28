@@ -10,6 +10,11 @@ variables:
   DOCKER_DRIVER: overlay2
   #GIT_SUBMODULE_STRATEGY: recursive
   DOCKER_FILES_URL: docker.greenhost.net/open/ocspd
+  BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
+  STRETCH_TEST_CONTAINER: $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
+  JESSIE_TEST_CONTAINER: $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
+  PYPY25_TEST_CONTAINER: $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME
+  PYPY35_TEST_CONTAINER: $DOCKER_FILES_URL/test-pypy35:$CI_COMMIT_REF_NAME
 
 build:build-container:
   image: docker:latest
@@ -17,8 +22,9 @@ build:build-container:
   - docker:dind
   stage: build-containers
   script:
-  - docker build -t $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME -f ./docker/build-stretch/Dockerfile ./
-  - docker push $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
+  - docker pull $BUILD_COMPILE_CONTAINER
+  - docker build --pull --cache-from $BUILD_COMPILE_CONTAINER -t $BUILD_COMPILE_CONTAINER -f ./docker/build-stretch/Dockerfile ./
+  - docker push $BUILD_COMPILE_CONTAINER
 
 build:test-jessie:
   image: docker:latest
@@ -26,8 +32,9 @@ build:test-jessie:
   - docker:dind
   stage: build-containers
   script:
-  - docker build -t $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME ./docker/test-jessie/
-  - docker push $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
+  - docker pull $JESSIE_TEST_CONTAINER
+  - docker build --pull --cache-from $JESSIE_TEST_CONTAINER -t $JESSIE_TEST_CONTAINER -f ./docker/build-stretch/Dockerfile ./
+  - docker push $JESSIE_TEST_CONTAINER
 
 build:test-stretch:
   image: docker:latest
@@ -35,8 +42,9 @@ build:test-stretch:
   - docker:dind
   stage: build-containers
   script:
-  - docker build -t $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME ./docker/test-stretch/
-  - docker push $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
+  - docker pull $STRETCH_TEST_CONTAINER
+  - docker build --pull --cache-from $STRETCH_TEST_CONTAINER -t $STRETCH_TEST_CONTAINER -f ./docker/build-stretch/Dockerfile ./
+  - docker push $STRETCH_TEST_CONTAINER
 
 build:test-pypy25:
   image: docker:latest
@@ -44,8 +52,9 @@ build:test-pypy25:
   - docker:dind
   stage: build-containers
   script:
-  - docker build -t $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME ./docker/test-pypy25/
-  - docker push $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME
+  - docker pull $PYPY25_TEST_CONTAINER
+  - docker build --pull --cache-from $PYPY25_TEST_CONTAINER -t $PYPY25_TEST_CONTAINER -f ./docker/build-stretch/Dockerfile ./
+  - docker push $PYPY25_TEST_CONTAINER
 
 build:test-pypy35:
   image: docker:latest
@@ -53,12 +62,13 @@ build:test-pypy35:
   - docker:dind
   stage: build-containers
   script:
-  - docker build -t $DOCKER_FILES_URL/test-pypy35:$CI_COMMIT_REF_NAME ./docker/test-pypy35/
-  - docker push $DOCKER_FILES_URL/test-pypy35:$CI_COMMIT_REF_NAME
+  - docker pull $PYPY35_TEST_CONTAINER
+  - docker build --pull --cache-from $PYPY35_TEST_CONTAINER -t $PYPY35_TEST_CONTAINER -f ./docker/build-stretch/Dockerfile ./
+  - docker push $PYPY35_TEST_CONTAINER
 
-build:stretch:
+build:compile:
   stage: build-compile
-  image: $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
+  image: $BUILD_COMPILE_CONTAINER
   script:
   - git submodule update --init --recursive
   - pip install --user -r requirements.txt
@@ -74,7 +84,7 @@ build:stretch:
 
 test:jessie:python2:
   stage: test
-  image: $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
+  image: $JESSIE_TEST_CONTAINER
   script:
   - dpkg -i ./dist/stapled-py2_*all.deb
   - openssl version
@@ -91,7 +101,7 @@ test:jessie:python2:
 
 test:jessie:python3:
   stage: test
-  image: $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
+  image: $JESSIE_TEST_CONTAINER
   script:
   - dpkg -i ./dist/stapled_*all.deb
   - openssl version
@@ -104,7 +114,7 @@ test:jessie:python3:
 
 test:stretch:python2:
   stage: test
-  image: $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
+  image: $STRETCH_TEST_CONTAINER
   script:
   - apt-get install -y -q ./dist/stapled-py2_*all.deb
   - openssl version
@@ -117,7 +127,7 @@ test:stretch:python2:
 
 test:stretch:python3:
   stage: test
-  image: $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
+  image: $STRETCH_TEST_CONTAINER
   script:
   - apt-get install -y -q ./dist/stapled_*all.deb
   - openssl version
@@ -130,7 +140,7 @@ test:stretch:python3:
 
 test:pypy2:
   stage: test
-  image: $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME
+  image: $PYPY25_TEST_CONTAINER
   script:
   - dpkg -i ./dist/stapled-py2_*all.deb
   - ./refresh_testdata.sh
@@ -142,7 +152,7 @@ test:pypy2:
 
 test:pypy3:
   stage: test
-  image: $DOCKER_FILES_URL/test-pypy35:$CI_COMMIT_REF_NAME
+  image: $PYPY35_TEST_CONTAINER
   script:
   - dpkg -i ./dist/stapled_*all.deb
   - ./refresh_testdata.sh
