@@ -15,7 +15,7 @@ build:build-container:
   stage: build-containers
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN code.greenhost.net
-  - docker build -t $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME -f ./docker/build-stretch/Dockerfile
+  - docker build -t $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME -f ./docker/build-stretch/Dockerfile ./
   - docker push $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
 
 build:test-jessie:
