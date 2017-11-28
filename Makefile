@@ -10,22 +10,6 @@ default: all;
 install:
 	python setup.py install
 
-#.PHONY: deps ${BUILD_DEPS}
-#deps: ${BUILD_DEPS}
-#
-#${BUILD_DEPS}:
-#	mkdir -p "$(TARGET)"
-#	@echo Building $@
-#	mkdir -p build_deps/tmp/${@}
-#	rm -rf build_deps/tmp/${@}/*
-#	cd build_deps/tmp/${@}
-#	pypi-download --verbose=2 $@
-#	py2dsc-deb \
-#		--with-python2=True \
-#		--with-python3=True \
-#		--dist-dir=build_deps/tmp/${@}/deb_dist \
-#		${@}*.tar.gz
-
 .PHONY: sdist
 sdist:
 	python setup.py sdist
@@ -59,10 +43,11 @@ deb:
 .PHONY: all
 all: sdist bdist wheel rpm deb
 
-.PHONY: distribute
-distribute:
-	gpg --detach-sign -a dist/package-1.0.1.tar.gz
-	python -m twine upload dist/package-1.0.1.tar.gz package-1.0.1.tar.gz.asc
+# TODO: We need to fill in the variables here before we can upload to pypi.
+#.PHONY: distribute
+#distribute:
+#	gpg --detach-sign -a dist/package-1.0.1.tar.gz
+#	python -m twine upload dist/package-1.0.1.tar.gz package-1.0.1.tar.gz.asc
 
 .PHONY: clean
 clean:
