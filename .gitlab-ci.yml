@@ -1,6 +1,5 @@
 stages:
-- build-build-container
-- build-test-container
+- build-containers
 - build-compile
 - test
 
@@ -13,7 +12,7 @@ build:build-container:
   image: docker:latest
   services:
   - docker:dind
-  stage: build-build-container
+  stage: build-containers
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN code.greenhost.net
   - docker build -t $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME ./docker/build-stretch/
@@ -23,7 +22,7 @@ build:test-jessie:
   image: docker:latest
   services:
   - docker:dind
-  stage: build-test-container
+  stage: build-containers
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN code.greenhost.net
   - docker build -t $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME ./docker/test-jessie/
@@ -33,7 +32,7 @@ build:test-stretch:
   image: docker:latest
   services:
   - docker:dind
-  stage: build-test-container
+  stage: build-containers
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN code.greenhost.net
   - docker build -t $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME ./docker/test-stretch/
@@ -43,7 +42,7 @@ build:test-pypy25:
   image: docker:latest
   services:
   - docker:dind
-  stage: build-test-container
+  stage: build-containers
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN code.greenhost.net
   - docker build -t $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME ./docker/test-pypy25/
@@ -53,7 +52,7 @@ build:test-pypy35:
   image: docker:latest
   services:
   - docker:dind
-  stage: build-test-container
+  stage: build-containers
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN code.greenhost.net
   - docker build -t $DOCKER_FILES_URL/test-pypy35:$CI_COMMIT_REF_NAME ./docker/test-pypy35/
@@ -61,7 +60,7 @@ build:test-pypy35:
 
 build:stretch:
   stage: build-compile
-  image: build-test-container:$CI_COMMIT_REF_NAME
+  image: build-containers:$CI_COMMIT_REF_NAME
   script:
   - git submodule update --init --recursive
   - pip install --user -r requirements.txt
