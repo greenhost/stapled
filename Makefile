@@ -66,11 +66,9 @@ distribute:
 
 .PHONY: clean
 clean:
-	python setup.py clean
 	make -f $(CURDIR)/debian/rules override_dh_auto_clean
 	rm -rf deb_dist dist *.egg-info .pybuild
 	rm -rf build_deps
-	find . -name '*.pyc' -delete
 
 .PHONY: docker-build
 docker-build:

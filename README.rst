@@ -69,7 +69,7 @@ the following:
     # Update to the latest version
     git pull
     # Clone submodules too
-    git submodule init
+    git submodule upgrade --init --recursive
     # Install a dependency that is not yet it PyPi
     pip install git+https://github.com/wbond/certvalidator.git@4383a4bfd5e769679bc4eedd1e4d334eb0c7d85a --upgrade
     # Install the current directory with pip. This allows you to edit the code

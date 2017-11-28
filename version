@@ -134,7 +134,7 @@ class GitVersion(object):
             exit(1)
 
         self.app_name = self.question(
-            "Please specify the name of your application (\"{app}\"):".format(
+            "Please specify the name of your application [\"{app}\"]:".format(
                 app=self.guessed_app_name
             ),
             valid_answers=re.compile(r"[a-z0-9_\-.]+"),
@@ -146,7 +146,7 @@ class GitVersion(object):
             default=self.guessed_app_name
         )
         self.deb_os_version = self.question(
-            "Please specify the target OS verion name (\"stretch\"):",
+            "Please specify the target OS verion name [\"stretch\"]:",
             valid_answers=re.compile(r"^([a-z0-9_\-]+|$)"),  # version or ""
             case_sensitive=False,
             invalid_response=(
@@ -156,7 +156,7 @@ class GitVersion(object):
             default=self.DEFAULT_TARGET_DEB_OS
         )
         user_wants_default_version = self.yn_question(
-            "Do you want to set the default version number ({})".format(
+            "Do you want to set the default version number [{}]".format(
                 "{}.{}".format(*self.DEFAULT_VERSION)
             ),
             default="y"
