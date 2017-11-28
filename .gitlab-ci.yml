@@ -6,9 +6,6 @@ stages:
 cache:
   untracked: true
 
-before_script:
-- docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
-
 variables:
   DOCKER_DRIVER: overlay2
   #GIT_SUBMODULE_STRATEGY: recursive
@@ -25,6 +22,7 @@ build:build-container:
   - docker:dind
   stage: build-containers
   script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $BUILD_COMPILE_CONTAINER
   - docker build --pull --cache-from $BUILD_COMPILE_CONTAINER -t $BUILD_COMPILE_CONTAINER -f ./docker/build-stretch/Dockerfile ./
   - docker push $BUILD_COMPILE_CONTAINER
@@ -35,6 +33,7 @@ build:test-jessie:
   - docker:dind
   stage: build-containers
   script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $JESSIE_TEST_CONTAINER
   - docker build --pull --cache-from $JESSIE_TEST_CONTAINER -t $JESSIE_TEST_CONTAINER ./docker/test-jessie/Dockerfile
   - docker push $JESSIE_TEST_CONTAINER
@@ -45,6 +44,7 @@ build:test-stretch:
   - docker:dind
   stage: build-containers
   script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $STRETCH_TEST_CONTAINER
   - docker build --pull --cache-from $STRETCH_TEST_CONTAINER -t $STRETCH_TEST_CONTAINER ./docker/test-stretch/Dockerfile
   - docker push $STRETCH_TEST_CONTAINER
@@ -55,6 +55,7 @@ build:test-pypy25:
   - docker:dind
   stage: build-containers
   script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $PYPY25_TEST_CONTAINER
   - docker build --pull --cache-from $PYPY25_TEST_CONTAINER -t $PYPY25_TEST_CONTAINER ./docker/test-py25/Dockerfile
   - docker push $PYPY25_TEST_CONTAINER
@@ -65,6 +66,7 @@ build:test-pypy35:
   - docker:dind
   stage: build-containers
   script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $PYPY35_TEST_CONTAINER
   - docker build --pull --cache-from $PYPY35_TEST_CONTAINER -t $PYPY35_TEST_CONTAINER ./docker/test-py35/Dockerfile
   - docker push $PYPY35_TEST_CONTAINER
