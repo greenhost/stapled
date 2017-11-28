@@ -2,9 +2,9 @@ stages:
 - build
 - test
 
-cache:
-  key: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
-
+variables:
+  DOCKER_DRIVER: overlay2
+  
 build:stretch:
   stage: build
   image: debian:stretch
