@@ -35,7 +35,7 @@ build:test-jessie:
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $JESSIE_TEST_CONTAINER
-  - docker build --pull --cache-from $JESSIE_TEST_CONTAINER -t $JESSIE_TEST_CONTAINER ./docker/test-jessie/Dockerfile
+  - docker build --pull --cache-from $JESSIE_TEST_CONTAINER -t $JESSIE_TEST_CONTAINER ./docker/test-jessie/
   - docker push $JESSIE_TEST_CONTAINER
 
 build:test-stretch:
@@ -46,7 +46,7 @@ build:test-stretch:
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $STRETCH_TEST_CONTAINER
-  - docker build --pull --cache-from $STRETCH_TEST_CONTAINER -t $STRETCH_TEST_CONTAINER ./docker/test-stretch/Dockerfile
+  - docker build --pull --cache-from $STRETCH_TEST_CONTAINER -t $STRETCH_TEST_CONTAINER ./docker/test-stretch/
   - docker push $STRETCH_TEST_CONTAINER
 
 build:test-pypy25:
@@ -57,7 +57,7 @@ build:test-pypy25:
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $PYPY25_TEST_CONTAINER
-  - docker build --pull --cache-from $PYPY25_TEST_CONTAINER -t $PYPY25_TEST_CONTAINER ./docker/test-py25/Dockerfile
+  - docker build --pull --cache-from $PYPY25_TEST_CONTAINER -t $PYPY25_TEST_CONTAINER ./docker/test-py25/
   - docker push $PYPY25_TEST_CONTAINER
 
 build:test-pypy35:
@@ -68,7 +68,7 @@ build:test-pypy35:
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $PYPY35_TEST_CONTAINER
-  - docker build --pull --cache-from $PYPY35_TEST_CONTAINER -t $PYPY35_TEST_CONTAINER ./docker/test-py35/Dockerfile
+  - docker build --pull --cache-from $PYPY35_TEST_CONTAINER -t $PYPY35_TEST_CONTAINER ./docker/test-py35/
   - docker push $PYPY35_TEST_CONTAINER
 
 build:compile:
