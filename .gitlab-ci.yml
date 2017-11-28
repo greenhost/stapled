@@ -3,6 +3,9 @@ stages:
 - build-compile
 - test
 
+before_script:
+- docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
+
 variables:
   DOCKER_DRIVER: overlay2
   #GIT_SUBMODULE_STRATEGY: recursive
@@ -14,7 +17,6 @@ build:build-container:
   - docker:dind
   stage: build-containers
   script:
-  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker build -t $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME -f ./docker/build-stretch/Dockerfile ./
   - docker push $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
 
@@ -24,7 +26,6 @@ build:test-jessie:
   - docker:dind
   stage: build-containers
   script:
-  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker build -t $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME ./docker/test-jessie/
   - docker push $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
 
@@ -34,7 +35,6 @@ build:test-stretch:
   - docker:dind
   stage: build-containers
   script:
-  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker build -t $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME ./docker/test-stretch/
   - docker push $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
 
@@ -44,7 +44,6 @@ build:test-pypy25:
   - docker:dind
   stage: build-containers
   script:
-  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker build -t $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME ./docker/test-pypy25/
   - docker push $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME
 
@@ -54,7 +53,6 @@ build:test-pypy35:
   - docker:dind
   stage: build-containers
   script:
-  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker build -t $DOCKER_FILES_URL/test-pypy35:$CI_COMMIT_REF_NAME ./docker/test-pypy35/
   - docker push $DOCKER_FILES_URL/test-pypy35:$CI_COMMIT_REF_NAME
 
