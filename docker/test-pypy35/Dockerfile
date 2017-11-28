@@ -1,4 +1,4 @@
-FROM debian:pypy3-5
+FROM pypy:3-5
 RUN echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
 RUN apt-get update -qq
 RUN apt-get install -y -t jessie-backports python3-configargparse python3-daemon python3-future
