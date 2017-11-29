@@ -48,10 +48,8 @@ From github (for developers)
     virtualenv -p python3 env/
     # Load the virtualenv
     source env/bin/activate
-    # Install a dependency that is not yet it PyPi
-    pip install git+https://github.com/wbond/certvalidator.git@4383a4bfd5e769679bc4eedd1e4d334eb0c7d85a
     # Install the current directory with pip. This allows you to edit the code
-    pip install .
+    pip install -e .
 
 Every time you want to run ``stapled`` you will need to run
 ``source env/bin/activate`` to load the virtualenv first. Alternatively you can
@@ -75,10 +73,8 @@ the following:
     git pull
     # Clone submodules too
     git submodule upgrade --init --recursive
-    # Install a dependency that is not yet it PyPi
-    pip install git+https://github.com/wbond/certvalidator.git@4383a4bfd5e769679bc4eedd1e4d334eb0c7d85a --upgrade
     # Install the current directory with pip. This allows you to edit the code
-    pip install . --upgrade
+    pip install -e . --upgrade
 
 Compiling this package
 ======================
