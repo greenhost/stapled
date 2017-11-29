@@ -105,26 +105,27 @@ Assuming you have the following packages installed on a debian based system:
 - tar, gzip & bzip2
 - git
 - debhelper
+- stdeb (``pip install --user stdeb``)
 
 Or the equivalents of these on another distribution. You can build the packages
 by running one or more of the following ``make`` commands.
 
-```
-# Clear out the cruft from any previous build
-make clean
-# Source distribution
-make sdist
-# Binary distribution
-make bdist
-# RPM package (Fedora, Redhat, CentOS) - untested!
-make rpm
-# Debian source package (Debian, Ubuntu)
-make deb-src
-# Debian package (Debian, Ubuntu)
-make deb
-# All of the above
-make all
-```
+.. code-block:: bash
+
+    # Clear out the cruft from any previous build
+    make clean
+    # Source distribution
+    make sdist
+    # Binary distribution
+    make bdist
+    # RPM package (Fedora, Redhat, CentOS) - untested!
+    make rpm
+    # Debian source package (Debian, Ubuntu)
+    make deb-src
+    # Debian package (Debian, Ubuntu)
+    make deb
+    # All of the above
+    make all
 
 Everything is tested under Debian Stretch, your mileage may vary.
 
@@ -138,39 +139,44 @@ docker container and can run the build process for you.
 Assuming you have docker installed, you can simply run the below commands to
 build a package.
 
-```
-make docker-all
-```
+.. code-block:: bash
+
+    make docker-all
+
 Remove any previous docker image and/or container named `stapled` then buil the
 image with the same dependencies we used. Then compile the packages, then
 place them in the `./docker-dist` dir.
 
-```
-make docker-nuke
-```
+.. code-block:: bash
+
+    make docker-nuke
+
 Throw away any previous docker image and/or container named `stapled`.
 This is part of the `make docker-all` target.
 
-```
-make docker-build
-```
+.. code-block:: bash
+    make docker-build
+
 Build the docker image. This is part of the `make docker-all` target.
 
-```
-make docker-compile
-```
+.. code-block:: bash
+
+    make docker-compile
+
 Assuming you have a built image, this compiles the packages for you and places
 them in `docker-dist`. This is part of the `make docker-all` target.
 
-```
-make docker-install
-```
+.. code-block:: bash
+
+    make docker-install
+
 Assuming you have a built image and compiled the packages, this installs the
 packages in the docker container. This is part of the `make docker-all` target.
 
-```
-make docker-run
-```
+.. code-block:: bash
+
+    make docker-run
+
 Assuming you have a built image and compiled the packages, and installed them
 in the docker container, this runs the installed binary to test if it works.
 
