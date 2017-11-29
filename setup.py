@@ -19,19 +19,15 @@ setup(
     url='https://github.com/greenhost/ocspd',
     packages=find_packages()+[
         'lib/asn1crypto/asn1crypto',
-        'lib/oscrypto/oscrypto',
         'lib/certvalidator/certvalidator',
-        'lib/ocspbuilder/ocspbuilder'
+        'lib/ocspbuilder/ocspbuilder',
+        'lib/oscrypto/oscrypto',
     ],
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
     install_requires=[
         'python-daemon>=1.5.5',
         'future>=0.15.0',
         'configargparse>=0.10.0',
-        # 'asn1crypto>=0.23.0',
-        # 'certvalidator>=0.11.1',
-        # 'ocspbuilder>=0.10.2',
-        # 'oscrypto>=0.18.0'
     ],
     extras_require={
         'docs': [
@@ -63,12 +59,12 @@ setup(
     keywords='ocsp proxy ssl tls haproxy',
     entry_points={
         'console_scripts': [
-            'ocspd = ocspd.__main__:init'
+            'ocspd = ocspd.__main__:init',
         ]
     },
     data_files=[
         ('/lib/systemd/system', ['config/ocspd.service']),
         ('/etc/ocspd/', ['config/ocspd.conf']),
-        ('/var/log/ocspd', [])
+        ('/var/log/ocspd', []),
     ]
 )
