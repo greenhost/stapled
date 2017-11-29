@@ -7,6 +7,41 @@ from setuptools import setup
 from setuptools import find_packages
 from stapled.version import __version__
 
+LIBS = ('asn1crypto', 'certvalidator', 'ocspbuilder', 'oscrypto')
+
+
+def _libs():
+    """
+    Make a dict containing the name and path of each of the libs.
+    """
+    return dict((lib, os.path.join('lib', lib)) for lib in LIBS)
+
+
+def find_libs():
+    """
+    Find packages in the paths of ``_libs`` and return it as a flat list.
+    """
+    paths = _libs().values()
+    # Reduce is used to concatenate the list of lists that the list
+    # comprehension generates.
+    return reduce(
+        list.__add__,
+        [find_packages(path, exclude=('dev', 'tests')) for path in paths],
+        []
+    )
+
+
+def find_lib_paths():
+    """
+    Use ``_libs`` and add the name of the package to the end of the paths.
+    This is done because the paths are ``lib/[project]/[project]`` not
+    ``lib/[project]``.
+    """
+    paths = _libs().items()
+    return dict(
+        (lib, os.path.join(path, lib)) for lib, path in paths
+    )
+
 
 setup(
     name='stapled',
@@ -22,21 +57,10 @@ setup(
     # Find packages in this package and all the packages that are packaged with
     # it. This is necessary because, for example, oscrypto includes
     # sub-packages as well.
-    packages=find_packages()+sum(
-        [
-            find_packages(os.path.join('lib', lib), exclude=('dev', 'tests'))
-            for lib in
-            ('asn1crypto', 'certvalidator', 'ocspbuilder', 'oscrypto')],
-        []
-    ),
+    packages=find_packages() + find_libs(),
     # Tell setup.py where the dependencies are located so they will be included
     # while packaging
-    package_dir={
-        'asn1crypto': 'lib/asn1crypto/asn1crypto',
-        'certvalidator': 'lib/certvalidator/certvalidator',
-        'ocspbuilder': 'lib/ocspbuilder/ocspbuilder',
-        'oscrypto': 'lib/oscrypto/oscrypto',
-    },
+    package_dir=find_lib_paths(),
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
     install_requires=[
         'python-daemon>=1.5.5',
