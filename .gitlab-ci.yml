@@ -3,12 +3,8 @@ stages:
 - build-compile
 - test
 
-cache:
-  untracked: true
-
 variables:
   DOCKER_DRIVER: overlay2
-  #GIT_SUBMODULE_STRATEGY: recursive
   DOCKER_FILES_URL: docker.greenhost.net/open/ocspd
   BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
   STRETCH_TEST_CONTAINER: $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
@@ -94,9 +90,9 @@ test:jessie:python2:
   - dpkg -i ./dist/stapled-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
-  - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
-  - ls testdata/**/chain.pem.ocsp
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
   - build:compile
 
@@ -107,9 +103,9 @@ test:jessie:python3:
   - dpkg -i ./dist/stapled_*all.deb
   - openssl version
   - ./refresh_testdata.sh
-  - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
-  - ls testdata/**/chain.pem.ocsp
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
   - build:compile
 
@@ -120,9 +116,9 @@ test:stretch:python2:
   - apt-get install -y -q ./dist/stapled-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
-  - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
-  - ls testdata/**/chain.pem.ocsp
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
   - build:compile
 
@@ -133,9 +129,9 @@ test:stretch:python3:
   - apt-get install -y -q ./dist/stapled_*all.deb
   - openssl version
   - ./refresh_testdata.sh
-  - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
-  - ls testdata/**/chain.pem.ocsp
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
   - build:compile
 
@@ -145,9 +141,9 @@ test:pypy2:
   script:
   - dpkg -i ./dist/stapled-py2_*all.deb
   - ./refresh_testdata.sh
-  - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
-  - ls testdata/**/chain.pem.ocsp
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
   - build:compile
 
@@ -157,8 +153,8 @@ test:pypy3:
   script:
   - dpkg -i ./dist/stapled_*all.deb
   - ./refresh_testdata.sh
-  - stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
-  - ls testdata/**/chain.pem.ocsp
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
   - build:compile

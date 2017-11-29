@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TESTDATA_PATH="testdata/"
+TESTDATA_PATH="/tmp/testdata/"
 DOMAINS="chrissnijder.nl vurehout.net wikipedia.org"
 
 echo "[+] Purging testdata dir.."
