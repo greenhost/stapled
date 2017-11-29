@@ -67,7 +67,7 @@ def get_cli_arg_parser():
         epilog=(
             "The daemon will not serve OCSP responses, it can however "
             "inform HAPRoxy about the staples it creates using the "
-            "``--haproxy-sockets.`` argument. Alternatively you can configure"
+            "``--haproxy-sockets.`` argument. Alternatively you can configure "
             "HAPRoxy or another proxy (e.g. nginx has support for serving "
             "OCSP staples) to serve the OCSP staples manually."
         ),
@@ -106,8 +106,8 @@ def get_cli_arg_parser():
         type=int,
         default=0,
         help=(
-            "Verbose output argument should be an integer between 0 and 4, can"
-            "be overridden by the ``-v`` argument."
+            "Verbose output argument should be an integer between 0 and 4, "
+            "can be overridden by the ``-v`` argument."
         )
     )
     parser.add(
@@ -116,7 +116,7 @@ def get_cli_arg_parser():
         dest="verbose",
         help=(
             "Verbose output, repeat to increase verbosity, overrides the "
-            "``verbosity`` argument if provided "
+            "``verbosity`` argument if provided."
         )
     )
     parser.add(
@@ -145,7 +145,7 @@ def get_cli_arg_parser():
         default=stapled.FILE_EXTENSIONS_DEFAULT,
         help=(
             "Files with which extensions should be scanned? Comma separated "
-            "list (default: crt,pem,cer)"
+            "list (default: crt,pem,cer)."
         )
     )
     parser.add(
@@ -177,7 +177,7 @@ def get_cli_arg_parser():
         '-q',
         '--quiet',
         action='store_true',
-        help="Don't print messages to stdout"
+        help="Don't print messages to stdout."
     )
     parser.add(
         '-s',
