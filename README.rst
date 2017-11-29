@@ -1,5 +1,3 @@
-`pipeline`_
-
 .. image:: https://code.greenhost.net/open/ocspd/badges/master/pipeline.svg
     :target: https://code.greenhost.net/open/ocspd/commits/master
     :alt: Pipeline Status
