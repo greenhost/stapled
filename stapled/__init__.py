@@ -9,15 +9,6 @@ import sys
 import os
 from stapled.version import __version__, __app_name__
 
-LIB_PATHS = [
-    "certvalidator",
-    "oscrypto",
-    "asn1crypto",
-    "ocspbuilder"
-]
-
-sys.path.extend([os.path.abspath("lib/{}".format(path)) for path in LIB_PATHS])
-
 #: The extensions the daemon will try to parse as certificate files
 FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
 
