@@ -21,15 +21,15 @@ import os
 import logging
 import binascii
 import datetime
-import certvalidator
-import ocspbuilder
-import asn1crypto
-from oscrypto import asymmetric
+from stapled import asn1crypto
+from stapled import certvalidator
+from stapled import ocspbuilder
 from stapled.core.exceptions import CertFileAccessError
 from stapled.core.exceptions import OCSPBadResponse
 from stapled.core.exceptions import RenewalRequirementMissing
 from stapled.core.exceptions import CertParsingError
 from stapled.core.exceptions import CertValidationError
+from stapled.oscrypto import asymmetric
 from stapled.util.ocsp import OCSPResponseParser
 from stapled.util.functions import pretty_base64
 from stapled.util.cache import cache

@@ -1,12 +1,12 @@
-[submodule "lib/certvalidator"]
-	path = lib/certvalidator
+[submodule "stapled/certvalidator"]
+	path = stapled/certvalidator
 	url = https://github.com/wbond/certvalidator.git
-[submodule "lib/ocspbuilder"]
-	path = lib/ocspbuilder
+[submodule "stapled/ocspbuilder"]
+	path = stapled/ocspbuilder
 	url = https://github.com/wbond/ocspbuilder.git
-[submodule "lib/asn1crypto"]
-	path = lib/asn1crypto
+[submodule "stapled/asn1crypto"]
+	path = stapled/asn1crypto
 	url = https://github.com/wbond/asn1crypto.git
-[submodule "lib/oscrypto"]
-	path = lib/oscrypto
+[submodule "stapled/oscrypto"]
+	path = stapled/oscrypto
 	url = https://github.com/wbond/oscrypto.git
