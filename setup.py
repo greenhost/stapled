@@ -7,19 +7,6 @@ from setuptools import setup
 from setuptools import find_packages
 from stapled.version import __version__
 
-DIRECTORIES = (
-    '.',
-    os.path.join('lib', 'asn1crypto'),
-    os.path.join('lib', 'certvalidator'),
-    os.path.join('lib', 'ocspbuilder'),
-    os.path.join('lib', 'oscrypto'),
-)
-PACKAGES = []
-
-for directory in DIRECTORIES:
-    PACKAGES.extend(find_packages(directory, exclude=('dev', 'tests')))
-
-print(PACKAGES)
 
 setup(
     name='stapled',
@@ -32,7 +19,17 @@ setup(
     author='Greenhost BV',
     author_email='info@greenhost.nl',
     url='https://github.com/greenhost/stapled',
-    packages=PACKAGES,
+    # Find packages in this package and all the packages that are packaged with
+    # it. This is necessary because, for example, oscrypto includes
+    # sub-packages as well.
+    packages=find_packages()+[
+        package for package in
+        find_packages(os.path.join('lib', lib),
+                      exclude=('dev', 'tests'))
+        for lib in ('asn1crypto', 'certvalidator', 'ocspbuilder', 'oscrypto')
+    ],
+    # Tell setup.py where the dependencies are located so they will be included
+    # while packaging
     package_dir={
         'asn1crypto': 'lib/asn1crypto/asn1crypto',
         'certvalidator': 'lib/certvalidator/certvalidator',
