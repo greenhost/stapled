@@ -4,7 +4,7 @@ This class contains utilities for all things OCSP related.
 """
 from builtins import str
 import datetime
-from stapled import asn1crypto
+import asn1crypto
 
 
 class OCSPResponseParser(object):
