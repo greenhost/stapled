@@ -1,8 +1,9 @@
-`|pipeline|`_
+`pipeline`_
 
-.. |pipeline| image::
-    https://code.greenhost.net/open/ocspd/badges/master/pipeline.svg
-.. _|pipeline|: https://code.greenhost.net/open/ocspd/commits/master
+.. image:: https://code.greenhost.net/open/ocspd/badges/master/pipeline.svg
+    :target: https://code.greenhost.net/open/ocspd/commits/master
+    :alt: Pipeline Status
+
 ===========
 Quick start
 ===========
