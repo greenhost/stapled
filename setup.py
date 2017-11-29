@@ -17,18 +17,18 @@ def _libs():
     return dict((lib, os.path.join('lib', lib)) for lib in LIBS)
 
 
-def find_libs():
+def find_lib():
     """
     Find packages in the paths of ``_libs`` and return it as a flat list.
     """
     paths = _libs().values()
-    # Reduce is used to concatenate the list of lists that the list
-    # comprehension generates.
-    return reduce(
-        list.__add__,
-        [find_packages(path, exclude=('dev', 'tests')) for path in paths],
-        []
-    )
+    # Make a list of lists of packages (i.e. each invocation of find_packages
+    # returns a list).
+    package_lists = [find_packages(p, exclude=('dev', 'tests')) for p in paths]
+    # Use ``sum`` to concatenate the list of lists. This works because the
+    # initial value is a list, when "adding" a list, its ``__add__`` operator
+    # concatenates the list to the initial value.
+    return sum(package_lists, [])
 
 
 def find_lib_paths():
