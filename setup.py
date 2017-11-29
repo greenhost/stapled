@@ -17,7 +17,14 @@ setup(
     author='Greenhost BV',
     author_email='info@greenhost.nl',
     url='https://github.com/greenhost/stapled',
-    packages=find_packages(),
+    packages=find_packages()
+        + ['asn1crypto', 'certvalidator', 'ocspbuilder', 'oscrypto'],
+    package_dir={
+        'asn1crypto': 'lib/asn1crypto/asn1crypto',
+        'certvalidator': 'lib/certvalidator/certvalidator',
+        'ocspbuilder': 'lib/ocspbuilder/ocspbuilder',
+        'oscrypto': 'lib/oscrypto/oscrypto',
+    },
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
     install_requires=[
         'python-daemon>=1.5.5',
