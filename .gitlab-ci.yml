@@ -19,7 +19,7 @@ build:build-container:
   stage: build-containers
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
-  - docker pull $BUILD_COMPILE_CONTAINER
+  - docker pull $BUILD_COMPILE_CONTAINER || true
   - docker build --pull --cache-from $BUILD_COMPILE_CONTAINER -t $BUILD_COMPILE_CONTAINER -f ./docker/build-stretch/Dockerfile ./
   - docker push $BUILD_COMPILE_CONTAINER
 
