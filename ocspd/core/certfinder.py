@@ -75,6 +75,7 @@ class CertFinderThread(threading.Thread):
         )
         self.last_refresh = None
         self.ignore = kwargs.pop('ignore', []) or []
+        self.recursive_dirs = kwargs.pop('recursive_dirs', False)
 
         assert self.models is not None, \
             "You need to pass a dict to hold the certificate model cache."
@@ -143,36 +144,41 @@ class CertFinderThread(threading.Thread):
         LOG.info("Updating current cache..")
         self._update_cached_certs()
         LOG.info("Adding new certificates to cache..")
-        self._find_new_certs()
+        self._find_new_certs(self.directories)
 
-    def _find_new_certs(self):
+    def _find_new_certs(self, paths):
         """
         Locate new files, schedule them for parsing.
 
         :raises ocspd.core.exceptions.CertFileAccessError: When the certificate
             file can't be accessed.
         """
-        for path in self.directories:
+        for path in paths:
             try:
                 LOG.info("Scanning directory: %s", path)
-                for filename in os.listdir(path):
-                    ext = os.path.splitext(filename)[1].lstrip(".")
+                for entry in os.listdir(path):
+                    entry = os.path.join(path, entry)
+                    if os.path.isdir(entry):
+                        if self.recursive_dirs:
+                            LOG.debug("Recursing path %s", entry)
+                            self._find_new_certs([entry])
+                        continue
+                    ext = os.path.splitext(entry)[1].lstrip(".")
                     if ext not in self.file_extensions:
                         continue
-                    filename = os.path.join(path, filename)
-                    if filename in self.models:
+                    if entry in self.models:
                         continue
-                    if self.check_ignore(filename):
+                    if self.check_ignore(entry):
                         LOG.debug(
                             "Ignoring file %s, because it's on the ignore "
                             "list.",
-                            filename
+                            entry
                         )
                         continue
-                    model = CertModel(filename)
+                    model = CertModel(entry)
                     # Remember the model so we can compare the file later to
                     # see if it changed.
-                    self.models[filename] = model
+                    self.models[entry] = model
                     # Schedule the certificate for parsing.
                     context = OCSPTaskContext(
                         task_name="parse",

@@ -1,0 +1,5 @@
+# The files and paths specified here are only included with *source*
+# distributions, i.e.: not with binary distributions (`setup.py sdist` vs
+ #`setup.py bdist`).
+include refresh_testdata.sh
+include LICENSE

@@ -38,6 +38,7 @@ import ocspd
 import ocspd.core.daemon
 import ocspd.core.excepthandler
 from ocspd.colourlog import ColourFormatter
+from ocspd.version import __version__, __app_name__
 
 #: :attr:`logging.format` format string for log files and syslog
 LOGFORMAT = '[%(levelname)s] %(threadName)+10s/%(name)-16.20s %(message)s'
@@ -66,10 +67,11 @@ def get_cli_arg_parser():
         epilog=(
             "The daemon will not serve OCSP responses, it can however "
             "inform HAPRoxy about the staples it creates using the "
-            "``--haproxy-sockets.`` argument. Alternatively you can configure"
+            "``--haproxy-sockets.`` argument. Alternatively you can configure "
             "HAPRoxy or another proxy (e.g. nginx has support for serving "
             "OCSP staples) to serve the OCSP staples manually."
-        )
+        ),
+        prog=__app_name__
     )
     parser.add(
         '-c',
@@ -104,8 +106,8 @@ def get_cli_arg_parser():
         type=int,
         default=0,
         help=(
-            "Verbose output argument should be an integer between 0 and 4, can"
-            "be overridden by the ``-v`` argument."
+            "Verbose output argument should be an integer between 0 and 4, "
+            "can be overridden by the ``-v`` argument."
         )
     )
     parser.add(
@@ -114,16 +116,27 @@ def get_cli_arg_parser():
         dest="verbose",
         help=(
             "Verbose output, repeat to increase verbosity, overrides the "
-            "``verbosity`` argument if provided "
+            "``verbosity`` argument if provided."
         )
     )
     parser.add(
         '-D',
         '--daemon',
         action='store_true',
+        default=False,
         help=(
             "Daemonise the process, release from shell and process group, run "
             "under new process group."
+        )
+    )
+    parser.add(
+        '--interactive',
+        '--no-daemon',
+        action='store_false',
+        dest='daemon',
+        help=(
+            "Disable daemon mode, overrides daemon mode if enabled in the "
+            "config file, effectively starting interactive mode."
         )
     )
     parser.add(
@@ -132,7 +145,7 @@ def get_cli_arg_parser():
         default=ocspd.FILE_EXTENSIONS_DEFAULT,
         help=(
             "Files with which extensions should be scanned? Comma separated "
-            "list (default: crt,pem,cer)"
+            "list (default: crt,pem,cer)."
         )
     )
     parser.add(
@@ -164,7 +177,7 @@ def get_cli_arg_parser():
         '-q',
         '--quiet',
         action='store_true',
-        help="Don't print messages to stdout"
+        help="Don't print messages to stdout."
     )
     parser.add(
         '-s',
@@ -185,7 +198,16 @@ def get_cli_arg_parser():
             "``/etc/haproxy2/haproxy.sock``. I would then start ocspd as "
             "follows:"
             "``./ocspd /etc/haproxy1 /etc/haproxy2 -s /etc/haproxy1.sock "
-            "/etc/haproxy2.sock``"
+            "/etc/haproxy2.sock``."
+        )
+    )
+    parser.add(
+        '--no-haproxy-sockets',
+        action='store_false',
+        dest='haproxy_sockets',
+        help=(
+            "Disable HAProxy sockets, overrides ``--haproxy-sockets`` if "
+            "specified in the config file."
         )
     )
     parser.add(
@@ -198,6 +220,13 @@ def get_cli_arg_parser():
             "Directories containing the certificates used by HAProxy. "
             "Multiple directories may be specified separated by a space. "
         )
+    )
+    parser.add(
+        '-R',
+        '--recursive',
+        action='store_true',
+        default=False,
+        help="Recursively scan given directories."
     )
     parser.add(
         '--no-recycle',
@@ -213,7 +242,7 @@ def get_cli_arg_parser():
         help=(
             "Ignore files matching this pattern. "
             "Multiple patterns may be specified separated by a space. "
-            "You can put the pattern in quotesto let ocspd evaluate it "
+            "You can put the pattern in quotes to let ocspd evaluate it "
             "instead of letting your shell evaluate it. You can use globbing "
             "patterns with ``*`` or ``?``. If a pattern starts with ``/`` it "
             "will be considered absolute, if it does not start with a ``/``, "
@@ -225,6 +254,14 @@ def get_cli_arg_parser():
             "directory up from ``$PATH`` to be ignored. Instead your pattern "
             "will cause a warning and will be ignored."
         )
+    )
+    parser.add(
+        '-V', '--version',
+        action='version',
+        version="%(app_name)s v%(version)s" % {
+            'app_name': __app_name__, 'version': __version__
+        },
+        help="Show the version number and exit."
     )
 
     return parser
@@ -246,7 +283,6 @@ def init():
     logger = logging.getLogger('ocspd')
     logger.propagate = False
     # Don't allow dependencies to log anything but fatal errors
-    logging.getLogger("requests").setLevel(logging.FATAL)
     logging.getLogger("urllib3").setLevel(logging.FATAL)
     logger.setLevel(level=log_level)
     if not args.quiet and not args.daemon:
@@ -274,6 +310,7 @@ def init():
     else:
         logger.info("Running interactively..")
         ocspd.core.daemon.OCSPDaemon(args)
+
 
 if __name__ == '__main__':
     init()

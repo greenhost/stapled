@@ -1,0 +1,23 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: ocspd
+Upstream-Contact: Greenhost, <tech@greenhost.nl>
+
+Files: *
+Copyright: 2017, Greenhost, <tech@greenhost.nl>
+License: Apache Version 2.0
+
+Files: lib/asn1crypto
+Copyright: 2015-2017, Will Bond <will@wbond.net>
+License: MIT
+
+Files: lib/certvalidator
+Copyright: 2015-2017, Will Bond <will@wbond.net>
+License: MIT
+
+Files: lib/ocspbuilder
+Copyright: 2015-2017, Will Bond <will@wbond.net>
+License: MIT
+
+Files: lib/oscrypto
+Copyright: 2015-2017, Will Bond <will@wbond.net>
+License: MIT

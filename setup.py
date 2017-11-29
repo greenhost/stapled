@@ -2,88 +2,46 @@
 """
 Python setuptools script for ``ocspd`` application.
 """
-import os
-import shutil
 from setuptools import setup
 from setuptools import find_packages
-from setuptools.command.install import install
-# pylint: disable=invalid-name
-# Disable superfluous-parens, because we want py3 compatibility
-# pylint: disable=superfluous-parens
-
-version = '0.1'
-
-install_requires = [
-    'certvalidator>=0.11.1',
-    'ocspbuilder>=0.10.2',
-    'oscrypto>=0.17.2',
-    'python-daemon>=1.5.5',
-    'requests>=2.4.3',
-    'future>=0.15.0',
-    'configargparse>=0.10.0',
-]
-
-docs_extras = [
-    'Sphinx>=1.0',  # autodoc_member_order = 'bysource', autodoc_default_flags
-    'sphinx-argparse>=0.1.15',
-    'sphinx_rtd_theme',
-]
-
-long_description = (
-    "Update OCSP staples from CA's and store the result so "
-    "they can be served to clients."
-)
-
-
-class CustomInstallCommand(install):
-    """
-    Installs systemd service to /lib/systemd/system/ocspd.service. Note that
-    this is not installed when installing with --editable or setup.py develop.
-    """
-
-    CREATE_DIRS = [
-        os.path.join('/lib', 'systemd', 'system'),
-        os.path.join('/etc', 'ocspd'),
-        os.path.join('/var', 'log', 'ocspd'),
-    ]
-
-    def run(self):
-        """
-        Installs and then copies the service file to the systemd directory
-        """
-        install.run(self)
-        print("Creating needed directories")
-        for directory in self.CREATE_DIRS:
-            if not os.path.exists(directory):
-                try:
-                    os.makedirs(directory)
-                except OSError as exc:
-                    if exc.errno == 13:
-                        print("WARNING! Failed to create directory '{}'. This "
-                              "might cause problems.".format(directory))
-                    else:
-                        raise
+from ocspd.version import __version__
 
 setup(
     name='ocspd',
-    version=version,
+    version=__version__,
     description='Daemon for updating OCSP staples',
-    long_description=long_description,
+    long_description=(
+        "Update OCSP staples from CA's and store the result so "
+        "they can be served to clients."
+    ),
     author='Greenhost BV',
     author_email='info@greenhost.nl',
-    url='https://code.greenhost.net/open/ocspd',
-    packages=find_packages(),
-    include_package_data=True,
-    install_requires=install_requires,
+    url='https://github.com/greenhost/ocspd',
+    packages=find_packages()+[
+        'lib/asn1crypto/asn1crypto',
+        'lib/certvalidator/certvalidator',
+        'lib/ocspbuilder/ocspbuilder',
+        'lib/oscrypto/oscrypto',
+    ],
+    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
+    install_requires=[
+        'python-daemon>=1.5.5',
+        'future>=0.15.0',
+        'configargparse>=0.10.0',
+    ],
     extras_require={
-        'docs': docs_extras,
+        'docs': [
+            'Sphinx>=1.0',
+            'sphinx-argparse>=0.1.15',
+            'sphinx_rtd_theme',
+        ]
     },
-    license='MIT License',
+    license='Apache Version 2.0',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: No Input/Output (Daemon)',
         'Intended Audience :: System Administrators',
-        'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: Apache Version 2.0',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 2',
@@ -98,11 +56,15 @@ setup(
         'Topic :: System :: Systems Administration',
         'Topic :: Utilities',
     ],
+    keywords='ocsp proxy ssl tls haproxy',
     entry_points={
         'console_scripts': [
-            'ocspd = ocspd.__main__:init'
+            'ocspd = ocspd.__main__:init',
         ]
     },
-    data_files=[('/lib/systemd/system', ['scripts/ocspd.service'])],
-    cmdclass={'install': CustomInstallCommand},
+    data_files=[
+        ('/lib/systemd/system', ['config/ocspd.service']),
+        ('/etc/ocspd/', ['config/ocspd.conf']),
+        ('/var/log/ocspd', []),
+    ]
 )

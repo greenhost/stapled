@@ -34,7 +34,9 @@ From github (for developers)
 .. code-block:: bash
 
     # Download the source from the repo
-    git clone https://github.com/greenhost/ocspd.git
+    git clone --recursive https://github.com/greenhost/ocspd.git
+    # OR, as a TIP, which downloads all the repos simultaneously in threads:
+    git clone --recursive -j5 https://github.com/greenhost/ocspd.git
     # Enter the source directory
     cd ocspd/
     # Setup a virtualenv
@@ -66,40 +68,108 @@ the following:
     virtualenv -p python3 env/
     # Update to the latest version
     git pull
+    # Clone submodules too
+    git submodule upgrade --init --recursive
     # Install a dependency that is not yet it PyPi
     pip install git+https://github.com/wbond/certvalidator.git@4383a4bfd5e769679bc4eedd1e4d334eb0c7d85a --upgrade
     # Install the current directory with pip. This allows you to edit the code
     pip install . --upgrade
 
-Debian package
---------------
+Compiling this package
+======================
 
-We package ocspd for Debian, but it will still have depenfencies that are not
-available as debian packages. This means you need to either still use PIP to
-install those dependencies, or you need to package them yourself.
+There are 2 ways to compile the package and various target distributions.
 
-There is a build script in the root of this project: `build_deb_pkg.sh`. It
-will automatically download the dependencies master branches from Github and
-package them, the finished packages including a package for ocspd will be in
-the `build` directory.
+Build locally
+-------------
 
-.. Warning:: Do not use this, none of the source code you are about to check
-    out will be audited, you will need to vet it yourself. Also it will cause
-    side effects inluding but not limited to loss of hair, stress and diziness.
-    This is not for production use. We do not take any responsibility for what
-    you do with this script, we provide it as is, it will probably fail anyway
-    but we may also stop supporting it at any time, in fact this is highly
-    likely.
+Assuming you have the following packages installed on a debian based system:
 
-    **You have been warned**, now please don't continue at your own risk or go
-    for the PIP install.
+- build-essential
+- python-cffi
+- python3-cffi
+- libffi-dev
+- python-all
+- python3-all
+- python-dev
+- python3-dev
+- python-setuptools
+- python3-setuptools
+- python-pip
+- rpm
+- tar, gzip & bzip2
+- git
+- debhelper
 
+Or the equivalents of these on another distribution. You can build the packages
+by running one or more of the following ``make`` commands.
 
-.. code-block:: bash
+```
+# Clear out the cruft from any previous build
+make clean
+# Source distribution
+make sdist
+# Binary distribution
+make bdist
+# RPM package (Fedora, Redhat, CentOS) - untested!
+make rpm
+# Debian source package (Debian, Ubuntu)
+make deb-src
+# Debian package (Debian, Ubuntu)
+make deb
+# All of the above
+make all
+```
 
-    # Install available dependencies
-    apt install python-future python-all python-configargparse
-    # Download remaining dependencies and convert them to debian packages
-    ./build_deb_pkg.sh
-    # Install all packages
-    dpkg -i build/*.deb
+Everything is tested under Debian Stretch, your mileage may vary.
+
+Docker build
+------------
+
+In order to be able to build a package reproducably by anyone, on any platform
+we have a ``Dockerfile`` that will install an instance of Debian Stretch in a
+docker container and can run the build process for you.
+
+Assuming you have docker installed, you can simply run the below commands to
+build a package.
+
+```
+make docker-all
+```
+Remove any previous docker image and/or container named `ocspd` then buil the
+image with the same dependencies we used. Then compile the packages, then
+place them in the `./docker-dist` dir.
+
+```
+make docker-nuke
+```
+Throw away any previous docker image and/or container named `ocspd`.
+This is part of the `make docker-all` target.
+
+```
+make docker-build
+```
+Build the docker image. This is part of the `make docker-all` target.
+
+```
+make docker-compile
+```
+Assuming you have a built image, this compiles the packages for you and places
+them in `docker-dist`. This is part of the `make docker-all` target.
+
+```
+make docker-install
+```
+Assuming you have a built image and compiled the packages, this installs the
+packages in the docker container. This is part of the `make docker-all` target.
+
+```
+make docker-run
+```
+Assuming you have a built image and compiled the packages, and installed them
+in the docker container, this runs the installed binary to test if it works.
+
+Packages
+--------
+
+You can download packages here: https://github.com/greenhost/ocspd/releases
