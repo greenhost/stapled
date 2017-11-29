@@ -17,7 +17,7 @@ def _libs():
     return dict((lib, os.path.join('lib', lib)) for lib in LIBS)
 
 
-def find_lib():
+def find_libs():
     """
     Find packages in the paths of ``_libs`` and return it as a flat list.
     """
