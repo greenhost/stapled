@@ -22,12 +22,13 @@ setup(
     # Find packages in this package and all the packages that are packaged with
     # it. This is necessary because, for example, oscrypto includes
     # sub-packages as well.
-    packages=find_packages()+[
-        package for package in
-        find_packages(os.path.join('lib', lib),
-                      exclude=('dev', 'tests'))
-        for lib in ('asn1crypto', 'certvalidator', 'ocspbuilder', 'oscrypto')
-    ],
+    packages=find_packages()+sum(
+        [
+            find_packages(os.path.join('lib', lib), exclude=('dev', 'tests'))
+            for lib in
+            ('asn1crypto', 'certvalidator', 'ocspbuilder', 'oscrypto')],
+        []
+    ),
     # Tell setup.py where the dependencies are located so they will be included
     # while packaging
     package_dir={
