@@ -1,4 +1,4 @@
- Source: ocspd
+ Source: stapled
  Maintainer: Greenhost BV <info@greenhost.nl>
  Section: Network
  Priority: optional
@@ -7,18 +7,18 @@
 
 
 
- Package: ocspd-py2
+ Package: stapled-py2
  Architecture: all
  Depends: ${misc:Depends}, ${python:Depends}, python-daemon, python-certvalidator, python-ocspbuilder, python-oscrypto, python-asn1crypto, python-future, python-configargparse, python-six
- Provides: ocspd
+ Provides: stapled
  Description: Daemon for updating OCSP staples
   Update OCSP staples from CA's and store the result so they can be served to clients.
 
 
 
- Package: ocspd
+ Package: stapled
  Architecture: all
  Depends: ${misc:Depends}, ${python3:Depends}, python3-daemon, python3-certvalidator, python3-ocspbuilder, python3-oscrypto, python3-asn1crypto, python-future, python3-configargparse, python3-six
- Provides: ocspd
+ Provides: stapled
  Description: Daemon for updating OCSP staples
   Update OCSP staples from CA's and store the result so they can be served to clients.

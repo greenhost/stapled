@@ -20,13 +20,13 @@ class RenewalRequirementMissing(Exception):
 
 class SocketError(Exception):
     """
-    Gets raised by the :class:`OCSPAdder` when it is impossible to connect to
+    Gets raised by the :class:`StapleAdder` when it is impossible to connect to
     or use its socket.
     """
     pass
 
 
-class OCSPAdderBadResponse(Exception):
+class StapleAdderBadResponse(Exception):
     """
     Gets raised when the HAProxy does not respond with "OCSP Response updated"
     """

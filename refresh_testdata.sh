@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TESTDATA_PATH="testdata/"
+TESTDATA_PATH="/tmp/testdata/"
 DOMAINS="chrissnijder.nl vurehout.net wikipedia.org"
 
 echo "[+] Purging testdata dir.."
@@ -19,5 +19,5 @@ for DOMAIN in $DOMAINS; do
         -showcerts 2>&1  | \
     sed  -n "/-----BEGIN/,/-----END/ w $TESTDATA_PATH$DOMAIN/chain.pem"
 done
-echo "[+] Start ocspd with the desired verbosity and test directory e.g.:"
-echo "python ocspd -vvvv -d testdata/*"
+echo "[+] Start stapled with the desired verbosity and test directory e.g.:"
+echo "python stapled -vvvv -d testdata/*"

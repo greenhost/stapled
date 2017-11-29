@@ -2,7 +2,7 @@
 Module description
 ==================
 
-``ocspd`` consists of several modules that interact with each other in order to
+``stapled`` consists of several modules that interact with each other in order to
 keep OCSP staples up-to-date. In short, these are the modules:
 
 :Scheduler:
@@ -25,7 +25,8 @@ keep OCSP staples up-to-date. In short, these are the modules:
     staples without restarting HAProxy.
 
 This graph explains their interaction. Every arrow passes a
-:class:`~ocspd.core.taskcontext.OCSPTaskContext` instance to the other module.
+:class:`~stapled.core.taskcontext.StapleTaskContext` instance to the other
+module.
 
 .. graphviz::
 
@@ -33,11 +34,11 @@ This graph explains their interaction. Every arrow passes a
        graph [fontsize=10, margin=.001, fontname="helvetica" pad=".001", ranksep="1", nodesep="0.001"];
        node [fontname="helvetica"];
        edge [fontname="helvetica"];
-       scheduler [label="\nSchedulerThread\n\n🕐" URL="core.html#ocspd.scheduling.SchedulerThread"]
-       finder [label="CertFinderThread" URL="core.html#ocspd.core.certfinder.CertFinderThread"]
-       parser [label="CertParserThread" URL="core.html#ocspd.core.certparser.CertParserThread"]
-       renewer [label="OCSPRenewerThread" URL="core.html#ocspd.core.ocsprenewer.OCSPRenewerThread"]
-       adder [label="OCSPAdder" URL="core.html#ocspd.core.ocspadder.OCSPAdder"]
+       scheduler [label="\nSchedulerThread\n\n🕐" URL="core.html#stapled.scheduling.SchedulerThread"]
+       finder [label="CertFinderThread" URL="core.html#stapled.core.certfinder.CertFinderThread"]
+       parser [label="CertParserThread" URL="core.html#stapled.core.certparser.CertParserThread"]
+       renewer [label="StapleRenewerThread" URL="core.html#stapled.core.staplerenewer.StapleRenewerThread"]
+       adder [label="StapleAdder" URL="core.html#stapled.core.stapleadder.StapleAdder"]
        haproxy [label=HAProxy shape=box URL="https://www.haproxy.com/"]
        ca[label="Certificate Authority" shape=box URL="https://en.wikipedia.org/wiki/Certificate_authority"]
        finder -> scheduler [label="  schedule next renewal"];

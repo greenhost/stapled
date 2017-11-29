@@ -3,10 +3,10 @@
 This module defines an extended version of the general purpose
 :class:`scheduling.ScheduledTaskContext` for use in the OCSP daemon.
 """
-from ocspd.scheduling import ScheduledTaskContext
+from stapled.scheduling import ScheduledTaskContext
 
 
-class OCSPTaskContext(ScheduledTaskContext):
+class StapleTaskContext(ScheduledTaskContext):
     """
     Adds the following functionality to the
     :class:`scheduling.ScheduledTaskContext`:
@@ -18,12 +18,12 @@ class OCSPTaskContext(ScheduledTaskContext):
     """
     def __init__(self, task_name, model, sched_time=None, **attributes):
         """
-        Initialise a OCSPTaskContext with a task name, cert model, and optional
+        Initialise a StapleTaskContext with a task name, cert model, and optional
         scheduled time.
 
         :param str task_name: A task name corresponding to an existing queue in
             the scheduler.
-        :param ocspd.core.certmodel.CertModel model: A certificate model.
+        :param stapled.core.certmodel.CertModel model: A certificate model.
         :param datetime.datetime|int sched_time: Absolute time
             (datetime.datetime object) or relative time in seconds (int) to
             execute the task or None for processing ASAP.
@@ -34,7 +34,7 @@ class OCSPTaskContext(ScheduledTaskContext):
         self.last_exception = None
         self.last_exception_count = 0
 
-        super(OCSPTaskContext, self).__init__(
+        super(StapleTaskContext, self).__init__(
             task_name=task_name,
             subject=model,
             sched_time=sched_time,
@@ -52,7 +52,7 @@ class OCSPTaskContext(ScheduledTaskContext):
 
         .. TODO:: Make sure two similar exceptions are treated as identical,
             e.g. ignore attributes that will be different every time.
-            https://code.greenhost.net/open/ocspd/issues/15
+            https://code.greenhost.net/open/stapled/issues/15
         """
         if not self.last_exception or repr(self.last_exception) is repr(exc):
             self.last_exception = exc

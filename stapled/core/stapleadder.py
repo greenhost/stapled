@@ -9,9 +9,9 @@ import errno
 import os
 import queue
 from io import StringIO
-from ocspd.core.excepthandler import ocsp_except_handle
-import ocspd.core.exceptions
-import ocspd.util.functions
+from stapled.core.excepthandler import stapled_except_handle
+import stapled.core.exceptions
+import stapled.util.functions
 
 try:
     _ = BrokenPipeError
@@ -23,7 +23,7 @@ LOG = logging.getLogger(__name__)
 SOCKET_BUFFER_SIZE = 1024
 
 
-class OCSPAdder(threading.Thread):
+class StapleAdder(threading.Thread):
     """
     This class is used to add a OCSP staples to a running HAProxy instance by
     sending it over a socket. It runs a thread that keeps connections to
@@ -31,7 +31,7 @@ class OCSPAdder(threading.Thread):
     `collectd haproxy connection`_ under the MIT license, was used for
     inspiration.
 
-    Tasks are taken from the :class:`ocspd.scheduling.SchedulerThread`, as soon
+    Tasks are taken from the :class:`stapled.scheduling.SchedulerThread`, as soon
         as a task context is received, an OCSP response is read from the model
         within it, it is added to a HAProxy socket found in
         self.socks[<certificate directory>].
@@ -58,24 +58,24 @@ class OCSPAdder(threading.Thread):
             serves certificates from that directory. These sockets are used to
             communicate new OCSP staples to HAProxy, so it does not have to be
             restarted.
-        :kwarg ocspd.scheduling.SchedulerThread scheduler: The scheduler object
+        :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler object
             where we can get "haproxy-adder" tasks from **(required)**.
         """
         self.stop = False
-        LOG.debug("Starting OCSPAdder thread")
+        LOG.debug("Starting StapleAdder thread")
         self.scheduler = kwargs.pop('scheduler', None)
         self.socket_paths = kwargs.pop('socket_paths', None)
 
         assert self.scheduler is not None, \
             "Please pass a scheduler to get and add proxy-add tasks."
         assert self.socket_paths is not None, \
-            "The OCSPAdder needs a socket_paths dict"
+            "The StapleAdder needs a socket_paths dict"
 
         self.socks = {}
-        with ocsp_except_handle():
+        with stapled_except_handle():
             for key, socket_path in self.socket_paths.items():
                 self._open_socket(key, socket_path)
-        super(OCSPAdder, self).__init__(*args, **kwargs)
+        super(StapleAdder, self).__init__(*args, **kwargs)
 
     def _open_socket(self, key, socket_path):
         """
@@ -87,15 +87,15 @@ class OCSPAdder(threading.Thread):
         :param key: the identifier of the socket in self.socks
         :param str socket_path: A valid HAProxy socket path.
 
-        :raises :exc:ocspd.core.exceptions.SocketError: when the socket can not
+        :raises :exc:stapled.core.exceptions.SocketError: when the socket can not
             be opened.
         """
         self.socks[key] = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             self.socks[key].connect(socket_path)
         except FileNotFoundError as exc:
-            raise ocspd.core.exceptions.SocketError(
-                "Could not initialize OCSPAdder with socket {}: {}".format(
+            raise stapled.core.exceptions.SocketError(
+                "Could not initialize StapleAdder with socket {}: {}".format(
                     socket_path, exc))
         result = self.send(key, "prompt")
         LOG.debug("Opened prompt with result: '%s'", result)
@@ -122,7 +122,7 @@ class OCSPAdder(threading.Thread):
                 LOG.debug("Sending staple for cert:'%s'", model)
 
                 # Open the exception handler context to run tasks likely to fail
-                with ocsp_except_handle(context):
+                with stapled_except_handle(context):
                     self.add_staple(model)
                 self.scheduler.task_done(self.TASK_NAME)
             except queue.Empty:
@@ -138,12 +138,12 @@ class OCSPAdder(threading.Thread):
             and a filename `filename`.
         """
         command = self.OCSP_ADD.format(
-            ocspd.util.functions.base64(model.ocsp_staple.response.dump()))
+            stapled.util.functions.base64(model.ocsp_staple.response.dump()))
         LOG.debug("Setting OCSP staple with command '%s'", command)
         directory = os.path.dirname(model.filename)
         response = self.send(directory, command)
         if response != 'OCSP Response updated!':
-            raise ocspd.core.exceptions.OCSPAdderBadResponse(
+            raise stapled.core.exceptions.StapleAdderBadResponse(
                 "Bad HAProxy response: {}".format(response))
 
     def send(self, socket_key, command):
@@ -183,17 +183,17 @@ class OCSPAdder(threading.Thread):
         #             break
 
         # Send command
-        with ocsp_except_handle():
+        with stapled_except_handle():
             try:
                 self.socks[socket_key].sendall((command + "\n").encode())
             except BrokenPipeError:
                 # Try to re-open the socket. If that doesn't work, that will
-                # raise a :exc:`~ocspd.core.exceptions.SocketError`
+                # raise a :exc:`~stapled.core.exceptions.SocketError`
                 LOG.warning("Re-opening socket %s", socket_key)
                 self.socks[socket_key].close()
                 self._open_socket(socket_key, self.socket_paths[socket_key])
                 # Try again, if this results in a BrokenPipeError *again*, it
-                # will be caught by ocsp_except_handle
+                # will be caught by stapled_except_handle
                 self.socks[socket_key].sendall((command + "\n").encode())
 
         buff = StringIO()

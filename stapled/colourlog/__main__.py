@@ -3,7 +3,7 @@
 Test the ColourFormatter class when run directly.
 """
 import logging
-from ocspd.colourlog import ColourFormatter
+from stapled.colourlog import ColourFormatter
 
 
 def main():

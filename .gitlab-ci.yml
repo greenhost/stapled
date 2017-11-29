@@ -1,136 +1,160 @@
 stages:
-- build
+- build-containers
+- build-compile
 - test
 
-build:stretch:
-  stage: build
-  image: debian:stretch
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_FILES_URL: docker.greenhost.net/open/ocspd
+  BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
+  STRETCH_TEST_CONTAINER: $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
+  JESSIE_TEST_CONTAINER: $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
+  PYPY25_TEST_CONTAINER: $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME
+  PYPY35_TEST_CONTAINER: $DOCKER_FILES_URL/test-pypy35:$CI_COMMIT_REF_NAME
+
+build:build-container:
+  image: docker:latest
+  services:
+  - docker:dind
+  stage: build-containers
   script:
-  - apt-get update -qq
-  - apt-get install -q -y build-essential python-cffi python3-cffi libffi-dev python-all python3-all python-dev python3-dev python-setuptools python3-setuptools python-pip rpm tar gzip bzip2 git debhelper
-  - pip install -U pip
-  - pip install -r requirements.txt
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
+  - docker pull $BUILD_COMPILE_CONTAINER || true
+  - docker build --pull --cache-from $BUILD_COMPILE_CONTAINER -t $BUILD_COMPILE_CONTAINER -f ./docker/build-stretch/Dockerfile ./
+  - docker push $BUILD_COMPILE_CONTAINER
+
+build:test-jessie:
+  image: docker:latest
+  services:
+  - docker:dind
+  stage: build-containers
+  script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
+  - docker pull $JESSIE_TEST_CONTAINER || true
+  - docker build --pull --cache-from $JESSIE_TEST_CONTAINER -t $JESSIE_TEST_CONTAINER ./docker/test-jessie/
+  - docker push $JESSIE_TEST_CONTAINER
+
+build:test-stretch:
+  image: docker:latest
+  services:
+  - docker:dind
+  stage: build-containers
+  script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
+  - docker pull $STRETCH_TEST_CONTAINER || true
+  - docker build --pull --cache-from $STRETCH_TEST_CONTAINER -t $STRETCH_TEST_CONTAINER ./docker/test-stretch/
+  - docker push $STRETCH_TEST_CONTAINER
+
+build:test-pypy25:
+  image: docker:latest
+  services:
+  - docker:dind
+  stage: build-containers
+  script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
+  - docker pull $PYPY25_TEST_CONTAINER || true
+  - docker build --pull --cache-from $PYPY25_TEST_CONTAINER -t $PYPY25_TEST_CONTAINER ./docker/test-pypy25/
+  - docker push $PYPY25_TEST_CONTAINER
+
+build:test-pypy35:
+  image: docker:latest
+  services:
+  - docker:dind
+  stage: build-containers
+  script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
+  - docker pull $PYPY35_TEST_CONTAINER || true
+  - docker build --pull --cache-from $PYPY35_TEST_CONTAINER -t $PYPY35_TEST_CONTAINER ./docker/test-pypy35/
+  - docker push $PYPY35_TEST_CONTAINER
+
+build:compile:
+  stage: build-compile
+  image: $BUILD_COMPILE_CONTAINER
+  script:
   - git submodule update --init --recursive
+  - pip install --user -r requirements.txt
   - make clean
   - make
   artifacts:
     paths:
-    - dist/ocspd*.tar.gz
-    - dist/ocspd*.rpm
-    - dist/ocspd*.whl
-    - dist/ocspd*.tar.bz2
-    - dist/ocspd*.deb
-  tags:
-  - docker
+    - dist/stapled*.tar.gz
+    - dist/stapled*.rpm
+    - dist/stapled*.whl
+    - dist/stapled*.tar.bz2
+    - dist/stapled*.deb
 
 test:jessie:python2:
   stage: test
-  image: debian:jessie
+  image: $JESSIE_TEST_CONTAINER
   script:
-  - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
-  - apt-get update
-  - apt-get install -y -t jessie-backports python-configargparse python-daemon python-future
-  - apt-get install -y openssl ca-certificates python-six python-cffi
-  - dpkg -i ./dist/ocspd-py2_*all.deb
+  - dpkg -i ./dist/stapled-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
-  - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
-  - ls testdata/**/chain.pem.ocsp
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - sleep 30
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
-  artifacts:
-    when: always
-    paths:
-    - testdata/
-  tags:
-  - docker
+  - build:compile
 
 test:jessie:python3:
   stage: test
-  image: debian:jessie
+  image: $JESSIE_TEST_CONTAINER
   script:
-  - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
-  - apt-get update
-  - apt-get install -y -t jessie-backports python3-configargparse python3-daemon python3-future
-  - apt-get install -y openssl ca-certificates python3-six python3-cffi
-  - dpkg -i ./dist/ocspd_*all.deb
+  - dpkg -i ./dist/stapled_*all.deb
   - openssl version
   - ./refresh_testdata.sh
-  - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
-  - ls testdata/**/chain.pem.ocsp
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - sleep 30
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
-  tags:
-  - docker
+  - build:compile
 
 test:stretch:python2:
   stage: test
-  image: debian:stretch
+  image: $STRETCH_TEST_CONTAINER
   script:
-  - apt-get update
-  - apt-get install -y openssl ca-certificates
-  - apt-get install -y -q ./dist/ocspd-py2_*all.deb
+  - apt-get install -y -q ./dist/stapled-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
-  - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
-  - ls testdata/**/chain.pem.ocsp
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - sleep 30
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
-  tags:
-  - docker
+  - build:compile
 
 test:stretch:python3:
   stage: test
-  image: debian:stretch
+  image: $STRETCH_TEST_CONTAINER
   script:
-  - apt-get update
-  - apt-get install -y openssl ca-certificates
-  - apt-get install -y -q ./dist/ocspd_*all.deb
+  - apt-get install -y -q ./dist/stapled_*all.deb
   - openssl version
   - ./refresh_testdata.sh
-  - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
-  - ls testdata/**/chain.pem.ocsp
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - sleep 30
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
-  tags:
-  - docker
+  - build:compile
 
 test:pypy2:
   stage: test
-  image: pypy:2-5
+  image: $PYPY25_TEST_CONTAINER
   script:
-  - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
-  - apt-get update
-  - apt-get install -y -t jessie-backports python-configargparse python-daemon python-future
-  - apt-get install -y openssl ca-certificates python-six python-cffi
-  - dpkg -i ./dist/ocspd-py2_*all.deb
+  - dpkg -i ./dist/stapled-py2_*all.deb
   - ./refresh_testdata.sh
-  - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
-  - ls testdata/**/chain.pem.ocsp
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - sleep 30
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
-  tags:
-  - docker
+  - build:compile
 
 test:pypy3:
   stage: test
-  image: pypy:3-5
+  image: $PYPY35_TEST_CONTAINER
   script:
-  - echo "deb http://ftp.debian.org/debian jessie-backports main" >> /etc/apt/sources.list
-  - apt-get update
-  - apt-get install -y -t jessie-backports python3-configargparse python3-daemon python3-future
-  - apt-get install -y openssl ca-certificates python3-six python3-cffi
-  - dpkg -i ./dist/ocspd_*all.deb
+  - dpkg -i ./dist/stapled_*all.deb
   - ./refresh_testdata.sh
-  - ocspd -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
-  - ls testdata/**/chain.pem.ocsp
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - sleep 30
+  - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
-  - build:stretch
-  tags:
-  - docker
+  - build:compile

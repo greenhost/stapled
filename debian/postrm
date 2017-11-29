@@ -1,10 +1,10 @@
 #!/bin/sh
 
-if test -d /etc/ocspd ; then
-	if ! find /etc/ocspd/ -type f >/dev/null ; then
-		rmdir /etc/ocspd
+if test -d /etc/stapled ; then
+	if ! find /etc/stapled/ -type f >/dev/null ; then
+		rmdir /etc/stapled
 	fi
-	rm lib/systemd/system/ocspd.service
-	systemctl disable ocspd
+	rm lib/systemd/system/stapled.service
+	systemctl disable stapled
 	systemctl daemon-reload
 fi

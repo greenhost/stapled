@@ -2,6 +2,6 @@
 
 set -e
 
-systemctl start ocspd
+systemctl start stapled
 
 set +e
