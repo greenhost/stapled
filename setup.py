@@ -2,9 +2,24 @@
 """
 Python setuptools script for ``stapled`` application.
 """
+import os
 from setuptools import setup
 from setuptools import find_packages
 from stapled.version import __version__
+
+DIRECTORIES = (
+    '.',
+    os.path.join('lib', 'asn1crypto'),
+    os.path.join('lib', 'certvalidator'),
+    os.path.join('lib', 'ocspbuilder'),
+    os.path.join('lib', 'oscrypto'),
+)
+PACKAGES = []
+
+for directory in DIRECTORIES:
+    PACKAGES.extend(find_packages(directory, exclude=('dev', 'tests')))
+
+print(PACKAGES)
 
 setup(
     name='stapled',
@@ -17,8 +32,7 @@ setup(
     author='Greenhost BV',
     author_email='info@greenhost.nl',
     url='https://github.com/greenhost/stapled',
-    packages=find_packages()
-        + ['asn1crypto', 'certvalidator', 'ocspbuilder', 'oscrypto'],
+    packages=PACKAGES,
     package_dir={
         'asn1crypto': 'lib/asn1crypto/asn1crypto',
         'certvalidator': 'lib/certvalidator/certvalidator',
