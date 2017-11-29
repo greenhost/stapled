@@ -1,5 +1,5 @@
-.. image:: https://code.greenhost.net/open/ocspd/badges/master/pipeline.svg
-    :target: https://code.greenhost.net/open/ocspd/commits/master
+.. image:: https://code.greenhost.net/open/stapled/badges/master/pipeline.svg
+    :target: https://code.greenhost.net/open/stapled/commits/master
     :alt: Pipeline Status
 
 ===========
