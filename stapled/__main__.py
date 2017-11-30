@@ -303,6 +303,8 @@ def init():
         syslog_handler.setLevel(log_level)
         syslog_handler.setFormatter(logging.Formatter(LOGFORMAT))
         logger.addHandler(syslog_handler)
+    if stapled.LOCAL_LIB_MODE:
+        logger.info("Running on local libs.")
     if args.daemon:
         logger.info("Daemonising now..")
         with daemon.DaemonContext(files_preserve=log_file_handles):

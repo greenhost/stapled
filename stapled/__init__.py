@@ -8,6 +8,14 @@ This file only contains some variables we need in the ``stapled`` name space.
 import sys
 import os
 from stapled.version import __version__, __app_name__
+try:
+    from stapled.lib import add_paths
+    LOCAL_LIB_MODE = True
+    add_paths()
+except ImportError:
+    LOCAL_LIB_MODE = False
+    pass
+
 
 #: The extensions the daemon will try to parse as certificate files
 FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
@@ -28,3 +36,4 @@ DEFAULT_CONFIG_FILE_LOCATIONS = [
     '~/.stapled.conf',
     '/etc/stapled/stapled.conf'
 ]
+

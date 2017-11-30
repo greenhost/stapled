@@ -6,42 +6,10 @@ import os
 from setuptools import setup
 from setuptools import find_packages
 from stapled.version import __version__
-
-LIBS = ('asn1crypto', 'certvalidator', 'ocspbuilder', 'oscrypto')
-
-
-def _libs():
-    """
-    Make a dict containing the name and path of each of the libs.
-    """
-    return dict((lib, os.path.join('lib', lib)) for lib in LIBS)
-
-
-def find_libs():
-    """
-    Find packages in the paths of ``_libs`` and return it as a flat list.
-    """
-    paths = _libs().values()
-    # Make a list of lists of packages (i.e. each invocation of find_packages
-    # returns a list).
-    package_lists = [find_packages(p, exclude=('dev', 'tests')) for p in paths]
-    # Use ``sum`` to concatenate the list of lists. This works because the
-    # initial value is a list, when "adding" a list, its ``__add__`` operator
-    # concatenates the list to the initial value.
-    return sum(package_lists, [])
-
-
-def find_lib_paths():
-    """
-    Use ``_libs`` and add the name of the package to the end of the paths.
-    This is done because the paths are ``lib/[project]/[project]`` not
-    ``lib/[project]``.
-    """
-    paths = _libs().items()
-    return dict(
-        (lib, os.path.join(path, lib)) for lib, path in paths
-    )
-
+try:
+    from stapled.lib import find_libs, find_lib_paths
+except ImportError:
+    pass
 
 setup(
     name='stapled',
@@ -57,7 +25,7 @@ setup(
     # Find packages in this package and all the packages that are packaged with
     # it. This is necessary because, for example, oscrypto includes
     # sub-packages as well.
-    packages=find_packages() + find_libs(),
+    packages=find_packages() + find_libs(exclude=('dev', 'tests')),
     # Tell setup.py where the dependencies are located so they will be included
     # while packaging
     package_dir=find_lib_paths(),

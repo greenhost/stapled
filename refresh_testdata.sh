@@ -20,4 +20,4 @@ for DOMAIN in $DOMAINS; do
     sed  -n "/-----BEGIN/,/-----END/ w $TESTDATA_PATH$DOMAIN/chain.pem"
 done
 echo "[+] Start stapled with the desired verbosity and test directory e.g.:"
-echo "python -m stapled -vvvv -d testdata/ --recursive"
+echo "python -m stapled -vvvv -d /tmp/testdata/ --recursive"

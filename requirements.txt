@@ -8,14 +8,8 @@ python-daemon==2.1.2
 ## python-daemon deps
 lockfile==0.12.2
 docutils==0.14
-## These are bundled with the package, found under lib/
-certvalidator==0.11.1
-asn1crypto==0.23.0
-ocspbuilder==0.10.2
-oscrypto==0.18.0
 
 # Packaging and distribution
-
 twine==1.9.1
 tqdm==4.19.4
 idna==2.6
