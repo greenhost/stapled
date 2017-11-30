@@ -15,7 +15,7 @@ def all_packages():
     it. This is necessary because, for example, oscrypto includes sub-packages
     as well.
     """
-    exclude = ('dev', 'tests', 'lib')
+    exclude = ('dev', 'tests')
     packages = find_packages(exclude=exclude)
     # Make a list of lists of packages (i.e. each invocation of find_packages
     # returns a list).
