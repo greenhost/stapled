@@ -53,5 +53,11 @@ def add_paths():
     """
     Add the found libs to the python path so they can be imported.
     """
-    for lib in _libs().values():
-        sys.path.append(lib)
+    libs = _libs().values()
+    if libs:
+        for lib in libs:
+            sys.path.append(lib)
+        return True
+    else:
+        return False
+

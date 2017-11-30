@@ -14,11 +14,8 @@ serve to show the default.
 import os
 import sys
 import sphinx_rtd_theme
-try:
-    from stapled.lib import add_paths
-    add_paths()
-except ImportError:
-    pass
+from stapled.lib import add_paths
+add_paths()
 
 sys.path.insert(0, os.path.abspath('../..'))
 

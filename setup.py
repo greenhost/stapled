@@ -6,10 +6,7 @@ import os
 from setuptools import setup
 from setuptools import find_packages
 from stapled.version import __version__
-try:
-    from stapled.lib import find_libs, find_lib_paths
-except ImportError:
-    pass
+from stapled.lib import find_libs, find_lib_paths
 
 setup(
     name='stapled',
@@ -25,8 +22,7 @@ setup(
     # Find packages in this package and all the packages that are packaged with
     # it. This is necessary because, for example, oscrypto includes
     # sub-packages as well.
-    packages=find_packages(exclude=['stapled.lib']) + \
-        find_libs(exclude=['dev', 'tests']),
+    packages=find_packages() + find_libs(exclude=['dev', 'tests']),
     # Tell setup.py where the dependencies are located so they will be included
     # while packaging
     package_dir=find_lib_paths(),
