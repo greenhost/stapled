@@ -8,32 +8,32 @@ default: all;
 
 .PHONY: install
 install:
-	python setup.py install
+	python3 setup.py install
 
 .PHONY: sdist
 sdist:
-	python setup.py sdist
+	python3 setup.py sdist
 
 .PHONY: bdist
 bdist:
-	python setup.py bdist --formats=gztar,bztar -u root -g root
+	python3 setup.py bdist --formats=gztar,bztar -u root -g root
 
 .PHONY: wheel
 wheel:
-	python setup.py bdist_wheel
+	python3 setup.py bdist_wheel
 
 .PHONY: rpm
 rpm:
-	python setup.py bdist --formats=rpm -u root -g root
+	python3 setup.py bdist --formats=rpm -u root -g root
 
 .PHONY: deb-src
 deb-src:
-	python setup.py --command-packages=stdeb.command sdist_dsc \
+	python3 setup.py --command-packages=stdeb.command sdist_dsc \
 	 				--with-python2=True --with-python3=True
 
 .PHONY: deb
 deb:
-	python setup.py --command-packages=stdeb.command sdist_dsc \
+	python3 setup.py --command-packages=stdeb.command sdist_dsc \
 	 				--with-python2=True --with-python3=True bdist_deb
 	@echo "Moving binary packages from 'deb_dist' to 'dist'."
 	mkdir -p dist/
@@ -77,6 +77,8 @@ docker-install:
 .PHONY: docker-run
 docker-run:
 	docker start stapled
+	docker exec -it stapled bash -c 'which python3 && python3 --version'
+	docker exec -it stapled openssl version
 	docker exec -it stapled ./refresh_testdata.sh
 	docker exec -it stapled stapled -d testdata/ --recursive --interactive --no-haproxy-sockets -vvvv
 	docker stop stapled
@@ -87,7 +89,7 @@ docker-stop:
 
 .PHONY: docker-nuke
 docker-nuke:
-	bash -c 'CONTAINERS=$$(docker container ls --all --filter=name=stapled -q | xargs); \
+	@bash -c 'CONTAINERS=$$(docker container ls --all --filter=name=stapled -q | xargs); \
     if [ ! -z $$CONTAINERS ]; then \
         echo "Stopping and deleting containers: $${CONTAINERS}"; \
         docker stop $$CONTAINERS; \

@@ -38,8 +38,6 @@ setup(
     author_email='info@greenhost.nl',
     url='https://github.com/greenhost/stapled',
     packages=all_packages(),
-    # Tell setup.py where the dependencies are located so they will be included
-    # while packaging
     package_dir=find_lib_path_dict(),
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
     install_requires=[
