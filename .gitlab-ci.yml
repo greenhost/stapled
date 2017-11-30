@@ -71,10 +71,10 @@ build:compile:
   stage: build-compile
   image: $BUILD_COMPILE_CONTAINER
   script:
-  - which python && $(which python) --version
+  - which python3 && $(which python3) --version
   - openssl version
   - git submodule update --init --recursive
-  - pip install --user -r requirements.txt
+  - pip3 install --user -r requirements.txt
   - make clean
   - make
   artifacts:
@@ -180,7 +180,7 @@ test:dev-setup:
   - openssl version
   - git submodule update --init
   - pip3 install virtualenv
-  - virtualenv --p $(which python3) env/
+  - virtualenv -p $(which python3) env/
   - source env/bin/activate
   - pip3 install -e .
   - ./refresh_testdata.sh
