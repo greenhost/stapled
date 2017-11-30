@@ -14,10 +14,9 @@ serve to show the default.
 import os
 import sys
 import sphinx_rtd_theme
+sys.path.insert(0, os.path.abspath('../..'))
 from lib import add_paths
 add_paths()
-
-sys.path.insert(0, os.path.abspath('../..'))
 
 # -- General configuration ------------------------------------------------
 
