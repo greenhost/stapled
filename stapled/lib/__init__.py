@@ -4,7 +4,6 @@ python path.
 """
 import os
 import sys
-from setuptools import find_packages
 
 
 def _libs():
@@ -20,23 +19,17 @@ def _libs():
     return dict((lib, os.path.join(lib_dir, lib)) for lib in libs)
 
 
-def find_libs(exclude=[]):
+def find_libs_paths():
     """
-    Find libs in the paths of ``_libs`` and return it as a flat list.
+    Find libs in the paths of ``_libs`` and return only the paths.
     This is meant to be used in a setup.py file.
-    :return list: list of found packages
+    :return list: list of lib directories to search for packages
     """
-    paths = _libs().values()
-    # Make a list of lists of packages (i.e. each invocation of find_packages
-    # returns a list).
-    package_lists = [find_packages(path, exclude=exclude) for path in paths]
-    # Use ``sum`` to concatenate the list of lists. This works because the
-    # initial value is a list, when "adding" a list, its ``__add__`` operator
-    # concatenates the list to the initial value.
-    return sum(package_lists, [])
+    return _libs().values()
 
 
-def find_lib_paths():
+
+def find_lib_path_dict():
     """
     Use ``_libs`` and add the name of the package to the end of the paths.
     This is done because the paths are ``lib/[project]/[project]`` not

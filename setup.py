@@ -6,7 +6,25 @@ import os
 from setuptools import setup
 from setuptools import find_packages
 from stapled.version import __version__
-from stapled.lib import find_libs, find_lib_paths
+from stapled.lib import find_lib_paths, find_lib_path_dict
+
+
+def all_packages():
+    """
+    Find packages in this package and all the packages that are packaged with
+    it. This is necessary because, for example, oscrypto includes sub-packages
+    as well.
+    """
+    exclude = ('dev', 'tests')
+    packages = find_packages()
+    # Make a list of lists of packages (i.e. each invocation of find_packages
+    # returns a list).
+    [find_packages(path, exclude=exclude) for path in find_lib_paths()]
+    # Use ``sum`` to concatenate the list of lists. This works because the
+    # initial value is a list, when "adding" a list, its ``__add__`` operator
+    # concatenates the list to the initial value.
+    return sum(packages, [])
+
 
 setup(
     name='stapled',
@@ -19,13 +37,10 @@ setup(
     author='Greenhost BV',
     author_email='info@greenhost.nl',
     url='https://github.com/greenhost/stapled',
-    # Find packages in this package and all the packages that are packaged with
-    # it. This is necessary because, for example, oscrypto includes
-    # sub-packages as well.
-    packages=find_packages() + find_libs(exclude=['dev', 'tests']),
+    packages=all_packages(),
     # Tell setup.py where the dependencies are located so they will be included
     # while packaging
-    package_dir=find_lib_paths(),
+    package_dir=find_lib_path_dict(),
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
     install_requires=[
         'python-daemon>=1.5.5',
