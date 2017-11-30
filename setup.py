@@ -6,7 +6,7 @@ import os
 from setuptools import setup
 from setuptools import find_packages
 from stapled.version import __version__
-from lib import find_lib_paths, find_lib_path_dict
+from stapled.lib import find_lib_paths, find_lib_path_dict
 
 
 def all_packages():
