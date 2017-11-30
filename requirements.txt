@@ -8,6 +8,11 @@ python-daemon==2.1.2
 ## python-daemon deps
 lockfile==0.12.2
 docutils==0.14
+## These are bundled with the package, found under lib/
+certvalidator==0.11.1
+asn1crypto==0.23.0
+ocspbuilder==0.10.2
+oscrypto==0.18.0
 
 # Packaging and distribution
 
@@ -22,3 +27,11 @@ requests-toolbelt==0.8.0
 urllib3==1.22
 stdeb==0.8.5
 wheel==0.30.0
+
+# Docs
+Sphinx==1.6.3
+sphinx-argparse==0.2.1
+sphinx-rtd-theme==0.2.4
+#sphinxcontrib-websupport==1.0.1
+
+
