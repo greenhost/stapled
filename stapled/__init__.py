@@ -8,7 +8,7 @@ This file only contains some variables we need in the ``stapled`` name space.
 import sys
 import os
 from stapled.version import __version__, __app_name__
-from stapled.lib import add_paths
+from lib import add_paths
 
 if add_paths():
     LOCAL_LIB_MODE = True
