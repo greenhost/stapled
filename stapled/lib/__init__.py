@@ -18,7 +18,7 @@ def _libs():
     return dict((lib, os.path.join(lib_dir, lib)) for lib in libs)
 
 
-def find_libs(exclude=[], include=[]):
+def find_libs(exclude=[]):
     """
     Find libs in the paths of ``_libs`` and return it as a flat list.
     This is meant to be used in a setup.py file.
@@ -27,9 +27,7 @@ def find_libs(exclude=[], include=[]):
     paths = _libs().values()
     # Make a list of lists of packages (i.e. each invocation of find_packages
     # returns a list).
-    package_lists = [
-        find_packages(path, exclude=exclude, include=include) for path in paths
-    ]
+    package_lists = [find_packages(path, exclude=exclude) for path in paths]
     # Use ``sum`` to concatenate the list of lists. This works because the
     # initial value is a list, when "adding" a list, its ``__add__`` operator
     # concatenates the list to the initial value.
