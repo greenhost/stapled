@@ -158,3 +158,16 @@ test:pypy3:
   - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
   - build:compile
+
+test:dev-setup:
+  stage: build-compile
+  image: python:3.6-stretch
+  script:
+  - git submodule update --init
+  - virtualenv -p python env/
+  - source env/bin/activate
+  - pip install -e .
+  - ./refresh_testdata.sh
+  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - sleep 30
+  - ls /tmp/testdata/**/chain.pem.ocsp
