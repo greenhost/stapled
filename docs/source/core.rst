@@ -9,17 +9,17 @@ Source code
 ===========
 
 stapled.main
-----------
+------------
 .. automodule:: stapled
    :members:
 
 stapled.core.daemon
------------------
+-------------------
 .. automodule:: stapled.core.daemon
    :members:
 
 stapled.core.taskcontext
-----------------------
+------------------------
 .. automodule:: stapled.core.taskcontext
 
    .. autoclass:: StapleTaskContext
@@ -28,7 +28,7 @@ stapled.core.taskcontext
       :private-members:
 
 stapled.core.certfinder
----------------------
+-----------------------
 .. automodule:: stapled.core.certfinder
 
    .. autoclass:: CertFinderThread
@@ -37,7 +37,7 @@ stapled.core.certfinder
       :private-members:
 
 stapled.core.certparser
----------------------
+-----------------------
 .. automodule:: stapled.core.certparser
 
    .. autoclass:: CertParserThread
@@ -46,7 +46,7 @@ stapled.core.certparser
       :private-members:
 
 stapled.core.staplerenewer
-----------------------
+--------------------------
 .. automodule:: stapled.core.staplerenewer
 
    .. autoclass:: StapleRenewerThread
@@ -55,7 +55,7 @@ stapled.core.staplerenewer
       :private-members:
 
 stapled.core.stapleadder
---------------------
+------------------------
 .. automodule:: stapled.core.stapleadder
 
    .. autoclass:: StapleAdder
@@ -64,7 +64,7 @@ stapled.core.stapleadder
       :private-members:
 
 stapled.core.certmodel
---------------------
+----------------------
 .. automodule:: stapled.core.certmodel
 
    .. autoclass:: CertModel

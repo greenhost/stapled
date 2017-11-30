@@ -48,20 +48,20 @@ The following is an overview of what can be expected when exceptions occur.
 | BrokenPipeError                      |               | A HAProxy socket consistently has a      |                                                                           |
 |                                      |               | broken pipe                              |                                                                           |
 +--------------------------------------+               +------------------------------------------+---------------------------------------------------------------------------+
-| StapleAdderBadResponse                 |             | HAProxy does not respond with            | Schedule a retry 3x *n*\*60s, then 3x, every hour, then ignore.           |
+| StapleAdderBadResponse               |               | HAProxy does not respond with            | Schedule a retry 3x *n*\*60s, then 3x, every hour, then ignore.           |
 |                                      |               | 'OCSP Response updated!'                 |                                                                           |
 +--------------------------------------+---------------+------------------------------------------+---------------------------------------------------------------------------+
 
 .. [1] When the certificate file is changed, `certfinder` will add the file back to the parsing queue.
 
 stapled.core.exceptions
----------------------
+-----------------------
 
 .. automodule:: stapled.core.exceptions
    :members:
 
 stapled.core.excepthandler
-------------------------
+--------------------------
 
 .. automodule:: stapled.core.excepthandler
     :members:

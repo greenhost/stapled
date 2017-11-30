@@ -34,7 +34,7 @@ module.
        graph [fontsize=10, margin=.001, fontname="helvetica" pad=".001", ranksep="1", nodesep="0.001"];
        node [fontname="helvetica"];
        edge [fontname="helvetica"];
-       scheduler [label="\nSchedulerThread\n\n🕐" URL="core.html#stapled.scheduling.SchedulerThread"]
+       scheduler [label="\nSchedulerThread\n\n⌚" URL="core.html#stapled.scheduling.SchedulerThread"]
        finder [label="CertFinderThread" URL="core.html#stapled.core.certfinder.CertFinderThread"]
        parser [label="CertParserThread" URL="core.html#stapled.core.certparser.CertParserThread"]
        renewer [label="StapleRenewerThread" URL="core.html#stapled.core.staplerenewer.StapleRenewerThread"]

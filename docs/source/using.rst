@@ -1,7 +1,7 @@
 .. include:: ../../README.rst
 
 Using stapled
-===========
+=============
 
 .. argparse::
     :module: stapled.__main__
@@ -10,7 +10,7 @@ Using stapled
     :nodefault:
 
 Testing stapled
-=============
+===============
 
 Testing an application like this is hard, but that is no excuse not to do
 testing. We want to have unit tests but to do that correctly we need to run an

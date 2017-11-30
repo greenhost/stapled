@@ -150,6 +150,7 @@ Throw away any previous docker image and/or container named `stapled`.
 This is part of the `make docker-all` target.
 
 .. code-block:: bash
+
     make docker-build
 
 Build the docker image. This is part of the `make docker-all` target.
