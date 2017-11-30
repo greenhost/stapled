@@ -19,7 +19,7 @@ def _libs():
     return dict((lib, os.path.join(lib_dir, lib)) for lib in libs)
 
 
-def find_libs_paths():
+def find_lib_paths():
     """
     Find libs in the paths of ``_libs`` and return only the paths.
     This is meant to be used in a setup.py file.
