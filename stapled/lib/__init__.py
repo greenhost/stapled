@@ -12,9 +12,11 @@ def _libs():
     Make a dict containing the name and path of each of the libs.
     :return dict: name of the lib as key, path of the lib as value
     """
+    exclude = ('__init__.py', '__init__.pyc', '__pycache__')
     lib_dir = os.path.dirname(__file__)
     # Filter out self
-    libs = filter(lambda p: p != __file__, os.listdir(lib_dir))
+    libs = filter(lambda p: p not in exclude, os.listdir(lib_dir)
+    )
     return dict((lib, os.path.join(lib_dir, lib)) for lib in libs)
 
 
