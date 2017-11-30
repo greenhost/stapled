@@ -4,7 +4,6 @@ stages:
 - test
 
 variables:
-  DOCKER_DRIVER: devicemapper
   DOCKER_FILES_URL: docker.greenhost.net/open/stapled
   BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
   STRETCH_TEST_CONTAINER: $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
