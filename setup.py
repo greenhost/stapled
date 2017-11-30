@@ -66,6 +66,10 @@ setup(
         'python-daemon>=1.5.5',
         'future>=0.15.0',
         'configargparse>=0.10.0',
+        'certvalidator==0.11.1',
+        'asn1crypto==0.23.0',
+        'ocspbuilder==0.10.2',
+        'oscrypto==0.18.0',
     ],
     extras_require={
         'docs': [
