@@ -71,6 +71,8 @@ build:compile:
   stage: build-compile
   image: $BUILD_COMPILE_CONTAINER
   script:
+  - which python && $(which python) --version
+  - openssl version
   - git submodule update --init --recursive
   - pip install --user -r requirements.txt
   - make clean
@@ -87,6 +89,8 @@ test:jessie:python2:
   stage: test
   image: $JESSIE_TEST_CONTAINER
   script:
+  - which python && $(which python) --version
+  - openssl version
   - dpkg -i ./dist/stapled-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -100,6 +104,8 @@ test:jessie:python3:
   stage: test
   image: $JESSIE_TEST_CONTAINER
   script:
+  - which python && $(which python) --version
+  - openssl version
   - dpkg -i ./dist/stapled_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -113,6 +119,8 @@ test:stretch:python2:
   stage: test
   image: $STRETCH_TEST_CONTAINER
   script:
+  - which python && $(which python) --version
+  - openssl version
   - apt-get install -y -q ./dist/stapled-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
@@ -126,8 +134,9 @@ test:stretch:python3:
   stage: test
   image: $STRETCH_TEST_CONTAINER
   script:
-  - apt-get install -y -q ./dist/stapled_*all.deb
+  - which python && $(which python) --version
   - openssl version
+  - apt-get install -y -q ./dist/stapled_*all.deb
   - ./refresh_testdata.sh
   - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
@@ -139,6 +148,8 @@ test:pypy2:
   stage: test
   image: $PYPY25_TEST_CONTAINER
   script:
+  - which python && $(which python) --version
+  - openssl version
   - dpkg -i ./dist/stapled-py2_*all.deb
   - ./refresh_testdata.sh
   - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
@@ -151,6 +162,8 @@ test:pypy3:
   stage: test
   image: $PYPY35_TEST_CONTAINER
   script:
+  - which python && $(which python) --version
+  - openssl version
   - dpkg -i ./dist/stapled_*all.deb
   - ./refresh_testdata.sh
   - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
@@ -163,6 +176,8 @@ test:dev-setup:
   stage: build-compile
   image: python:3.6-stretch
   script:
+  - which python && $(which python) --version
+  - openssl version
   - git submodule update --init
   - pip install virtualenv
   - virtualenv env/
