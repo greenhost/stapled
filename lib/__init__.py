@@ -12,7 +12,7 @@ def _libs():
     :return dict: name of the lib as key, path of the lib as value
     """
     exclude = ('__init__.py', '__init__.pyc', '__pycache__')
-    lib_dir = os.path.dirname(__file__)
+    lib_dir = os.path.relpath(os.path.dirname(__file__))
     # Filter out self
     libs = filter(lambda p: p not in exclude, os.listdir(lib_dir)
     )
