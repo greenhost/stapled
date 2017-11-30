@@ -19,11 +19,11 @@ def all_packages():
     packages = find_packages()
     # Make a list of lists of packages (i.e. each invocation of find_packages
     # returns a list).
-    [find_packages(path, exclude=exclude) for path in find_lib_paths()]
+    libs = [find_packages(path, exclude=exclude) for path in find_lib_paths()]
     # Use ``sum`` to concatenate the list of lists. This works because the
     # initial value is a list, when "adding" a list, its ``__add__`` operator
     # concatenates the list to the initial value.
-    return sum(packages, [])
+    return packages+sum(libs, [])
 
 
 setup(
