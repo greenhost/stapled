@@ -12,7 +12,7 @@ def _libs():
     Make a dict containing the name and path of each of the libs.
     :return dict: name of the lib as key, path of the lib as value
     """
-    lib_dir = os.path.abspath(os.path.dirname(__file__))
+    lib_dir = os.path.dirname(__file__)
     # Filter out self
     libs = filter(lambda p: p != __file__, os.listdir(lib_dir))
     return dict((lib, os.path.join(lib_dir, lib)) for lib in libs)
