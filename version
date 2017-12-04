@@ -24,7 +24,6 @@ try:
 except NameError:
     FileNotFoundError = IOError
 
-from six.moves import input
 
 class NeedInputException(Exception):
     pass

@@ -1,3 +1,9 @@
+stapled (0.2) stretch; urgency=low
+
+  * Fix some dependency issues.
+
+ -- Chris Snijder <chris@greenhost.nl> Mon, 4 Dec 2017 11:18:46 +0100
+
 stapled (0.1-1) UNRELEASED; urgency=medium
   * Initial release. (Closes: #XXXXXX)
 
