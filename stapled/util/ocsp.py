@@ -5,6 +5,7 @@ This class contains utilities for all things OCSP related.
 from builtins import str
 import datetime
 import asn1crypto
+from stapled.util.functions import base64
 
 
 class OCSPResponseParser(object):
@@ -21,6 +22,10 @@ class OCSPResponseParser(object):
         self.response = getattr(ocsp_object, 'response_data')
         # SingleResponse object should be in these keys
         self.tbsresponse = self.response['responses'][0]
+
+    @property
+    def base64(self):
+        return base64(self.raw.dump())
 
     @property
     def status(self):

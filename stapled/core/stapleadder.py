@@ -11,7 +11,6 @@ import queue
 from io import StringIO
 from stapled.core.excepthandler import stapled_except_handle
 import stapled.core.exceptions
-import stapled.util.functions
 
 try:
     _ = BrokenPipeError
@@ -137,9 +136,7 @@ class StapleAdder(threading.Thread):
         :param model: An object that has a binary string `ocsp_staple` in it
             and a filename `filename`.
         """
-        command = self.OCSP_ADD.format(
-            stapled.util.functions.base64(model.ocsp_staple.raw)
-        )
+        command = self.OCSP_ADD.format(model.ocsp_staple.base64)
         LOG.debug("Setting OCSP staple with command '%s'", command)
         directory = os.path.dirname(model.filename)
         response = self.send(directory, command)
