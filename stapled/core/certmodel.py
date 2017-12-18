@@ -110,7 +110,6 @@ class CertModel(object):
             # Can't access the staple file, game over.
             LOG.error("Can't access %s, let's schedule a renewal.", ocsp_file)
             return False
-
         # For some reason there are reports that haproxy will not accept staples
         # from with the `set ssl ocsp-response [data]` command if a staple file
         # did not already exist at start-up, an empty file seems to fix that.
