@@ -1,3 +1,9 @@
+stapled (0.3) stretch; urgency=low
+
+ * Fixed default configuration file and add send staple data to haproxy socket.
+
+ -- Chris Snijder <chris@greenhost.nl> Mon, 18 Dec 2017 17:42:46 +0100
+
 stapled (0.2) stretch; urgency=low
 
   * Fix some dependency issues.
