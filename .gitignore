@@ -100,3 +100,4 @@ testdata
 build_deps
 deb_dist
 dist-docker
+.mypy_cache

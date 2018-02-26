@@ -150,8 +150,8 @@ class CertFinderThread(threading.Thread):
         """
         Locate new files, schedule them for parsing.
 
-        :raises stapled.core.exceptions.CertFileAccessError: When the certificate
-            file can't be accessed.
+        :raises stapled.core.exceptions.CertFileAccessError: When the
+            certificate file can't be accessed.
         """
         for path in paths:
             try:
@@ -197,9 +197,9 @@ class CertFinderThread(threading.Thread):
 
     def _del_model(self, filename):
         """
-        Delete model from :attr:`stapled.core.daemon.run.models` in a thread-safe
-        manner, if another thread deleted it, we should ignore the KeyError
-        making this function omnipotent.
+        Delete model from :attr:`stapled.core.daemon.run.models` in a
+        thread-safe manner, if another thread deleted it, we should ignore the
+        KeyError making this function omnipotent.
 
         :param str filename: The filename of the model to forget about.
         """
@@ -220,8 +220,8 @@ class CertFinderThread(threading.Thread):
         :attr:`stapled.core.daemon.run.models`. Any scheduled tasks for the
         model's task context are cancelled.
 
-        :raises stapled.core.exceptions.CertFileAccessError: When the certificate
-            file can't be accessed.
+        :raises stapled.core.exceptions.CertFileAccessError: When the
+            certificate file can't be accessed.
         """
         deleted = []
         changed = []
