@@ -45,7 +45,7 @@ class CertModel(object):
     Model for certificate files.
     """
     # pylint: disable=too-many-instance-attributes
-    def __init__(self, filename):
+    def __init__(self, filename, cert_path):
         """
         Initialise the CertModel model object, and read the certificate data
         from the passed filename.
@@ -62,6 +62,7 @@ class CertModel(object):
         self.chain = []
         self.url_index = 0
         self.crt_data = None
+        self.cert_path = cert_path
         try:
             with open(filename, 'rb') as f_obj:
                 self.crt_data = f_obj.read()

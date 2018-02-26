@@ -98,7 +98,7 @@ class StapleAdder(threading.Thread):
                 "Could not initialize StapleAdder with socket {}: {}".format(
                     socket_path, exc))
         result = self.send(key, "prompt")
-        result = self.send(key, "set timeout {}".format(SOCKET_TIMEOUT))
+        result = self.send(key, "set timeout cli {}".format(SOCKET_TIMEOUT))
         LOG.debug("Opened prompt with result: '%s'", result)
 
     def __del__(self):
@@ -140,8 +140,7 @@ class StapleAdder(threading.Thread):
         """
         command = self.OCSP_ADD.format(model.ocsp_staple.base64)
         LOG.debug("Setting OCSP staple with command '%s'", command)
-        directory = os.path.dirname(model.filename)
-        response = self.send(directory, command)
+        response = self.send(model.cert_path, command)
         if response != 'OCSP Response updated!':
             raise stapled.core.exceptions.StapleAdderBadResponse(
                 "Bad HAProxy response: {}".format(response))
