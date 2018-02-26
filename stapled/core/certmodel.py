@@ -78,7 +78,6 @@ class CertModel(object):
         Wicth extract the certificate (*end_entity*) and the chain
         intermediates*), and validates the certificate chain.
         """
-        LOG.info("Parsing file \"%s\"..", self.filename)
         self._read_full_chain()
         self.chain = self._validate_cert()
 
@@ -97,14 +96,14 @@ class CertModel(object):
         """
         ocsp_file = "{}.ocsp".format(self.filename)
         if not os.path.exists(ocsp_file):
-            LOG.info(
+            LOG.debug(
                 "File does not exist yet: %s, need to request a staple.",
                 ocsp_file
             )
             return False
 
         try:
-            LOG.info("Seeing if %s is still valid..", ocsp_file)
+            LOG.debug("Seeing if %s is still valid..", ocsp_file)
             with open(ocsp_file, "rb") as file_handle:
                 raw_staple = file_handle.read()
         except (IOError, OSError):
@@ -124,7 +123,7 @@ class CertModel(object):
         now = datetime.datetime.now()
         until = staple.valid_until
         if staple.status != "good" or until <= now:
-            LOG.info("Staple has expired %s", self.filename)
+            LOG.debug("Staple has expired %s", self.filename)
             return False
         try:
             self._validate_cert(raw_staple)
@@ -195,7 +194,7 @@ class CertModel(object):
             )
 
         url = self.ocsp_urls[self.url_index]
-        LOG.info("Trying to get OCSP staple from url \"%s\"..", url)
+        LOG.debug("Trying to get OCSP staple from url \"%s\"..", url)
         ocsp_staple = certvalidator.ocsp_client.fetch(
             self.end_entity,
             self.chain[-2],
@@ -212,7 +211,7 @@ class CertModel(object):
         # will be taken into account because it is no longer None
         # If validation fails, it will raise an exception that should be
         # handled at another level.
-        LOG.info("Validating staple..")
+        LOG.debug("Validating staple..")
         self._validate_cert(self.ocsp_staple.raw)
         # No exception was raised, so we can assume the staple is ok and write
         # it to disk.
@@ -283,10 +282,10 @@ class CertModel(object):
                 if type_name == 'CERTIFICATE':
                     crt = asn1crypto.x509.Certificate.load(der_bytes)
                     if getattr(crt, 'ca'):
-                        LOG.info("Found part of the chain..")
+                        LOG.debug("Found part of the chain..")
                         self.intermediates.append(crt)
                     else:
-                        LOG.info("Found the end entity..")
+                        LOG.debug("Found the end entity..")
                         self.end_entity = crt
                         self.ocsp_urls = getattr(crt, 'ocsp_urls')
         except binascii.Error:
@@ -327,10 +326,10 @@ class CertModel(object):
         """
         try:
             if ocsp_staple is None:
-                LOG.info("Validating without OCSP staple.")
+                LOG.debug("Validating without OCSP staple.")
                 context = certvalidator.ValidationContext()
             else:
-                LOG.info("Validating with OCSP staple.")
+                LOG.debug("Validating with OCSP staple.")
                 context = certvalidator.ValidationContext(
                     ocsps=[ocsp_staple],
                     allow_fetching=False
@@ -345,7 +344,16 @@ class CertModel(object):
                 extended_key_usage=set(['server_auth']),
                 extended_optional=True
             )
-            LOG.info("Certificate chain for \"%s\" validated.", self.filename)
+            if ocsp_staple is None:
+                LOG.debug(
+                    "Certificate chain for \"%s\" validated.",
+                    self.filename
+                )
+            else:
+                LOG.info(
+                    "Certificate chain and staple for \"%s\" validated.",
+                    self.filename
+                )
             return chain
         except certvalidator.errors.RevokedError:
             raise CertValidationError(

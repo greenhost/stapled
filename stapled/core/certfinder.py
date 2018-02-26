@@ -141,9 +141,8 @@ class CertFinderThread(threading.Thread):
             :meth:`CertFinder.run()`
         """
         self.last_refresh = time.time()
-        LOG.info("Updating current cache..")
+        LOG.info("Starting a refresh run.")
         self._update_cached_certs()
-        LOG.info("Adding new certificates to cache..")
         self._find_new_certs(self.directories)
 
     def _find_new_certs(self, paths, cert_path=None):
@@ -163,7 +162,7 @@ class CertFinderThread(threading.Thread):
                 # an argument or in config.
                 cert_path = path
             try:
-                LOG.info("Scanning directory: %s", path)
+                LOG.debug("Scanning directory: %s", path)
                 for entry in os.listdir(path):
                     entry = os.path.join(path, entry)
                     if os.path.isdir(entry):
