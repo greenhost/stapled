@@ -193,9 +193,10 @@ certificate stapling will remain disabled until you restart HAProxy. Even if
 In order to get around this bootstrapping problem, add an empty staple file,
 which is also valid according to HAProxy's documentation by running:
 
-```
-touch [path-to-certificate].pem.ocsp
-```
+.. code-block:: bash
+
+    touch [path-to-certificate].pem.ocsp
+
 
 For each of your domains.
 
