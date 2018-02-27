@@ -150,7 +150,7 @@ class CertFinderThread(threading.Thread):
         Locate new files, schedule them for parsing.
 
         :param list|tuple paths: Paths to scan for certificates.
-        :param str|Nonetype cert_path: Certificate paths passed as arguments,
+        :param str|Nonetype cert_path: Certificate path passed as arguments,
             this will serve as a key to relate Certmodels to certificate paths.
         :raises stapled.core.exceptions.CertFileAccessError: When the
             certificate file can't be accessed.
