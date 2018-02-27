@@ -27,3 +27,23 @@ placed in subdirectories with the same name as the domain name.
 Next you can run ``python stapled -vvvv -d testdata/*`` to get output printed to
 your terminal. The ``testdata/[domain].[tld]`` directories will be populated
 with ``[domain].[tld].ocsp`` files.
+
+Caveats
+=======
+
+In order to get HAPRoxy to serve staples, any staple valid file should exist
+at the moment it is started. If a staple file does not exist for your
+certificate stapling will remain disabled until you restart HAProxy. Even if
+``stapled`` tries to send HAProxy a valid staple through its socket.
+
+In order to get around this bootstrapping problem, add an empty staple file,
+which is also valid according to HAProxy's documentation by running:
+
+.. code-block:: bash
+
+    touch [path-to-certificate].pem.ocsp
+
+For each of your domains.
+
+We tested this for HAProxy 1.6, perhaps this behaviour will change in
+future versions.

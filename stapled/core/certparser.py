@@ -90,6 +90,10 @@ class CertParserThread(threading.Thread):
             until = model.ocsp_staple.valid_until
             sched_time = until - datetime.timedelta(
                 seconds=self.minimum_validity)
+            # Schedule adding this to the running HAProxy through the socket.
+            context = StapleTaskContext(
+                task_name="proxy-add", model=model, sched_time=None)
+            self.scheduler.add_task(context)
         else:
             # No existing staple file or invalid, renew ASAP.
             sched_time = None

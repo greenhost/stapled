@@ -141,27 +141,37 @@ class CertFinderThread(threading.Thread):
             :meth:`CertFinder.run()`
         """
         self.last_refresh = time.time()
-        LOG.info("Updating current cache..")
+        LOG.info("Starting a refresh run.")
         self._update_cached_certs()
-        LOG.info("Adding new certificates to cache..")
         self._find_new_certs(self.directories)
 
-    def _find_new_certs(self, paths):
+    def _find_new_certs(self, paths, cert_path=None):
         """
         Locate new files, schedule them for parsing.
 
+        :param list|tuple paths: Paths to scan for certificates.
+        :param str|Nonetype cert_path: Parent path as specified in the
+            CLI arguments. Necessary to link certificates found in `paths` to
+            any configured sockets.
+        :param str|Nonetype cert_path: Certificate path passed as arguments,
+            this will serve as a key to relate Certmodels to certificate paths.
         :raises stapled.core.exceptions.CertFileAccessError: When the
             certificate file can't be accessed.
         """
         for path in paths:
+            if cert_path is None:
+                # Keep this value so we know in which directory it was found.
+                # Only keep the highest level, equal to what was supplied as
+                # an argument or in config.
+                cert_path = path
             try:
-                LOG.info("Scanning directory: %s", path)
+                LOG.debug("Scanning directory: %s", path)
                 for entry in os.listdir(path):
                     entry = os.path.join(path, entry)
                     if os.path.isdir(entry):
                         if self.recursive_dirs:
                             LOG.debug("Recursing path %s", entry)
-                            self._find_new_certs([entry])
+                            self._find_new_certs([entry], cert_path)
                         continue
                     ext = os.path.splitext(entry)[1].lstrip(".")
                     if ext not in self.file_extensions:
@@ -175,7 +185,7 @@ class CertFinderThread(threading.Thread):
                             entry
                         )
                         continue
-                    model = CertModel(entry)
+                    model = CertModel(entry, cert_path=cert_path)
                     # Remember the model so we can compare the file later to
                     # see if it changed.
                     self.models[entry] = model
@@ -231,7 +241,7 @@ class CertFinderThread(threading.Thread):
             elif os.path.getmtime(filename) > model.modtime:
                 changed.append(filename)
 
-        # purge certs that no longer exist in the cert dirs
+        # Purge certs that no longer exist in the cert dirs
         for filename in deleted:
             # Cancel any scheduled tasks for the model.
             self.scheduler.cancel_by_subject(self.models[filename])
@@ -240,15 +250,22 @@ class CertFinderThread(threading.Thread):
             LOG.info(
                 "File %s was deleted, removing it from the cache.", filename)
 
-        # re-add files that have changed
+        # Re-add files that have changed, we will make a new model so the model
+        # is an accurate representation of what is in the cerificate file on
+        # disk, this is just to prevent any stale data being used in the
+        # process. Making the new model and scheduling a parse will make go
+        # through all the steps to get the certificate stapled ASAP again.
         for filename in changed:
             # Cancel any scheduled tasks for the model.
             self.scheduler.cancel_by_subject(self.models[filename])
+            # Before deleting the model from cache take relevant information
+            # that will be lost
+            cert_path = self.models[filename].cert_path
             # Remove the model from cache.
             self._del_model(filename)
             # Make a new model.
             LOG.info("File %s changed, parsing it again.", filename)
-            new_model = CertModel(filename)
+            new_model = CertModel(filename, cert_path)
             context = StapleTaskContext(
                 task_name="parse", model=new_model, sched_time=None)
             self.scheduler.add_task(context)

@@ -20,6 +20,7 @@ except NameError:
 
 LOG = logging.getLogger(__name__)
 SOCKET_BUFFER_SIZE = 1024
+SOCKET_TIMEOUT = 86400
 
 
 class StapleAdder(threading.Thread):
@@ -86,8 +87,8 @@ class StapleAdder(threading.Thread):
         :param key: the identifier of the socket in self.socks
         :param str socket_path: A valid HAProxy socket path.
 
-        :raises :exc:stapled.core.exceptions.SocketError: when the socket can not
-            be opened.
+        :raises :exc:stapled.core.exceptions.SocketError: when the socket can
+            not be opened.
         """
         self.socks[key] = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
@@ -97,6 +98,7 @@ class StapleAdder(threading.Thread):
                 "Could not initialize StapleAdder with socket {}: {}".format(
                     socket_path, exc))
         result = self.send(key, "prompt")
+        result = self.send(key, "set timeout cli {}".format(SOCKET_TIMEOUT))
         LOG.debug("Opened prompt with result: '%s'", result)
 
     def __del__(self):
@@ -138,8 +140,7 @@ class StapleAdder(threading.Thread):
         """
         command = self.OCSP_ADD.format(model.ocsp_staple.base64)
         LOG.debug("Setting OCSP staple with command '%s'", command)
-        directory = os.path.dirname(model.filename)
-        response = self.send(directory, command)
+        response = self.send(model.cert_path, command)
         if response != 'OCSP Response updated!':
             raise stapled.core.exceptions.StapleAdderBadResponse(
                 "Bad HAProxy response: {}".format(response))
@@ -187,7 +188,11 @@ class StapleAdder(threading.Thread):
             except BrokenPipeError:
                 # Try to re-open the socket. If that doesn't work, that will
                 # raise a :exc:`~stapled.core.exceptions.SocketError`
-                LOG.warning("Re-opening socket %s", socket_key)
+                LOG.warning(
+                    "Re-opening socket %s belonging to %s",
+                    self.socket_paths[socket_key],
+                    socket_key
+                )
                 self.socks[socket_key].close()
                 self._open_socket(socket_key, self.socket_paths[socket_key])
                 # Try again, if this results in a BrokenPipeError *again*, it

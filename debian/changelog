@@ -1,3 +1,20 @@
+stapled (0.4) stretch; urgency=low
+
+ * Improve the stability of the socket communication.
+ * Add a time stamp to the log output.
+ * Reduce the noise for log level INFO.
+ * Fix an edge case where HAProxy is not aware of staples that are still valid
+   and where stapled decides fetching new ones is not necessary.
+ * Fix recursive mode when used with HAProxy sockets, there is no practial
+   use case for this and it is still not supported but it won't cause an
+   exception anymore and manual testing can be done in recursive mode now.
+ * Fix various typo's in documentation.
+ * Improve documentation of the config file.
+ * Add note about HAProxy's stapling perculiarities in README and
+   documentation.
+
+ -- Chris Snijder <chris@greenhost.nl> Tue, 27 Feb 2018 15:22:26 +0100
+
 stapled (0.3) stretch; urgency=low
 
  * Fixed default configuration file and add send staple data to haproxy socket.

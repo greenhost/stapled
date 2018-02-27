@@ -41,12 +41,17 @@ from stapled.colourlog import ColourFormatter
 from stapled.version import __version__, __app_name__
 
 #: :attr:`logging.format` format string for log files and syslog
-LOGFORMAT = '[%(levelname)s] %(threadName)+10s/%(name)-16.20s %(message)s'
+LOGFORMAT = (
+    "%(asctime)s [%(levelname)s] %(threadName)+14s/%(name)-16.20s"
+    "%(message)s"
+)
 #: :attr:`logging.format` format string for stdout
 COLOUR_LOGFORMAT = (
-    '{lvl}[%(levelname)s]{reset} {msg}%(threadName)+10s/%(name)-16.20s '
-    '%(message)s{reset}'
+    "{msg}%(asctime)s{reset} {lvl}[%(levelname)s]{reset} "
+    "{msg}%(threadName)+14s/%(name)-16.20s %(message)s{reset}"
 )
+
+TIMESTAMP_FORMAT = "%b %d %H:%M:%S"
 
 
 def get_cli_arg_parser():
@@ -288,20 +293,26 @@ def init():
     if not args.quiet and not args.daemon:
         console_handler = logging.StreamHandler()
         console_handler.setLevel(log_level)
-        console_handler.setFormatter(ColourFormatter(COLOUR_LOGFORMAT))
+        console_handler.setFormatter(
+            ColourFormatter(COLOUR_LOGFORMAT, TIMESTAMP_FORMAT)
+        )
         logger.addHandler(console_handler)
     if args.logdir:
         file_handler = logging.FileHandler(
             os.path.join(args.logdir, 'stapled.log'))
         file_handler.setLevel(log_level)
-        file_handler.setFormatter(logging.Formatter(LOGFORMAT))
+        file_handler.setFormatter(
+            logging.Formatter(LOGFORMAT, TIMESTAMP_FORMAT)
+        )
         logger.addHandler(file_handler)
         log_file_handles.append(file_handler.stream)
         stapled.core.excepthandler.LOG_DIR = args.logdir
     if args.syslog:
         syslog_handler = logging.handlers.SysLogHandler(address='/dev/log')
         syslog_handler.setLevel(log_level)
-        syslog_handler.setFormatter(logging.Formatter(LOGFORMAT))
+        syslog_handler.setFormatter(
+            logging.Formatter(LOGFORMAT, TIMESTAMP_FORMAT)
+        )
         logger.addHandler(syslog_handler)
     if stapled.LOCAL_LIB_MODE:
         logger.info("Running on local libs.")

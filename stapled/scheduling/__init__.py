@@ -209,7 +209,7 @@ class SchedulerThread(threading.Thread):
         self.scheduled_by_queue[ctx.task_name].append(ctx)
         self.schedule[ctx.sched_time].append(ctx)
         self.scheduled_by_subject[ctx.subject].append(ctx)
-        LOG.info(
+        LOG.debug(
             "Scheduled %s at %s",
             ctx, ctx.sched_time.strftime('%Y-%m-%d %H:%M:%S'))
 
@@ -296,7 +296,7 @@ class SchedulerThread(threading.Thread):
         for sched_time in todo:
             items = self.schedule.pop(sched_time)
             for ctx in items:
-                LOG.info("Adding %s to the %s queue.", ctx, ctx.task_name)
+                LOG.debug("Adding %s to the %s queue.", ctx, ctx.task_name)
                 # Remove from reverse indexed dict
                 del self.scheduled_by_context[ctx]
                 self.scheduled_by_queue[ctx.task_name].remove(ctx)
