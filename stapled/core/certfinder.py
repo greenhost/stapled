@@ -150,6 +150,9 @@ class CertFinderThread(threading.Thread):
         Locate new files, schedule them for parsing.
 
         :param list|tuple paths: Paths to scan for certificates.
+        :param str|Nonetype cert_path: Parent path as specified in the
+            CLI arguments. Necessary to link certificates found in `paths` to
+            any configured sockets.
         :param str|Nonetype cert_path: Certificate path passed as arguments,
             this will serve as a key to relate Certmodels to certificate paths.
         :raises stapled.core.exceptions.CertFileAccessError: When the
@@ -238,7 +241,7 @@ class CertFinderThread(threading.Thread):
             elif os.path.getmtime(filename) > model.modtime:
                 changed.append(filename)
 
-        # purge certs that no longer exist in the cert dirs
+        # Purge certs that no longer exist in the cert dirs
         for filename in deleted:
             # Cancel any scheduled tasks for the model.
             self.scheduler.cancel_by_subject(self.models[filename])
@@ -247,7 +250,11 @@ class CertFinderThread(threading.Thread):
             LOG.info(
                 "File %s was deleted, removing it from the cache.", filename)
 
-        # re-add files that have changed
+        # Re-add files that have changed, we will make a new model so the model
+        # is an accurate representation of what is in the cerificate file on
+        # disk, this is just to prevent any stale data being used in the
+        # process. Making the new model and scheduling a parse will make go
+        # through all the steps to get the certificate stapled ASAP again.
         for filename in changed:
             # Cancel any scheduled tasks for the model.
             self.scheduler.cancel_by_subject(self.models[filename])
