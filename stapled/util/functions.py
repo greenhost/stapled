@@ -103,7 +103,7 @@ def parse_haproxy_config(files):
     PAT_CRT = re.compile(r'^\s*bind.*?crt.*$')
     # paths can contain a-Z, 0-9, -, _, . and spaces escaped by \
     PAT_CRT = re.compile(
-        r'crt\s*(([\'"]{1}([\w-.\\\\/ ]*)[\'"]{1})|(([\w-./]|\\\\ )*))'
+        r'crt\s*(([\'"]{1}([\w.\\/ -]*)[\'"]{1})|(([\w.-/]|\\ )*))'
     )
     PAT_CRT_BASE = re.compile(r'^\s*crt-base.*?crt\s*(?P<path>.*?)\s?$')
 
@@ -166,12 +166,17 @@ def parse_haproxy_config(files):
             # file name will be truncated to the dir name of the file.
             cert_paths = []
             if word == 'crt':
+                # TODO: It is possible to add the crt argument more than once
+                # for 1 bind directive, we need to find all paths in the crt
+                # arguments. We need them for all bind directives and we need
+                # to de-duplicate them.
                 for match in matches:
                     cert_paths = match.group('paths')
-
                     cert_path = match.group('paths').strip()
                     if not os.path.isabs(socket):
                         cert_path = os.path.join(base, cert_path)
+                    if os.path.isfile(cert_path):
+                        cert_path = os.path.dirname(cert_path)
                     cert_paths.append(cert_path)
         paths.append(cert_paths)
     return (paths, sockets)
