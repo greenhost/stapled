@@ -1,7 +1,7 @@
 stages:
 - build-containers
 - build-compile
-- test
+- functional-tests
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -62,7 +62,7 @@ build:compile:
     - dist/stapled*.deb
 
 test:jessie:python2:
-  stage: test
+  stage: functional-tests
   image: $JESSIE_TEST_CONTAINER
   script:
   - which python2 && $(which python2) --version
@@ -77,7 +77,7 @@ test:jessie:python2:
   - build:compile
 
 test:jessie:python3:
-  stage: test
+  stage: functional-tests
   image: $JESSIE_TEST_CONTAINER
   script:
   - which python3 && $(which python3) --version
@@ -92,7 +92,7 @@ test:jessie:python3:
   - build:compile
 
 test:stretch:python2:
-  stage: test
+  stage: functional-tests
   image: $STRETCH_TEST_CONTAINER
   script:
   - which python2 && $(which python2) --version
@@ -107,7 +107,7 @@ test:stretch:python2:
   - build:compile
 
 test:stretch:python3:
-  stage: test
+  stage: functional-tests
   image: $STRETCH_TEST_CONTAINER
   script:
   - which python3 && $(which python3) --version
@@ -124,12 +124,9 @@ test:dev-setup:
   stage: build-compile
   image: python:3.6-stretch
   script:
-  - which python3 && $(which python3) --version
+  - which python && $(which python) --version
   - openssl version
   - git submodule update --init
-  - pip3 install virtualenv
-  - virtualenv -p $(which python3) env/
-  - source env/bin/activate
   - pip3 install -e .
   - ./refresh_testdata.sh
   - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
