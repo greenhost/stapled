@@ -1,5 +1,6 @@
 stages:
 - build-containers
+- unit-tests
 - build-compile
 - functional-tests
 
@@ -75,6 +76,22 @@ test:jessie:python2:
   - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
   - build:compile
+
+unit:python2:
+  stage: unit-tests
+  image: python:2.7-stretch
+  script:
+  - which python && $(which python) --version
+  - git submodule update --init
+  - pytest -v
+
+unit:python3:
+  stage: unit-tests
+  image: python:3.6-stretch
+  script:
+  - which python && $(which python) --version
+  - git submodule update --init
+  - pytest -v
 
 test:jessie:python3:
   stage: functional-tests
