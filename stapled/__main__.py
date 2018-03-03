@@ -37,6 +37,7 @@ import daemon
 import stapled
 import stapled.core.daemon
 import stapled.core.excepthandler
+from stapled.util.functions import parse_haproxy_config
 from stapled.colourlog import ColourFormatter
 from stapled.version import __version__, __app_name__
 
@@ -216,6 +217,19 @@ def get_cli_arg_parser():
         )
     )
     parser.add(
+        '--haproxy-config',
+        type=str,
+        nargs='+',
+        help=(
+            "Path(s) to HAProxy config files, they will be scanned for "
+            "certificate directories and HAProxy admin sockets based on "
+            "``bind [..] crt [..]`` directives and ``stats [..] socket [..]`` "
+            "directives, the ``crt-base`` directive is respected."
+            "Multiple config files may be specified separated by a space."
+            "See ``--haproxy-socket`` for more information."
+        )
+    )
+    parser.add(
         '-d',
         '--directories',
         required=True,
@@ -223,7 +237,9 @@ def get_cli_arg_parser():
         nargs='+',
         help=(
             "Directories containing the certificates used by HAProxy. "
-            "Multiple directories may be specified separated by a space. "
+            "Multiple directories may be specified separated by a space."
+            "This is meant for scanning and stapling entire directories but "
+            "will work for single files as well."
         )
     )
     parser.add(
@@ -281,7 +297,6 @@ def init():
     log_file_handles = []
     parser = get_cli_arg_parser()
     args = parser.parse_args()
-    args.directories = [os.path.abspath(d) for d in args.directories]
     verbose = args.verbose or args.verbosity
     log_level = max(min(50 - verbose * 10, 50), 10)
     logging.basicConfig()
@@ -290,6 +305,7 @@ def init():
     # Don't allow dependencies to log anything but fatal errors
     logging.getLogger("urllib3").setLevel(logging.FATAL)
     logger.setLevel(level=log_level)
+
     if not args.quiet and not args.daemon:
         console_handler = logging.StreamHandler()
         console_handler.setLevel(log_level)
@@ -314,6 +330,49 @@ def init():
             logging.Formatter(LOGFORMAT, TIMESTAMP_FORMAT)
         )
         logger.addHandler(syslog_handler)
+
+    args.directories = [os.path.abspath(d) for d in args.directories]
+    if args.haproxy_config:
+        # Make sure args.haproxy_sockets is filled with an equal amount of
+        # sockets as args.directories contains directories even if the are
+        # all None.
+        if args.haproxy_sockets is None:
+            if isinstance(args.directories, str):
+                args.haproxy_sockets = [None]
+            else:
+                args.haproxy_sockets = [None] * len(args.directories)
+        # Parse HAProxy config files and add any crt and corresponding socket
+        # paths to the lists of directories and sockets
+        paths, socks = parse_haproxy_config(args.haproxy_config)
+        for i, sock in enumerate(socks):
+            for path in paths[i]:
+                args.directories.append(path)
+                args.haproxy_sockets.append(sock)
+
+        # If there were no sockets at all the socket list may contain some
+        # NoneTypes to keep correspondence with paths, but we can then get
+        # rid of the socket list, that way we don't spawn a stapleadder
+        # thread.
+        if not len([s for s in args.haproxy_sockets if s is not None]):
+            args.haproxy_sockets = None
+
+    if args.haproxy_sockets:
+        if len(args.directories) != len(args.haproxy_sockets):
+            raise ValueError(
+                "Number of sockets does not equal number of directories."
+            )
+        # Make a mapping from directories to sockets
+        sockets = {}
+        for i, paths in enumerate(args.directories):
+            # These are specified on the command line.
+            if isinstance(paths, str):
+                paths = [paths]
+            for path in paths:
+                if path not in sockets:
+                    sockets[path] = []
+                sockets[path] = args.haproxy_sockets[i]
+        args.haproxy_sockets = sockets
+        logger.debug("Paths to socket mapping: %s", str(sockets))
     if stapled.LOCAL_LIB_MODE:
         logger.info("Running on local libs.")
     if args.daemon:
@@ -326,4 +385,9 @@ def init():
 
 
 if __name__ == '__main__':
-    init()
+    try:
+        init()
+    except Exception as exc:
+        logger = logging.getLogger('stapled')
+        logger.fatal(exc)
+        raise

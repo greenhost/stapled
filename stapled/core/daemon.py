@@ -75,12 +75,6 @@ class Stapledaemon(object):
         LOG.debug("Started with CLI args: %s", str(args))
         self.directories = args.directories
         self.sockets = args.haproxy_sockets
-        self.socket_paths = None
-        if self.sockets:
-            if len(self.directories) != len(self.sockets):
-                raise ValueError("#sockets does not equal #directories")
-            # Make a mapping from directory to socket
-            self.socket_paths = dict(zip(self.directories, self.sockets))
         self.file_extensions = args.file_extensions.replace(" ", "").split(",")
         self.renewal_threads = args.renewal_threads
         self.refresh_interval = args.refresh_interval
@@ -123,7 +117,7 @@ class Stapledaemon(object):
         self.scheduler = self.start_scheduler_thread()
 
         # Start proxy adder thread if sockets were supplied
-        if self.socket_paths:
+        if self.sockets:
             self.start_staple_adder_thread()
 
         # Start ocsp response gathering threads
@@ -163,7 +157,7 @@ class Stapledaemon(object):
         return self.__spawn_thread(
             name="proxy-adder",
             thread_object=StapleAdder,
-            socket_paths=self.socket_paths,
+            socket_paths=self.sockets,
             scheduler=self.scheduler
         )
 

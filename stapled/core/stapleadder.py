@@ -64,42 +64,51 @@ class StapleAdder(threading.Thread):
         self.stop = False
         LOG.debug("Starting StapleAdder thread")
         self.scheduler = kwargs.pop('scheduler', None)
-        self.socket_paths = kwargs.pop('socket_paths', None)
+        self.paths = kwargs.pop('socket_paths', None)
 
         assert self.scheduler is not None, \
             "Please pass a scheduler to get and add proxy-add tasks."
-        assert self.socket_paths is not None, \
+        assert self.paths is not None, \
             "The StapleAdder needs a socket_paths dict"
 
         self.socks = {}
         with stapled_except_handle():
-            for key, socket_path in self.socket_paths.items():
-                self._open_socket(key, socket_path)
+            LOG.info(self.paths.values())
+            for path in self.paths.values():
+                if path is None:
+                    continue
+                self.socks[path] = self._open_socket(path)
         super(StapleAdder, self).__init__(*args, **kwargs)
 
-    def _open_socket(self, key, socket_path):
+    def _open_socket(self, path):
         """
-        Opens a socket located at socket_path and saves it in self.socks[key].
+        Open socket located at path, and return the socket.
         Subsequently it asks for a prompt to keep the socket connection open,
         so several commands can be sent without having to close and re-open the
         socket.
 
-        :param key: the identifier of the socket in self.socks
-        :param str socket_path: A valid HAProxy socket path.
+        :param str path: A valid HAProxy socket path.
 
         :raises :exc:stapled.core.exceptions.SocketError: when the socket can
             not be opened.
         """
-        self.socks[key] = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock = socket.socket(
+            socket.AF_UNIX,
+            socket.SOCK_STREAM
+        )
         try:
-            self.socks[key].connect(socket_path)
+            sock.connect(path)
         except FileNotFoundError as exc:
             raise stapled.core.exceptions.SocketError(
                 "Could not initialize StapleAdder with socket {}: {}".format(
-                    socket_path, exc))
-        result = self.send(key, "prompt")
-        result = self.send(key, "set timeout cli {}".format(SOCKET_TIMEOUT))
+                    path,
+                    exc
+                )
+            )
+        result = self.send(path, "prompt")
         LOG.debug("Opened prompt with result: '%s'", result)
+        result = self.send(path, "set timeout cli {}".format(SOCKET_TIMEOUT))
+        return sock
 
     def __del__(self):
         """
@@ -122,7 +131,8 @@ class StapleAdder(threading.Thread):
                 model = context.model
                 LOG.debug("Sending staple for cert:'%s'", model)
 
-                # Open the exception handler context to run tasks likely to fail
+                # Open the exception handler context to run tasks likely to
+                # fail
                 with stapled_except_handle(context):
                     self.add_staple(model)
                 self.scheduler.task_done(self.TASK_NAME)
@@ -140,18 +150,24 @@ class StapleAdder(threading.Thread):
         """
         command = self.OCSP_ADD.format(model.ocsp_staple.base64)
         LOG.debug("Setting OCSP staple with command '%s'", command)
-        response = self.send(model.cert_path, command)
+        path = self.paths[model.cert_path]
+        if path is None:
+            LOG.debug("No socket set for %s", model.filename)
+            return
+        response = self.send(path, command)
         if response != 'OCSP Response updated!':
             raise stapled.core.exceptions.StapleAdderBadResponse(
-                "Bad HAProxy response: {}".format(response))
+                "Bad HAProxy response: '{}' from socket {}".format(
+                    response,
+                    path
+                )
+            )
 
-    def send(self, socket_key, command):
+    def send(self, path, command):
         """
-        Send the command through self.socks[socket_key] (using
-        self.socket_paths)
+        Send the command through the socket at ``path``.
 
-        :param str socket_key: Identifying dictionary key of the socket. This
-            is typically the directory HAProxy serves certificates from.
+        :param str path: The path to the socket which should already be open.
         :param str command: String with the HAProxy command. For a list of
             possible commands, see the `haproxy documentation`_
 
@@ -172,7 +188,7 @@ class StapleAdder(threading.Thread):
         # each time we want to communicate...
         # while True:
         #     try:
-        #         chunk = self.socks[socket_key].recv(SOCKET_BUFFER_SIZE)
+        #         chunk = self.socks[path].recv(SOCKET_BUFFER_SIZE)
         #         if not chunk:
         #             break
         #     except IOError as err:
@@ -183,28 +199,25 @@ class StapleAdder(threading.Thread):
 
         # Send command
         with stapled_except_handle():
+            sock = self.socks[path]
             try:
-                self.socks[socket_key].sendall((command + "\n").encode())
+                sock.sendall((command + "\n").encode())
             except BrokenPipeError:
                 # Try to re-open the socket. If that doesn't work, that will
                 # raise a :exc:`~stapled.core.exceptions.SocketError`
-                LOG.warning(
-                    "Re-opening socket %s belonging to %s",
-                    self.socket_paths[socket_key],
-                    socket_key
-                )
-                self.socks[socket_key].close()
-                self._open_socket(socket_key, self.socket_paths[socket_key])
+                LOG.info("Re-opening socket %s", path)
+                sock.close()
+                sock = self.socks[path] = self._open_socket(path)
                 # Try again, if this results in a BrokenPipeError *again*, it
                 # will be caught by stapled_except_handle
-                self.socks[socket_key].sendall((command + "\n").encode())
+                sock.sendall((command + "\n").encode())
 
         buff = StringIO()
 
         # Get new response.
         while True:
             try:
-                chunk = self.socks[socket_key].recv(SOCKET_BUFFER_SIZE)
+                chunk = sock.recv(SOCKET_BUFFER_SIZE)
                 if chunk:
                     d_chunk = chunk.decode('ascii')
                     buff.write(d_chunk)

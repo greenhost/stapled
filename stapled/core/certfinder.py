@@ -93,7 +93,7 @@ class CertFinderThread(threading.Thread):
         Start the certificate finder thread.
         """
 
-        LOG.info("Scanning directories: %s", ", ".join(self.directories))
+        LOG.info("Scanning directories: '%s'", "', '".join(self.directories))
 
         while not self.stop:
             # Catch any exceptions within this context to protect the thread.
@@ -165,14 +165,14 @@ class CertFinderThread(threading.Thread):
                 # an argument or in config.
                 cert_path = path
             try:
-                LOG.debug("Scanning directory: %s", path)
+                LOG.debug("Scanning path: %s", path)
                 dirs = []
                 try:
                     dirs = os.listdir(path)
                 except NotADirectoryError:
                     # If a path is actually a file we can still use it..
                     if os.path.isfile(path):
-                        LOG.debug("%s is not a directory", path)
+                        LOG.debug("%s may be a single file", path)
                         # This will allow us to use our usual iteration.
                         dirs = [os.path.basename(path)]
                         path = os.path.dirname(path)
@@ -211,7 +211,7 @@ class CertFinderThread(threading.Thread):
                 # refresh until the directory is readable. We catch this here
                 # so any readable directory can still be scanned.
                 LOG.critical(
-                    "Can't read directory: %s, reason: %s.",
+                    "Can't read path: %s, reason: %s.",
                     path, exc
                 )
 
