@@ -90,13 +90,17 @@ class TestUniqueGenerator(object):
         assert tuple(gen) == (1, 4, 3)
 
     def test_unique_dont_allow_dict_or_set(self):
-        with pytest.raises(TypeError) as excinfo:
+        with pytest.raises(
+            TypeError,
+            match=r"<(class|type) 'set'> types are always unique"
+        ):
             unique_generator({1, 2, 3})
-        assert "<class 'set'> types are always unique" == str(excinfo.value)
 
-        with pytest.raises(TypeError) as excinfo:
+        with pytest.raises(
+            TypeError,
+            match=r"<(class|type) 'dict'> types are always unique"
+        ):
             unique_generator(dict.fromkeys((1, 2, 3)))
-        assert "<class 'dict'> types are always unique" == str(excinfo.value)
 
 
 class TestUnique(object):
@@ -120,10 +124,14 @@ class TestUnique(object):
         assert set(unique(data, False)) == set(expected)
 
     def test_unique_dont_allow_dict_or_set(self):
-        with pytest.raises(TypeError) as excinfo:
+        with pytest.raises(
+            TypeError,
+            match=r"<(class|type) 'set'> types are always unique"
+        ):
             unique({1, 2, 3}, preserve_order=False)
-        assert "<class 'set'> types are always unique" == str(excinfo.value)
 
-        with pytest.raises(TypeError) as excinfo:
+        with pytest.raises(
+            TypeError,
+            match=r"<(class|type) 'dict'> types are always unique"
+        ):
             unique(dict.fromkeys((1, 2, 3)), preserve_order=False)
-        assert "<class 'dict'> types are always unique" == str(excinfo.value)
