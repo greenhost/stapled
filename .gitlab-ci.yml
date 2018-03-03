@@ -83,6 +83,7 @@ unit:python2:
   script:
   - which python && $(which python) --version
   - git submodule update --init
+  - pip install -r requirements
   - pytest -v
 
 unit:python3:
@@ -91,6 +92,7 @@ unit:python3:
   script:
   - which python && $(which python) --version
   - git submodule update --init
+  - pip install -r requirements
   - pytest -v
 
 test:jessie:python3:
