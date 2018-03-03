@@ -58,6 +58,61 @@ def split_by_len(string, length):
     return [string[i:i+length] for i in range(0, len(string), length)]
 
 
+def unique(seq, preserve_order=True):
+    """
+    Return the unique values of a sequence in the type of the input sequence.
+
+    Does not support sets and dicts, as they are already unique.
+
+    :param list|tuple seq: Data to return unique values from.
+    :param bool preserve_order: Preserve order of seq? (Default: True)
+    :returns list|tuple: Whatever unique values you fed into ``seq``.
+    """
+    if preserve_order:
+        return type(seq)(unique_generator(seq))
+
+    if isinstance(seq, (set, dict)):
+        # Should not do this, this is wasting CPU cycles.
+        raise TypeError("{} types are always unique".format(type(seq)))
+
+    # If order is not important we can do set() which is a C implementation
+    # and it's super fast. Return a new sequence of the same type with
+    # unique values
+    return type(seq)(set(seq))
+
+
+def unique_generator(seq):
+    """
+    Remove duplicates from an iterable sequence.
+
+    Keep a list of values we see, check to see if an item was already seen.
+    Optionally preserve order.
+
+    Does not support sets and dicts, as they are already unique.
+
+    :param list|tuple seq: Data to yield unique values from.
+    :yields object: Whatever unique values you fed into ``seq``.
+    """
+
+    if isinstance(seq, (set, dict)):
+        # Should not do this, this is wasting CPU cycles.
+        raise TypeError("{} types are always unique".format(type(seq)))
+
+    return __unique_generator(seq)
+
+
+def __unique_generator(seq):
+    """
+    See unique_generator function documentation.
+    """
+    seen = set()
+    seen_add = seen.add  # Speeds up, it skips __getattribute__ on seen.
+    for element in seq:
+        if element not in seen:
+            yield element
+            seen_add(element)
+
+
 def parse_haproxy_config(files):
     """
     Parse HAProxy config files and return a tuple of paths and sockets found.
@@ -95,17 +150,24 @@ def parse_haproxy_config(files):
     If more than one socket is specified in the config file we will only use
     the first one.
 
-    :param collections.Sequence files: A list of HAProxy files to parse.
+    :param collections.Sequence|str files: A list of strings or string with
+        HAProxy config file path to parse.
     :return tuple: Tuple containing paths (list) and corresponding sockets.
     """
-    PAT_SOCKET = re.compile(r'^\s*stats\s*socket\s*(?P<socks>.*?)\s?.*$')
+    PAT_SOCKET = re.compile(
+        r'^\s*stats.*socket\s+(?P<socks>[\'"]{1}.*?[\'"]{1}|(\\ |[^\s])*)'
+    )
     # Note multiple paths are possible.
     PAT_CRT = re.compile(r'^\s*bind.*?crt.*$')
     # paths can contain a-Z, 0-9, -, _, . and spaces escaped by \
-    PAT_CRT = re.compile(
-        r'crt\s*(([\'"]{1}([\w.\\/ -]*)[\'"]{1})|(([\w.-/]|\\ )*))'
+    PAT_CRT = re.compile(r'bind.*crt\s+([^\s]|(?<!\\) )*')
+    PAT_CRT_BASE = re.compile(
+        r'^\s*crt-base\s+(?P<path>[\'"]{1}.*?[\'"]{1}|(\\ |[^\s])*)'
     )
-    PAT_CRT_BASE = re.compile(r'^\s*crt-base.*?crt\s*(?P<path>.*?)\s?$')
+    # Extract a crt directive, anything in quotes, valid paths, escaped spaces.
+    PAT_EXTRACT_CRT = re.compile(
+        r'^(?P<path>[\'"]{1}.*?[\'"]{1}|(\\ |[^\s])*)'
+    )
 
     find_words = {
         'stats': PAT_SOCKET,
@@ -116,67 +178,81 @@ def parse_haproxy_config(files):
     paths = []
     sockets = []
 
+    if not isinstance(files, (list, tuple, set)):
+        files = [files]
+
     for config_file in files:
         rel_path = os.path.dirname(config_file)
         # Make a dictionary with the keys of find_words corresponding with
-        # empty arrays as placeholders.
+        # empty array as a place holder.
         relevant_lines = dict([(word, []) for word in find_words.keys()])
         # Now locate the relevant lines in this file and keep the found
         # pattern matches.
         with open(config_file, 'r') as config:
             for line in config:
+                # Skip comment lines..
+                if line.strip().startswith('#'):
+                    continue
                 for word, pattern in find_words.items():
-                    if word in line:
+                    if "{} ".format(word) in line:
                         match = pattern.match(line)
                         if match is not None:
-                            relevant_lines[word].append(match)
+                            # Sometimes we can use the already determined match
+                            # but for the `bind [..] crt` lines there a simple
+                            # match is not sufficient so we keep the line too.
+                            keep = {'line': line, 'match': match}
+                            relevant_lines[word].append(keep)
 
+        # Assume we find no socket to prevent bad offsets
+        socket = None
+        # For relative paths a crt-base directive could be set but we have to
+        # assume here it has not been set.
+        base = ''
+        # Multiple crt directives per line are possible as well as on multiple
+        # lines to we reset the list at the beginning of analysing a file.
+        crts = []
+        # Iterate over the results and try to find out if a crt-base is set
+        # `crt` directives depend on that value so we need to find it first.
         for word, matches in relevant_lines.items():
-            # Find the socket for the config of a process, we only support one
-            # socket per process, the first one found will be used.
-            # The socket must be an existing file and it should be accesible
-            # by the user that stapled is running as.
-            if word == 'stats':
-                match = matches[0]
-                socket = match.group('socks').strip()
-                if not os.path.isabs(socket):
-                    socket = os.path.join(rel_path, socket)
-                if not os.path.isfile(socket):
-                    raise FileNotFoundError(
-                        "Socket {} can't be found, does it exist?"
-                    )
-                if not os.access(socket, os.R_OK | os.W_OK):
-                    raise PermissionError(
-                        "Socket {} can't be opened, check permissions."
-                    )
-                sockets.append(socket)
-
             # In order to allow relative paths to the certificate paths we need
             # to first find out if there is a crt-base directive specified.
             # This is also one of the reasons why the finding and parsing of
             # lines isn't done at the same time.
             # crt-base can only be set once.
-            base = ''
-            if word == 'crt-base':
-                match = matches[0]
+            if word == 'crt-base' and matches:
+                match = matches[0]['match']
                 base = match.group('path').strip()
 
+        for word, matches in relevant_lines.items():
+            if not matches:
+                # This is an empty list, assess the next one.
+                continue
+            # Find the socket for the config of a process, we only support one
+            # socket per process, the first one found will be used.
+            if word == 'stats':
+                match = matches[0]['match']
+                socket = match.group('socks').strip()
+                if not os.path.isabs(socket):
+                    socket = os.path.join(rel_path, socket)
+
             # Find a certificate path, we take all paths as long as there is
-            # only one path per bind directive, if the path is a file the
-            # file name will be truncated to the dir name of the file.
-            cert_paths = []
+            # only one path per bind directive.
             if word == 'crt':
                 # TODO: It is possible to add the crt argument more than once
                 # for 1 bind directive, we need to find all paths in the crt
                 # arguments. We need them for all bind directives and we need
                 # to de-duplicate them.
                 for match in matches:
-                    cert_paths = match.group('paths')
-                    cert_path = match.group('paths').strip()
-                    if not os.path.isabs(socket):
-                        cert_path = os.path.join(base, cert_path)
-                    if os.path.isfile(cert_path):
-                        cert_path = os.path.dirname(cert_path)
-                    cert_paths.append(cert_path)
-        paths.append(cert_paths)
+                    line = match['line']
+                    parts = line.split('crt ')[1:]
+                    for part in parts:
+                        crt = PAT_EXTRACT_CRT.match(part)
+                        crt = crt.group('path').strip("\"'")
+                        if not os.path.isabs(crt):
+                            crt = os.path.join(base, crt)
+                        crt = crt.replace("\ ", " ")
+                        crts.append(crt)
+        crts = unique(crts)
+        paths.append(crts)
+        sockets.append(socket)
     return (paths, sockets)

@@ -1,41 +1,139 @@
 import os
 import pytest
+import types
 from stapled.util.functions import parse_haproxy_config
+from stapled.util.functions import unique
+from stapled.util.functions import unique_generator
 
 TEST_FILES = [
     (
-        # Basic parsing of `stats sock` and `crt`
-        ['stapled/tests/.haproxy/haproxy-test.cfg'],
+        # Parsing haproxy admin socket with some cert dirs with absolute paths.
+        # files (input)
+        [
+            'stapled/tests/.haproxy/haproxy-test.cfg'
+        ],
+        # expected (parsed output): tuple of arrays of arrays of crt directives
+        # corresponding with an array of sockets.
         (
-            [['/etc/ssl/private/', '/etc/ssl/private\ certs']],
-            ['/run/haproxy/admin.sock']
+            [
+                [
+                    '/etc/ssl/private/__fallback.pem',
+                    '/etc/ssl/private certs',
+                    '/etc/ssl/private/fall back.pem',
+                    '/etc/ssl/private certs2'
+                ]
+            ],
+            [
+                '/run/haproxy/admin.sock'
+            ]
         )
     ), (
-        # Adding a `crt_base` directive
-        # passing files as a string deliberately
+        # The same as above but with a `crt_base` directive
+        # passing files as a string deliberately because that should also work.
         'stapled/tests/.haproxy/haproxy-test-base.cfg',
         (
-            [['tests/haproxy/', 'tests/haproxy/certbot/']],
+            [['/etc/ssl/private/cert.pem', '/etc/ssl/private/certbot/']],
             ['/run/haproxy/admin-crt-base.sock']
+        )
+    ), (
+        # The same as above but with a `crt_base` directive
+        # passing files as a string deliberately because that should also work.
+        'stapled/tests/.haproxy/haproxy-test-no-socket.cfg',
+        (
+            [['/etc/ssl/private/cert.pem', '/etc/ssl/private certs']],
+            [None]
         )
     ), (
         # Two test files test
         [
             'stapled/tests/.haproxy/haproxy-test.cfg',
-            'stapled/tests/haproxy/haproxy-test-base.cfg'
+            'stapled/tests/.haproxy/haproxy-test-base.cfg',
+            'stapled/tests/.haproxy/haproxy-test-no-socket.cfg'
         ],
         (
             [
-                ['/etc/ssl/private/', '/etc/ssl/private\ certs'],
-                ['tests/haproxy/', 'tests/haproxy/certbot/']
+                [
+                    '/etc/ssl/private/__fallback.pem',
+                    '/etc/ssl/private certs',
+                    '/etc/ssl/private/fall back.pem',
+                    '/etc/ssl/private certs2'
+                ], [
+                    '/etc/ssl/private/cert.pem',
+                    '/etc/ssl/private/certbot/'
+                ], [
+                    '/etc/ssl/private/cert.pem',
+                    '/etc/ssl/private certs'
+                ]
             ],
-            ['/run/haproxy/admin.sock', '/run/haproxy/admin-crt-base.sock']
+            [
+                '/run/haproxy/admin.sock',
+                '/run/haproxy/admin-crt-base.sock',
+                None
+            ]
         )
     )
 ]
 
+
 class TestParseHaproxyConfig(object):
     @pytest.mark.parametrize("files,expected", TEST_FILES)
-    def test_test_files(self, files, expected):
-        print(os.getcwd())
-        assert parse_haproxy_config(files) == expected
+    def test_files(self, files, expected):
+        parsed = parse_haproxy_config(files)
+        assert parsed == expected
+
+
+class TestUniqueGenerator(object):
+
+    def test_unique_generator_preserving_order(self):
+        gen = unique_generator((1, 4, 4, 3))
+        assert isinstance(gen, types.GeneratorType)
+        assert tuple(gen) == (1, 4, 3)
+
+    def test_unique_dont_allow_dict_or_set(self):
+        with pytest.raises(TypeError) as excinfo:
+            unique_generator({1, 2, 3})
+        assert "<class 'set'> types are always unique" == str(excinfo.value)
+
+        with pytest.raises(TypeError) as excinfo:
+            unique_generator(dict.fromkeys((1, 2, 3)))
+        assert "<class 'dict'> types are always unique" == str(excinfo.value)
+
+
+class TestUnique(object):
+
+    @pytest.mark.parametrize("data,expected", [
+        (
+            [1, 2, 2, 3, 'a', 4, 4, 1], [1, 2, 3, 'a', 4]
+        ), (
+            [4, 2, 2, 3, 'a', 4, 4, 1], [4, 2, 3, 'a', 1]
+        ), (
+            (1, 2, 2, 3, 'a', 4, 4, 1), (1, 2, 3, 'a', 4)
+        ), (
+            (4, 2, 2, 3, 'a', 4, 4, 1), (4, 2, 3, 'a', 1)
+        )
+    ])
+    def test_unique_preserving_order(self, data, expected):
+        assert unique(data, True) == expected
+
+    @pytest.mark.parametrize("data,expected", [
+        (
+            [1, 2, 2, 3, 'a', 4, 4, 1], [1, 2, 3, 4, 'a']
+        ), (
+            [4, 2, 2, 3, 'a', 4, 4, 1], [1, 2, 3, 4, 'a']
+        ), (
+            (1, 2, 2, 3, 'a', 4, 4, 1), (1, 2, 3, 4, 'a')
+        ), (
+            (4, 2, 2, 3, 'a', 4, 4, 1), (1, 2, 3, 4, 'a')
+        )
+    ])
+    def test_unique_not_preserving_order(self, data, expected):
+        assert set(unique(data, False)) == set(expected)
+
+    def test_unique_dont_allow_dict_or_set(self):
+        with pytest.raises(TypeError) as excinfo:
+            unique({1, 2, 3}, preserve_order=False)
+        assert "<class 'set'> types are always unique" == str(excinfo.value)
+
+        with pytest.raises(TypeError) as excinfo:
+            unique(dict.fromkeys((1, 2, 3)), preserve_order=False)
+        assert "<class 'dict'> types are always unique" == str(excinfo.value)
