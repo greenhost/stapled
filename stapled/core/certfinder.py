@@ -166,7 +166,17 @@ class CertFinderThread(threading.Thread):
                 cert_path = path
             try:
                 LOG.debug("Scanning directory: %s", path)
-                for entry in os.listdir(path):
+                dirs = []
+                try:
+                    dirs = os.listdir(path)
+                except NotADirectoryError:
+                    # If a path is actually a file we can still use it..
+                    if os.path.isfile(path):
+                        LOG.debug("%s is not a directory", path)
+                        # This will allow us to use our usual iteration.
+                        dirs = [os.path.basename(path)]
+                        path = os.path.dirname(path)
+                for entry in dirs:
                     entry = os.path.join(path, entry)
                     if os.path.isdir(entry):
                         if self.recursive_dirs:
