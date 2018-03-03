@@ -102,29 +102,19 @@ class TestUniqueGenerator(object):
 class TestUnique(object):
 
     @pytest.mark.parametrize("data,expected", [
-        (
-            [1, 2, 2, 3, 'a', 4, 4, 1], [1, 2, 3, 'a', 4]
-        ), (
-            [4, 2, 2, 3, 'a', 4, 4, 1], [4, 2, 3, 'a', 1]
-        ), (
-            (1, 2, 2, 3, 'a', 4, 4, 1), (1, 2, 3, 'a', 4)
-        ), (
-            (4, 2, 2, 3, 'a', 4, 4, 1), (4, 2, 3, 'a', 1)
-        )
+        ([1, 2, 2, 3, 'a', 4, 4, 1], [1, 2, 3, 'a', 4]),
+        ([4, 2, 2, 3, 'a', 4, 4, 1], [4, 2, 3, 'a', 1]),
+        ((1, 2, 2, 3, 'a', 4, 4, 1), (1, 2, 3, 'a', 4)),
+        ((4, 2, 2, 3, 'a', 4, 4, 1), (4, 2, 3, 'a', 1))
     ])
     def test_unique_preserving_order(self, data, expected):
         assert unique(data, True) == expected
 
     @pytest.mark.parametrize("data,expected", [
-        (
-            [1, 2, 2, 3, 'a', 4, 4, 1], [1, 2, 3, 4, 'a']
-        ), (
-            [4, 2, 2, 3, 'a', 4, 4, 1], [1, 2, 3, 4, 'a']
-        ), (
-            (1, 2, 2, 3, 'a', 4, 4, 1), (1, 2, 3, 4, 'a')
-        ), (
-            (4, 2, 2, 3, 'a', 4, 4, 1), (1, 2, 3, 4, 'a')
-        )
+        ([1, 2, 2, 3, 'a', 4, 4, 1], [1, 2, 3, 4, 'a']),
+        ([4, 2, 2, 3, 'a', 4, 4, 1], [1, 2, 3, 4, 'a']),
+        ((1, 2, 2, 3, 'a', 4, 4, 1), (1, 2, 3, 4, 'a')),
+        ((4, 2, 2, 3, 'a', 4, 4, 1), (1, 2, 3, 4, 'a'))
     ])
     def test_unique_not_preserving_order(self, data, expected):
         assert set(unique(data, False)) == set(expected)
