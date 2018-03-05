@@ -1,7 +1,7 @@
 import os
 import pytest
 import types
-from stapled.util.functions import parse_haproxy_config
+from stapled.util.haproxy import parse_haproxy_config
 from stapled.util.functions import unique
 from stapled.util.functions import unique_generator
 

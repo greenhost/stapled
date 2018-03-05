@@ -37,7 +37,7 @@ import daemon
 import stapled
 import stapled.core.daemon
 import stapled.core.excepthandler
-from stapled.util.functions import parse_haproxy_config
+from stapled.util.haproxy import parse_haproxy_config
 from stapled.colourlog import ColourFormatter
 from stapled.version import __version__, __app_name__
 
