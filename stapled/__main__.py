@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 This is the module that parses your command line arguments and then starts
-the OCSP Staple daemon, which searches your certificate directories and
+the OCSP Staple daemon, which searches your certificate paths and
 requests staples for all certificates in them. They will then be saved as
-``certificatename.pem.ocsp`` in the same directories that are being indexed.
+``certificatename.pem.ocsp`` in the same paths that are being indexed.
 
 Type ``stapled.py -h`` for all command line arguments.
 
@@ -12,7 +12,7 @@ This module parses the command line arguments and detaches the process
 from the user's context if ``-d`` (daemon mode) is specified, then spawns a
 bunch of threads for:
 
- - Finding certificates in the given directories.
+ - Finding certificates in the given paths.
  - Parsing certificate files and determining validity, then requesting a
    staple if valid.
  - Renewing staples for certificates from the queue. This process requires
@@ -40,6 +40,7 @@ import stapled.core.excepthandler
 from stapled.util.haproxy import parse_haproxy_config
 from stapled.colourlog import ColourFormatter
 from stapled.version import __version__, __app_name__
+from stapled.util.functions import unique
 
 #: :attr:`logging.format` format string for log files and syslog
 LOGFORMAT = (
@@ -222,24 +223,23 @@ def get_cli_arg_parser():
         nargs='+',
         help=(
             "Path(s) to HAProxy config files, they will be scanned for "
-            "certificate directories and HAProxy admin sockets based on "
-            "``bind [..] crt [..]`` directives and ``stats [..] socket [..]`` "
-            "directives, the ``crt-base`` directive is respected."
-            "Multiple config files may be specified separated by a space."
-            "See ``--haproxy-socket`` for more information."
+            "certificates, certificate directories and HAProxy admin sockets "
+            "based on ``bind [..] crt [..]`` directives and ``stats [..] "
+            "socket [..]`` directives, the ``crt-base`` directive is"
+            "respected. Multiple config files may be specified separated by a "
+            " space. See ``--haproxy-socket`` for more information."
         )
     )
     parser.add(
-        '-d',
-        '--directories',
-        required=True,
+        '-p',
+        '--crt-paths',
+        default=[],
         type=str,
         nargs='+',
         help=(
-            "Directories containing the certificates used by HAProxy. "
-            "Multiple directories may be specified separated by a space."
-            "This is meant for scanning and stapling entire directories but "
-            "will work for single files as well."
+            "Paths to certificates files or directories containing "
+            "certificates used by HAProxy. Multiple paths may be specified "
+            "separated by a space."
         )
     )
     parser.add(
@@ -247,7 +247,7 @@ def get_cli_arg_parser():
         '--recursive',
         action='store_true',
         default=False,
-        help="Recursively scan given directories."
+        help="Recursively scan given paths."
     )
     parser.add(
         '--no-recycle',
@@ -284,7 +284,16 @@ def get_cli_arg_parser():
         },
         help="Show the version number and exit."
     )
-
+    parser.add(
+        '-d',
+        '--directories',
+        default=[],
+        type=str,
+        nargs='+',
+        help=(
+            "DEPRECATED, please see ``--crt-paths``."
+        )
+    )
     return parser
 
 
@@ -331,48 +340,57 @@ def init():
         )
         logger.addHandler(syslog_handler)
 
-    args.directories = [os.path.abspath(d) for d in args.directories]
-    if args.haproxy_config:
-        # Make sure args.haproxy_sockets is filled with an equal amount of
-        # sockets as args.directories contains directories even if the are
-        # all None.
-        if args.haproxy_sockets is None:
-            if isinstance(args.directories, str):
-                args.haproxy_sockets = [None]
-            else:
-                args.haproxy_sockets = [None] * len(args.directories)
-        # Parse HAProxy config files and add any crt and corresponding socket
-        # paths to the lists of directories and sockets
-        paths, socks = parse_haproxy_config(args.haproxy_config)
-        for i, sock in enumerate(socks):
-            for path in paths[i]:
-                args.directories.append(path)
-                args.haproxy_sockets.append(sock)
+    # Warn about deprecated arguments..
+    if args.directories:
+        logger.warn(
+            "The directories argument is deprecated, please reconfigure "
+            "stapled to --crt-paths instead."
+        )
+        if args.crt_paths:
+            raise ValueError(
+                "You mixed the deprecated --directories and the supported "
+                "argument --crt-paths, this could lead to unforeseen "
+                "consequences, please reconfigure stapled to --crt-paths only."
+            )
+        # Make stuff not break after an update.
+        args.crt_paths = args.directories
 
-        # If there were no sockets at all the socket list may contain some
-        # NoneTypes to keep correspondence with paths, but we can then get
-        # rid of the socket list, that way we don't spawn a stapleadder
-        # thread.
-        if not len([s for s in args.haproxy_sockets if s is not None]):
-            args.haproxy_sockets = None
+    # Get certificate path arguments as absolute paths.
+    crt_paths = [os.path.abspath(d) for d in args.crt_paths]
 
     if args.haproxy_sockets:
-        if len(args.directories) != len(args.haproxy_sockets):
+        if len(args.crt_paths) != len(args.haproxy_sockets):
             raise ValueError(
-                "Number of sockets does not equal number of directories."
+                "Number of sockets does not equal number of certificate paths."
             )
-        # Make a mapping from directories to sockets
-        sockets = {}
-        for i, paths in enumerate(args.directories):
-            # These are specified on the command line.
-            if isinstance(paths, str):
-                paths = [paths]
+        # Make a mapping from certificate paths to sockets
+        sockets = dict(zip(crt_paths, args.haproxy_sockets))
+    else:
+        # If no sockets were specified we need to map the crt
+        sockets = dict.fromkeys(crt_paths, [])
+
+    logger.debug("Paths to socket mapping (arguments): %s", str(sockets))
+
+    if args.haproxy_config:
+        # Parse HAProxy config files and add any certificate and corresponding
+        # socket paths to the sockets dictionary.
+        conf_paths, conf_sockets = parse_haproxy_config(args.haproxy_config)
+        for i, paths in enumerate(conf_paths):
             for path in paths:
-                if path not in sockets:
-                    sockets[path] = []
-                sockets[path] = args.haproxy_sockets[i]
+                if path in sockets:
+                    sockets[path] += conf_sockets[i]
+                else:
+                    sockets[path] = conf_sockets[i]
+
+    if not any(sockets.values()):
+        args.haproxy_sockets = None
+    else:
         args.haproxy_sockets = sockets
-        logger.debug("Paths to socket mapping: %s", str(sockets))
+
+    # Now sockets' keys are the merged cert paths from arguments and haproxy
+    # config files, de-duplicated.
+    args.cert_paths = sockets.keys()
+
     if stapled.LOCAL_LIB_MODE:
         logger.info("Running on local libs.")
     if args.daemon:

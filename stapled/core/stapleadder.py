@@ -74,10 +74,9 @@ class StapleAdder(threading.Thread):
         self.socks = {}
         with stapled_except_handle():
             LOG.info(self.paths.values())
-            for path in self.paths.values():
-                if path is None:
-                    continue
-                self.socks[path] = self._open_socket(path)
+            for paths in self.paths.values():
+                for path in paths:
+                    self.socks[path] = self._open_socket(path)
         super(StapleAdder, self).__init__(*args, **kwargs)
 
     def _open_socket(self, path):
@@ -154,20 +153,22 @@ class StapleAdder(threading.Thread):
         if path is None:
             LOG.debug("No socket set for %s", model.filename)
             return
-        response = self.send(path, command)
-        if response != 'OCSP Response updated!':
-            raise stapled.core.exceptions.StapleAdderBadResponse(
-                "Bad HAProxy response: '{}' from socket {}".format(
-                    response,
-                    path
+        responses = self.send(path, command)
+        for response in responses:
+            if response != 'OCSP Response updated!':
+                raise stapled.core.exceptions.StapleAdderBadResponse(
+                    "Bad HAProxy response: '{}' from socket {}".format(
+                        response,
+                        path
+                    )
                 )
-            )
 
-    def send(self, path, command):
+    def send(self, paths, command):
         """
         Send the command through the socket at ``path``.
 
-        :param str path: The path to the socket which should already be open.
+        :param list paths: The path(s) to the socket(s) which should already
+            be open.
         :param str command: String with the HAProxy command. For a list of
             possible commands, see the `haproxy documentation`_
 
@@ -199,40 +200,41 @@ class StapleAdder(threading.Thread):
 
         # Send command
         with stapled_except_handle():
-            sock = self.socks[path]
-            try:
-                sock.sendall((command + "\n").encode())
-            except BrokenPipeError:
-                # Try to re-open the socket. If that doesn't work, that will
-                # raise a :exc:`~stapled.core.exceptions.SocketError`
-                LOG.info("Re-opening socket %s", path)
-                sock.close()
-                sock = self.socks[path] = self._open_socket(path)
-                # Try again, if this results in a BrokenPipeError *again*, it
-                # will be caught by stapled_except_handle
-                sock.sendall((command + "\n").encode())
+            responses = []
+            for path in paths:
+                sock = self.socks[path]
+                try:
+                    sock.sendall((command + "\n").encode())
+                except BrokenPipeError:
+                    # Try to re-open the socket. If that doesn't work, that
+                    # will raise a :exc:`~stapled.core.exceptions.SocketError`
+                    LOG.info("Re-opening socket %s", path)
+                    sock.close()
+                    sock = self.socks[path] = self._open_socket(path)
+                    # Try again, if this results in a BrokenPipeError *again*,
+                    # it will be caught by stapled_except_handle
+                    sock.sendall((command + "\n").encode())
+                buff = StringIO()
+                # Get new response.
+                while True:
+                    try:
+                        chunk = sock.recv(SOCKET_BUFFER_SIZE)
+                        if chunk:
+                            d_chunk = chunk.decode('ascii')
+                            buff.write(d_chunk)
+                            # TODO: Find out what happens if several threads
+                            # are talking to HAProxy on this socket
+                            if '> ' in d_chunk:
+                                break
+                        else:
+                            break
+                    except IOError as err:
+                        if err.errno not in (errno.EAGAIN, errno.EINTR):
+                            raise
 
-        buff = StringIO()
-
-        # Get new response.
-        while True:
-            try:
-                chunk = sock.recv(SOCKET_BUFFER_SIZE)
-                if chunk:
-                    d_chunk = chunk.decode('ascii')
-                    buff.write(d_chunk)
-                    # TODO: Find out what happens if several threads are
-                    # talking to HAProxy on this socket
-                    if '> ' in d_chunk:
-                        break
-                else:
-                    break
-            except IOError as err:
-                if err.errno not in (errno.EAGAIN, errno.EINTR):
-                    raise
-
-        # Strip *all* \n, > and space characters from the end
-        response = buff.getvalue().strip('\n> ')
-        buff.close()
-        LOG.debug("Received HAProxy response '%s'", response)
-        return response
+                # Strip *all* \n, > and space characters from the end
+                response = buff.getvalue().strip('\n> ')
+                LOG.debug("Received HAProxy response '%s'", response)
+                responses.append()
+                buff.close()
+        return responses

@@ -155,10 +155,11 @@ class HAProxyParser(object):
                     if "{} ".format(word) not in line:
                         continue
                     matches = pattern.findall(line)
-                    # We only need the first capturing group.
-                    matches = [match[0].strip(" \t") for match in matches]
-                    # We will only need the matched strings later on.
-                    relevant_lines[word].append(matches)
+                    if matches:
+                        # We only need the first capturing group.
+                        matches = [match[0].strip(" \t") for match in matches]
+                        # We will only need the matched strings later on.
+                        relevant_lines[word] += matches
         return relevant_lines
 
     @staticmethod
@@ -215,12 +216,13 @@ class HAProxyParser(object):
                 path = path.strip("'")
             else:
                 # Weak, or not quoted, remove quotes and unescape spaces.
-                path = cls.PAT_UNESCAPED_SPACES.sub(path.strip('"'), " ")
+                path = cls.PAT_UNESCAPED_SPACES.sub(" ", path.strip('"'))
             if not os.path.isabs(path):
                 path = os.path.join(cert_base, path)
             abs_cert_paths.append(path)
             # de-dupe the cert paths
             abs_cert_paths = unique(abs_cert_paths)
+        print(abs_cert_paths)
         return abs_cert_paths
 
 

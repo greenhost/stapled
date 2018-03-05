@@ -9,7 +9,8 @@ This module bootstraps the stapled process by starting threads for:
 
 - 1x :class:`stapled.core.certfinder.CertFinderThread`
 
-  - Finds certificate files in the specified directories at regular intervals.
+  - Finds certificate files in the specified certificate paths at regular
+    intervals.
   - Removes deleted certificates from the context cache in
     :attr:`stapled.core.daemon.run.models`.
   - Add the found certificate to the the parse action queue of the scheduler
@@ -73,7 +74,7 @@ class Stapledaemon(object):
         :param argparse.Namespace args: Parsed CLI arguments
         """
         LOG.debug("Started with CLI args: %s", str(args))
-        self.directories = args.directories
+        self.crt_paths = args.crt_paths
         self.sockets = args.haproxy_sockets
         self.file_extensions = args.file_extensions.replace(" ", "").split(",")
         self.renewal_threads = args.renewal_threads
@@ -169,7 +170,7 @@ class Stapledaemon(object):
             name="finder",
             thread_object=CertFinderThread,
             models=self.model_cache,
-            directories=self.directories,
+            crt_paths=self.crt_paths,
             refresh_interval=self.refresh_interval,
             file_extensions=self.file_extensions,
             scheduler=self.scheduler,
