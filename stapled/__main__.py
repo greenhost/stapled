@@ -232,7 +232,7 @@ def get_cli_arg_parser():
             "based on ``bind [..] crt [..]`` directives and ``stats [..] "
             "socket [..]`` directives, the ``crt-base`` directive is"
             "respected. Multiple config files may be specified separated by a "
-            " space. See ``--haproxy-socket`` for more information."
+            " space. See ``--haproxy-sockets`` for more information."
         )
     )
     parser.add(
