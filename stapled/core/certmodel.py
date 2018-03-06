@@ -288,15 +288,9 @@ class CertModel(object):
                         LOG.debug("Found the end entity..")
                         self.end_entity = crt
                         self.ocsp_urls = getattr(crt, 'ocsp_urls')
-        except binascii.Error:
+        except (binascii.Error, ValueError):
             raise CertParsingError(
                 "Certificate file contains errors \"{}\".".format(
-                    self.filename
-                )
-            )
-        if self.end_entity is None:
-            raise CertParsingError(
-                "Can't find server certificate items for \"{}\".".format(
                     self.filename
                 )
             )
@@ -304,8 +298,28 @@ class CertModel(object):
             raise CertParsingError(
                 "Can't find the CA certificate chain items in \"{}\".".format(
                     self.filename
-                )
+                ),
+                log_level=logging.CRITICAL
             )
+        if self.end_entity is None:
+            # If we did find some CA stuff, this may just be a
+            if len(self.intermediates) > 0:
+                raise CertParsingError(
+                    "Can't find server certificate items for \"{}\". "
+                    "Assuming this is a root or intermediate "
+                    "certificate.".format(
+                        self.filename,
+                    ),
+                    log_level=logging.INFO
+                )
+            else:
+                raise CertParsingError(
+                    "Can't find server certificate items for \"{}\".".format(
+                        self.filename,
+                    ),
+                    log_level=logging.CRITICAL
+                )
+
 
     def _validate_cert(self, ocsp_staple=None):
         """

@@ -100,7 +100,13 @@ def stapled_except_handle(ctx=None):
             # serve the staple because it may make the server unavailable,
             # while not serving it only makes things slightly slower.
             delete_ocsp_for_context(ctx)
-        LOG.critical(exc)
+        if isinstance(exc, CertParsingError):
+            if exc.log_level:
+                LOG.log(exc.log_level, exc)
+            else:
+                LOG.critical(exc)
+        else:
+            LOG.critical(exc)
     except OCSPBadResponse as exc:
         # The OCSP response is empty, invalid or the status is not "good", we
         # can try again, maybe there's server side problem.
