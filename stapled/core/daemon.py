@@ -65,29 +65,47 @@ LOG = logging.getLogger(__name__)
 
 class Stapledaemon(object):
 
-    def __init__(self, args):
+    def __init__(self, **kwargs):
         """
         Creates queues and spawns the threads documented above.
         Threads are not started as daemons so this will run indefinitely unless
         the entire process is halted or all threads are killed.
 
-        :param argparse.Namespace args: Parsed CLI arguments
+        :param **dict kwargs: Parsed CLI arguments and configurations.
+        :kwarg list cert_paths: A list of certificate paths to scan for
+            certificates.
+        :kwarg dict|NoneType haproxy_sockets: A mapping of certificate
+            directories and corresponding HAProxy sockets or None.
+        :kwarg list file_extensions: List of file extensions to search for
+            certificates.
+        :kwarg int renewal_threads: Amount of staple renewal threads.
+        :kwarg int refresh_interval: Interval between re-indexing of
+            certificate paths.
+        :kwarg int minimum_validity: Minimum validity of stapled before
+            renewing.
+        :kwarg bool recursive: Recursively scan certificate directories.
+        :kwarg list ignore: List of paths to ignore during indexing of
+            certificate directories.
         """
-        LOG.debug("Started with CLI args: %s", str(args))
-        self.cert_paths = args.cert_paths
-        self.sockets = args.haproxy_sockets
-        self.file_extensions = args.file_extensions.replace(" ", "").split(",")
-        self.renewal_threads = args.renewal_threads
-        self.refresh_interval = args.refresh_interval
-        self.minimum_validity = args.minimum_validity
-        self.recursive_dirs = args.recursive
-        rel_path_re = re.compile(r'^\.+\/')
+        LOG.debug("Started with CLI args: %s", str(kwargs))
+        self.cert_paths = kwargs.pop('cert_paths', None)
+        self.sockets = kwargs.pop('haproxy_sockets', None)
+        self.file_extensions = kwargs.pop('file_extensions')
+        self.file_extensions.replace(" ", "").split(",")
+        self.renewal_threads = kwargs.pop('renewal_threads')
+        self.refresh_interval = kwargs.pop('refresh_interval')
+        self.minimum_validity = kwargs.pop('minimum_validity')
+        self.recursive = kwargs.pop('recursive')
+        self.no_recycle = kwargs.pop('no_recycle')
+
         self.ignore = []
-        if args.ignore is not None:
+        rel_path_re = re.compile(r'^\.+\/')
+        ignore = kwargs.pop('ignore', None)
+        if ignore is not None:
             # Filter out patterns that look like relative paths, e.g.:
             # ./cert.pem and ../certs/*.crt, i.e. starts with one or more
             # ``.`` followed by ``/``.
-            for pattern in args.ignore:
+            for pattern in ignore:
                 if rel_path_re.match(pattern) is not None:
                     LOG.warn(
                         "Pattern %s seems to be a relative path, rather than a"
@@ -97,8 +115,6 @@ class Stapledaemon(object):
                 else:
                     self.ignore.append(pattern)
 
-        self.ignore = args.ignore
-        self.no_recycle = args.no_recycle
         self.model_cache = {}
         self.all_threads = []
         self.stop = False
@@ -175,7 +191,7 @@ class Stapledaemon(object):
             file_extensions=self.file_extensions,
             scheduler=self.scheduler,
             ignore=self.ignore,
-            recursive_dirs=self.recursive_dirs
+            recursive=self.recursive
         )
 
     def start_renewer_thread(self, tid):

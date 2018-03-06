@@ -75,7 +75,7 @@ class CertFinderThread(threading.Thread):
         )
         self.last_refresh = None
         self.ignore = kwargs.pop('ignore', []) or []
-        self.recursive_dirs = kwargs.pop('recursive_dirs', False)
+        self.recursive = kwargs.pop('recursive', False)
 
         assert self.models is not None, \
             "You need to pass a dict to hold the certificate model cache."
@@ -175,7 +175,7 @@ class CertFinderThread(threading.Thread):
                 for entry in dirs:
                     entry = os.path.join(path, entry)
                     if os.path.isdir(entry):
-                        if self.recursive_dirs:
+                        if self.recursive:
                             LOG.debug("Recursing path %s", entry)
                             self._find_new_certs([entry], cert_path)
                         continue

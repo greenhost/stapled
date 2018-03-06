@@ -337,25 +337,35 @@ def init():
 
     logger.debug("Paths to socket mapping: %s", str(socket_mapping))
 
-    # Determine if we need to start a stapleadder thread.
-    if any(socket_mapping.values()):
-        args.haproxy_sockets = socket_mapping
-    else:
-        args.haproxy_sockets = None
-
     # Now sockets' keys are the merged cert paths from arguments and haproxy
     # config files, de-duplicated.
-    args.cert_paths = socket_mapping.keys()
+    cert_paths = socket_mapping.keys()
+
+    # Determine if we need to start a stapleadder thread.
+    if not any(socket_mapping.values()):
+        args.haproxy_sockets = None
+
+    daemon_kwargs = dict(
+        cert_paths=cert_paths,
+        sockets=socket_mapping,
+        file_extensions=args.file_extensions,
+        renewal_threads=args.renewal_threads,
+        refresh_interval=args.refresh_interval,
+        minimum_validity=args.minimum_validity,
+        recursive=args.recursive,
+        no_recycle=args.no_recycle,
+        ignore=args.ignore
+    )
 
     if stapled.LOCAL_LIB_MODE:
         logger.info("Running on local libs.")
     if args.daemon:
         logger.info("Daemonising now..")
         with daemon.DaemonContext(files_preserve=log_file_handles):
-            stapled.core.daemon.Stapledaemon(args)
+            stapled.core.daemon.Stapledaemon(**daemon_kwargs)
     else:
         logger.info("Running interactively..")
-        stapled.core.daemon.Stapledaemon(args)
+        stapled.core.daemon.Stapledaemon(**daemon_kwargs)
 
 
 def __get_arg_haproxy_sockets(args):
