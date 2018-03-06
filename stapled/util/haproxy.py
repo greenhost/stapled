@@ -110,12 +110,11 @@ class HAProxyParser(object):
         self.cert_paths = []
         self.socket_paths = []
         for conf_file in self.conf_files:
-            rel_path = os.path.dirname(conf_file)
             # Get relevant lines from all config files.
             relevant_lines = self.__parse_relevant_lines(conf_file)
             # Parse all sockets from the relevant lines.
             self.socket_paths.append(
-                self.__parse_haproxy_sockets(relevant_lines['stats'], rel_path)
+                self.__parse_haproxy_sockets(relevant_lines['stats'])
             )
             # Find out if a crt-base is set `crt` directives depend on that
             # value so we need to find it first. We assume crt-base can only be
@@ -163,7 +162,7 @@ class HAProxyParser(object):
         return relevant_lines
 
     @staticmethod
-    def __parse_haproxy_sockets(socket_lines, rel_path):
+    def __parse_haproxy_sockets(socket_lines):
         """
         Find the sockets in the config of a process.
 
@@ -177,10 +176,7 @@ class HAProxyParser(object):
         # The list returned in the line below may be empty (``[]``).
         sockets = []
         for socket in socket_lines:
-            if not os.path.isabs(socket):
-                sockets.append(os.path.join(rel_path, socket))
-            else:
-                sockets.append(socket)
+            sockets.append(socket)
         # de-dupe the sockets
         unique(sockets)
         return sockets
@@ -217,12 +213,12 @@ class HAProxyParser(object):
             else:
                 # Weak, or not quoted, remove quotes and unescape spaces.
                 path = cls.PAT_UNESCAPED_SPACES.sub(" ", path.strip('"'))
+                path = path.replace("\\", "")
             if not os.path.isabs(path):
                 path = os.path.join(cert_base, path)
             abs_cert_paths.append(path)
             # de-dupe the cert paths
             abs_cert_paths = unique(abs_cert_paths)
-        print(abs_cert_paths)
         return abs_cert_paths
 
 

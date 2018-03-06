@@ -74,7 +74,7 @@ class Stapledaemon(object):
         :param argparse.Namespace args: Parsed CLI arguments
         """
         LOG.debug("Started with CLI args: %s", str(args))
-        self.crt_paths = args.crt_paths
+        self.cert_paths = args.cert_paths
         self.sockets = args.haproxy_sockets
         self.file_extensions = args.file_extensions.replace(" ", "").split(",")
         self.renewal_threads = args.renewal_threads
@@ -170,7 +170,7 @@ class Stapledaemon(object):
             name="finder",
             thread_object=CertFinderThread,
             models=self.model_cache,
-            crt_paths=self.crt_paths,
+            cert_paths=self.cert_paths,
             refresh_interval=self.refresh_interval,
             file_extensions=self.file_extensions,
             scheduler=self.scheduler,

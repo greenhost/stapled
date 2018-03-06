@@ -133,9 +133,9 @@ def stapled_except_handle(ctx=None):
         #  - every hour (9x), 3 per url
         #  - twice a day per url
         err_count = ctx.set_last_exception(str(exc))
-        if err_count < (3*len_ocsp_urls)+1:
+        if err_count < (3 * len_ocsp_urls) + 1:
             ctx.reschedule(10)  # every err_count minutes
-        elif err_count < (6*len_ocsp_urls)+1:
+        elif err_count < (6 * len_ocsp_urls) + 1:
             ctx.reschedule(3600)  # every hour
         else:
             ctx.reschedule(43200 // len_ocsp_urls)  # twice a day per url
@@ -144,6 +144,9 @@ def stapled_except_handle(ctx=None):
             "entries",
             err_count, len_ocsp_urls
         )
+    except PermissionError as exc:
+        LOG.critical(exc)
+
     # the show must go on..
     except Exception as exc:  # pylint: disable=broad-except
         dump_stack_trace(ctx, exc)

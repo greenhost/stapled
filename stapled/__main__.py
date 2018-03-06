@@ -55,11 +55,15 @@ COLOUR_LOGFORMAT = (
 
 TIMESTAMP_FORMAT = "%b %d %H:%M:%S"
 
+logger = logging.getLogger('stapled')
+
 
 def get_cli_arg_parser():
     """
-    Make a CLI argument parser and return it. It does not parse the arguments
-    because a plain parser object is used for documentation purposes.
+    Make a CLI argument parser and return it.
+
+    It does not parse the arguments because a plain parser object is used for
+    documentation purposes.
 
     :return: Argument parser with all of stapled's options configured
     :rtype: argparse.ArgumentParser
@@ -221,6 +225,7 @@ def get_cli_arg_parser():
         '--haproxy-config',
         type=str,
         nargs='+',
+        default=[],
         help=(
             "Path(s) to HAProxy config files, they will be scanned for "
             "certificates, certificate directories and HAProxy admin sockets "
@@ -232,7 +237,7 @@ def get_cli_arg_parser():
     )
     parser.add(
         '-p',
-        '--crt-paths',
+        '--cert-paths',
         default=[],
         type=str,
         nargs='+',
@@ -291,7 +296,7 @@ def get_cli_arg_parser():
         type=str,
         nargs='+',
         help=(
-            "DEPRECATED, please see ``--crt-paths``."
+            "DEPRECATED, please see ``--cert-paths``."
         )
     )
     return parser
@@ -299,17 +304,112 @@ def get_cli_arg_parser():
 
 def init():
     """
+    Initialise the application in interactive or daemon mode.
+
     Configures logging and log level, then calls
     :func:`stapled.core.daemon.run()` either in daemonised mode if the ``-d``
     argument was supplied, or in the current context if ``-d`` wasn't supplied.
     """
-    log_file_handles = []
     parser = get_cli_arg_parser()
     args = parser.parse_args()
+    log_file_handles = __init_logging(args)
+
+    # Parse the cert_paths argument
+    arg_cert_paths = __get_arg_cert_paths(args)
+    # Parse haproxy_sockets argument.
+    arg_sockets = __get_arg_haproxy_sockets(args)
+    # Make a mapping from certificate paths to sockets in a dict.
+    socket_mapping = dict(zip(arg_cert_paths, arg_sockets))
+
+    # Parse HAProxy config files.
+    conf_cert_paths, conf_sockets = parse_haproxy_config(args.haproxy_config)
+    # Combine the socket and certificate paths of the arguments and config
+    # files in the sockets dictionary.
+    for i, paths in enumerate(conf_cert_paths):
+        for path in paths:
+            if path in socket_mapping:
+                socket_mapping[path] = unique(
+                    socket_mapping[path] + conf_sockets[i],
+                    preserve_order=False
+                )
+            else:
+                socket_mapping[path] = conf_sockets[i]
+
+    logger.debug("Paths to socket mapping: %s", str(socket_mapping))
+
+    # Determine if we need to start a stapleadder thread.
+    if any(socket_mapping.values()):
+        args.haproxy_sockets = socket_mapping
+    else:
+        args.haproxy_sockets = None
+
+    # Now sockets' keys are the merged cert paths from arguments and haproxy
+    # config files, de-duplicated.
+    args.cert_paths = socket_mapping.keys()
+
+    if stapled.LOCAL_LIB_MODE:
+        logger.info("Running on local libs.")
+    if args.daemon:
+        logger.info("Daemonising now..")
+        with daemon.DaemonContext(files_preserve=log_file_handles):
+            stapled.core.daemon.Stapledaemon(args)
+    else:
+        logger.info("Running interactively..")
+        stapled.core.daemon.Stapledaemon(args)
+
+
+def __get_arg_haproxy_sockets(args):
+    """
+    Parse the haproxy_sockets argument.
+
+    :param Namespace args: Argparser argument list.
+    """
+    if args.haproxy_sockets:
+        if len(args.cert_paths) != len(args.haproxy_sockets):
+            raise ValueError(
+                "Number of sockets does not equal number of certificate paths."
+            )
+        # Get socket paths as an array or arrays of as absolute paths.
+        return [[os.path.abspath(path)] for path in args.haproxy_sockets]
+    # If no sockets are set we need to return an equal amount of empty arrays
+    # to the amount of certificate paths.
+    return [[]] * len(args.cert_paths)
+
+
+def __get_arg_cert_paths(args):
+    """
+    Parse the cert_paths argument.
+
+    :param Namespace args: Argparser argument list.
+    """
+    # Warn about deprecated arguments..
+    if args.directories:
+        logger.warn(
+            "The directories argument is deprecated, please reconfigure "
+            "stapled to --cert-paths instead."
+        )
+        if args.cert_paths:
+            raise ValueError(
+                "You mixed the deprecated --directories and the supported "
+                "argument --cert-paths, this could lead to unforeseen "
+                "consequences, please reconfigure stapled to --cert-paths only."
+            )
+        # Make stuff not break after an update.
+        args.cert_paths = args.directories
+    # Get certificate path arguments as absolute paths.
+    return [os.path.abspath(path) for path in args.cert_paths]
+
+
+def __init_logging(args):
+    """
+    Initialise the logging module.
+
+    :param Namespace args: Argparser argument list.
+    """
+    log_file_handles = []
     verbose = args.verbose or args.verbosity
     log_level = max(min(50 - verbose * 10, 50), 10)
     logging.basicConfig()
-    logger = logging.getLogger('stapled')
     logger.propagate = False
     # Don't allow dependencies to log anything but fatal errors
     logging.getLogger("urllib3").setLevel(logging.FATAL)
@@ -339,67 +439,7 @@ def init():
             logging.Formatter(LOGFORMAT, TIMESTAMP_FORMAT)
         )
         logger.addHandler(syslog_handler)
-
-    # Warn about deprecated arguments..
-    if args.directories:
-        logger.warn(
-            "The directories argument is deprecated, please reconfigure "
-            "stapled to --crt-paths instead."
-        )
-        if args.crt_paths:
-            raise ValueError(
-                "You mixed the deprecated --directories and the supported "
-                "argument --crt-paths, this could lead to unforeseen "
-                "consequences, please reconfigure stapled to --crt-paths only."
-            )
-        # Make stuff not break after an update.
-        args.crt_paths = args.directories
-
-    # Get certificate path arguments as absolute paths.
-    crt_paths = [os.path.abspath(d) for d in args.crt_paths]
-
-    if args.haproxy_sockets:
-        if len(args.crt_paths) != len(args.haproxy_sockets):
-            raise ValueError(
-                "Number of sockets does not equal number of certificate paths."
-            )
-        # Make a mapping from certificate paths to sockets
-        sockets = dict(zip(crt_paths, args.haproxy_sockets))
-    else:
-        # If no sockets were specified we need to map the crt
-        sockets = dict.fromkeys(crt_paths, [])
-
-    logger.debug("Paths to socket mapping (arguments): %s", str(sockets))
-
-    if args.haproxy_config:
-        # Parse HAProxy config files and add any certificate and corresponding
-        # socket paths to the sockets dictionary.
-        conf_paths, conf_sockets = parse_haproxy_config(args.haproxy_config)
-        for i, paths in enumerate(conf_paths):
-            for path in paths:
-                if path in sockets:
-                    sockets[path] += conf_sockets[i]
-                else:
-                    sockets[path] = conf_sockets[i]
-
-    if not any(sockets.values()):
-        args.haproxy_sockets = None
-    else:
-        args.haproxy_sockets = sockets
-
-    # Now sockets' keys are the merged cert paths from arguments and haproxy
-    # config files, de-duplicated.
-    args.cert_paths = sockets.keys()
-
-    if stapled.LOCAL_LIB_MODE:
-        logger.info("Running on local libs.")
-    if args.daemon:
-        logger.info("Daemonising now..")
-        with daemon.DaemonContext(files_preserve=log_file_handles):
-            stapled.core.daemon.Stapledaemon(args)
-    else:
-        logger.info("Running interactively..")
-        stapled.core.daemon.Stapledaemon(args)
+    return log_file_handles
 
 
 if __name__ == '__main__':
@@ -407,5 +447,5 @@ if __name__ == '__main__':
         init()
     except Exception as exc:
         logger = logging.getLogger('stapled')
-        logger.fatal(exc)
-        raise
+        logger.critical(str(exc))
+        raise exc
