@@ -94,14 +94,10 @@ class HAProxyParser(object):
 
     def parse(self):
         """
-        Initialise the parsing process.
+        Start the parsing process, populates the object.
 
         :return tuple: Tuple containing paths (list) and corresponding sockets.
         """
-        return (self.cert_paths, self.socket_paths)
-
-    def _parse(self):
-        """Start the parsing process, populates the object."""
         self.cert_paths = []
         self.socket_paths = []
         for conf_file in self.conf_files:
@@ -123,6 +119,7 @@ class HAProxyParser(object):
                     cert_base
                 )
             )
+        return (self.cert_paths, self.socket_paths)
 
     @classmethod
     def _parse_relevant_lines(cls, conf_file_path):
