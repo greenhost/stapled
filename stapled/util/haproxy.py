@@ -90,21 +90,32 @@ class HAProxyParser(object):
             self.conf_files = (conf_files,)
         else:
             self.conf_files = conf_files
-        self._parse()
 
     def parse(self):
         """
-        Start the parsing process, populates the object.
+        Start the parsing process if not completed, or return cached values.
 
-        :return tuple: Tuple containing paths (list) and corresponding sockets.
+        :return tuple: Tuple containing lists of paths and corresponding
+            sockets.
         """
-        self.cert_paths = []
-        self.socket_paths = []
+        if not hasattr(self, 'cert_paths'):
+            self.cert_paths, self.socket_paths = self._parse()
+        return (self.cert_paths, self.socket_paths)
+
+    def _parse(self):
+        """
+        Start the parsing process and returns cert and socket paths.
+
+        :return tuple: Tuple containing lists of paths and corresponding
+            sockets.
+        """
+        socket_paths = []
+        cert_paths = []
         for conf_file in self.conf_files:
             # Get relevant lines from all config files.
             relevant_lines = self._parse_relevant_lines(conf_file)
             # Parse all sockets from the relevant lines.
-            self.socket_paths.append(
+            socket_paths.append(
                 self._parse_haproxy_sockets(relevant_lines['stats'])
             )
             # Find out if a crt-base is set. `crt` directives depend on that
@@ -113,13 +124,13 @@ class HAProxyParser(object):
             cert_base = self._parse_haproxy_cert_base(
                 relevant_lines['crt-base']
             )
-            self.cert_paths.append(
+            cert_paths.append(
                 self._parse_haproxy_cert_paths(
                     relevant_lines['crt'],
                     cert_base
                 )
             )
-        return (self.cert_paths, self.socket_paths)
+        return (cert_paths, socket_paths)
 
     @classmethod
     def _parse_relevant_lines(cls, conf_file_path):
