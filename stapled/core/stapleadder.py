@@ -71,10 +71,11 @@ class StapleAdder(threading.Thread):
             "The StapleAdder needs a haproxy_socket_mapping dict"
 
         self.socks = {}
-        with stapled_except_handle():
-            for paths in self.haproxy_socket_mapping.values():
-                for path in paths:
+        for paths in self.haproxy_socket_mapping.values():
+            for path in paths:
+                with stapled_except_handle():
                     self.socks[path] = self._open_socket(path)
+
         super(StapleAdder, self).__init__(*args, **kwargs)
 
     def _open_socket(self, path):
