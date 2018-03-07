@@ -48,18 +48,16 @@ from stapled.util.functions import unique
 class HAProxyParser(object):
     """Parse a HAProxy config file and extract cert paths and socket paths."""
 
-    # Matches a path pattern, only `a-Z, 0-9, -_/\.`, quoted strings with the
-    # same pattern but allowing spaces too, and non-quoted patterns with the
-    # same content and escaped spaces, e.g.:
-    # - /etc/ssl/private
-    # - "/etc/ssl/let's encrypt"
-    # - '/etc/ssl/lets encrypt'
-    # - /etc/ssl/lets\ encrypt
-    # It follows the rules of the HAProxy configuration format, allowing strong
-    # and weak quoting, i.e.: backslashes are literal when in single quote, but
-    # are escape characters in double quotes.
-    # TODO: Capture these in a unit test so we can be sure they don't break
-    # when we change them!
+    #: Matches a path pattern, only `a-Z, 0-9, -_/\.`, quoted strings with the
+    #: same pattern but allowing spaces too, and non-quoted patterns with the
+    #: same content and escaped spaces, e.g.:
+    #: - /etc/ssl/private
+    #: - "/etc/ssl/let's encrypt"
+    #: - '/etc/ssl/lets encrypt'
+    #: - /etc/ssl/lets\ encrypt
+    #: It follows the rules of the HAProxy configuration format, allowing
+    #: strong and weak quoting, i.e.: backslashes are literal when in single
+    #: quote, but are escape characters in double quotes.
     PATH_PATTERN = (
         r'('
         r'([\"])([\w.\\/ \-\']*)\2'  # Matches weakly quoted paths
@@ -68,9 +66,8 @@ class HAProxyParser(object):
         r'*)'
     )
 
-    # Matches spaces that are escaped without matching backslashes escaping
-    # backslashes.
-    PAT_UNESCAPED_SPACES = re.compile(r'(?<!\\)(?:\\\\)*\\ ')
+    #: Remove backslashes from escaped characters.
+    PAT_UNESCAPE = re.compile(r'\\(.)')
 
     # We will try to find the following directives with the same path pattern
     # every time.
@@ -84,7 +81,7 @@ class HAProxyParser(object):
 
     def __init__(self, conf_files):
         """
-        Initialise config file variables.
+        Initialise ``self.config_files`` variable.
 
         :param collections.Sequence|str conf_files: A list of strings or string
              with HAProxy config file path to parse.
@@ -93,44 +90,42 @@ class HAProxyParser(object):
             self.conf_files = (conf_files,)
         else:
             self.conf_files = conf_files
-        self.parse()
+        self._parse()
 
-    def __repr__(self, config_file=None):
+    def parse(self):
         """
         Initialise the parsing process.
 
-        :param collections.Sequence|str conf_files: A list of strings or string
-             with HAProxy config file path to parse.
         :return tuple: Tuple containing paths (list) and corresponding sockets.
         """
         return (self.cert_paths, self.socket_paths)
 
-    def parse(self):
+    def _parse(self):
         """Start the parsing process, populates the object."""
         self.cert_paths = []
         self.socket_paths = []
         for conf_file in self.conf_files:
             # Get relevant lines from all config files.
-            relevant_lines = self.__parse_relevant_lines(conf_file)
+            relevant_lines = self._parse_relevant_lines(conf_file)
             # Parse all sockets from the relevant lines.
             self.socket_paths.append(
-                self.__parse_haproxy_sockets(relevant_lines['stats'])
+                self._parse_haproxy_sockets(relevant_lines['stats'])
             )
-            # Find out if a crt-base is set `crt` directives depend on that
+            # Find out if a crt-base is set. `crt` directives depend on that
             # value so we need to find it first. We assume crt-base can only be
             # set once.
-            cert_base = self.__parse_haproxy_cert_base(
+            cert_base = self._parse_haproxy_cert_base(
                 relevant_lines['crt-base']
             )
             self.cert_paths.append(
-                self.__parse_haproxy_cert_paths(
+                self._parse_haproxy_cert_paths(
                     relevant_lines['crt'],
                     cert_base
                 )
             )
 
     @classmethod
-    def __parse_relevant_lines(cls, conf_file_path):
+    def _parse_relevant_lines(cls, conf_file_path):
         """
         Parse config file, return dict of relevant lines per directive.
 
@@ -162,27 +157,22 @@ class HAProxyParser(object):
         return relevant_lines
 
     @staticmethod
-    def __parse_haproxy_sockets(socket_lines):
+    def _parse_haproxy_sockets(socket_lines):
         """
-        Find the sockets in the config of a process.
+        Find the sockets in the HAProxy configuration file.
 
         We assume all sockets should be informed of new staples for any of the
         cert paths we find. If paths are not absolute we assume they are
         relative to the config's directory.
         :param list socket_lines: Lines that concern sockets.
-        :param str rel_path: The directory above the config file.
         :returns list: Socket paths.
         """
-        # The list returned in the line below may be empty (``[]``).
-        sockets = []
-        for socket in socket_lines:
-            sockets.append(socket)
-        # de-dupe the sockets
-        unique(sockets)
-        return sockets
+        # The list returned below may be empty (``[]``).
+        # de-dupe and return the sockets
+        return unique(socket_lines)
 
     @staticmethod
-    def __parse_haproxy_cert_base(cert_base_lines):
+    def _parse_haproxy_cert_base(cert_base_lines):
         """
         Find out if there is a ``crt-base`` directive and what the value is.
 
@@ -195,7 +185,7 @@ class HAProxyParser(object):
         return cert_base
 
     @classmethod
-    def __parse_haproxy_cert_paths(cls, cert_paths_lines, cert_base):
+    def _parse_haproxy_cert_paths(cls, cert_paths_lines, cert_base):
         """
         Find certificate paths in the relevant lines.
 
@@ -212,8 +202,7 @@ class HAProxyParser(object):
                 path = path.strip("'")
             else:
                 # Weak, or not quoted, remove quotes and unescape spaces.
-                path = cls.PAT_UNESCAPED_SPACES.sub(" ", path.strip('"'))
-                path = path.replace("\\", "")
+                path = cls.PAT_UNESCAPE.sub("\\1", path.strip('"'))
             if not os.path.isabs(path):
                 path = os.path.join(cert_base, path)
             abs_cert_paths.append(path)
@@ -224,7 +213,7 @@ class HAProxyParser(object):
 
 def parse_haproxy_config(conf_files):
     """For usage info see HAProxyParser.__init__ docstring."""
-    return HAProxyParser(conf_files).__repr__()
+    return HAProxyParser(conf_files).parse()
 
 
 # Carbon copy of the docstring of the init function of the HAProxyParser to

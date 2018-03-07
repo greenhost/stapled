@@ -302,7 +302,9 @@ class CertModel(object):
                 log_level=logging.CRITICAL
             )
         if self.end_entity is None:
-            # If we did find some CA stuff, this may just be a
+            # If we did find some CA stuff but not a server certicate, we
+            # assume this is a CA root/intermediate file and don't log a
+            # critical error.
             if len(self.intermediates) > 0:
                 raise CertParsingError(
                     "Can't find server certificate items for \"{}\". "

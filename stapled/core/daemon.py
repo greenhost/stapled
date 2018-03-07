@@ -74,7 +74,7 @@ class Stapledaemon(object):
         :param **dict kwargs: Parsed CLI arguments and configurations.
         :kwarg list cert_paths: A list of certificate paths to scan for
             certificates.
-        :kwarg dict|NoneType haproxy_sockets: A mapping of certificate
+        :kwarg dict|NoneType haproxy_socket_mapping: A mapping of certificate
             directories and corresponding HAProxy sockets or None.
         :kwarg list file_extensions: List of file extensions to search for
             certificates.
@@ -89,7 +89,9 @@ class Stapledaemon(object):
         """
         LOG.debug("Started with CLI args: %s", str(kwargs))
         self.cert_paths = kwargs.pop('cert_paths', None)
-        self.sockets = kwargs.pop('haproxy_sockets', None)
+        self.haproxy_socket_mapping = kwargs.pop(
+            'haproxy_socket_mapping', None
+        )
         self.file_extensions = kwargs.pop('file_extensions')
         self.file_extensions.replace(" ", "").split(",")
         self.renewal_threads = kwargs.pop('renewal_threads')
@@ -134,7 +136,7 @@ class Stapledaemon(object):
         self.scheduler = self.start_scheduler_thread()
 
         # Start proxy adder thread if sockets were supplied
-        if self.sockets:
+        if self.haproxy_socket_mapping:
             self.start_staple_adder_thread()
 
         # Start ocsp response gathering threads
@@ -150,16 +152,12 @@ class Stapledaemon(object):
         self.monitor_threads()
 
     def exit_gracefully(self, signum, _frame):
-        """
-        Sets self.stop so the main thread stops
-        """
+        """Set self.stop so the main thread stops."""
         LOG.info("Exiting with signal number %d", signum)
         self.stop = True
 
     def start_scheduler_thread(self):
-        """
-        Spawns a scheduler thread with the appropriate keyword arguments.
-        """
+        """Spawn a scheduler thread with the appropriate keyword arguments."""
         return self.__spawn_thread(
             name="scheduler",
             thread_object=SchedulerThread,
@@ -167,21 +165,16 @@ class Stapledaemon(object):
         )
 
     def start_staple_adder_thread(self):
-        """
-        Spawns a StapleAdder thread, that adds staples to HAProxy, with the
-        appropriate keyword arguments.
-        """
+        """Spawns a StapleAdder thread."""
         return self.__spawn_thread(
             name="proxy-adder",
             thread_object=StapleAdder,
-            socket_paths=self.sockets,
+            haproxy_socket_mapping=self.haproxy_socket_mapping,
             scheduler=self.scheduler
         )
 
     def start_finder_thread(self):
-        """
-        Spawns a finder thread with the appropriate keyword arguments.
-        """
+        """Spawn a finder thread."""
         return self.__spawn_thread(
             name="finder",
             thread_object=CertFinderThread,
@@ -195,9 +188,7 @@ class Stapledaemon(object):
         )
 
     def start_renewer_thread(self, tid):
-        """
-        Spawns a Staple renewer thread with the appropriate keyword arguments.
-        """
+        """Spawn a Staple renewer thread."""
         return self.__spawn_thread(
             name="renewer-{:02d}".format(tid),
             thread_object=StapleRenewerThread,
@@ -206,9 +197,7 @@ class Stapledaemon(object):
         )
 
     def start_parser_thread(self):
-        """
-        Spawns a parser thread with the appropriate keyword arguments.
-        """
+        """Spawn a parser thread ."""
         return self.__spawn_thread(
             name="parser",
             thread_object=CertParserThread,
@@ -220,6 +209,8 @@ class Stapledaemon(object):
 
     def monitor_threads(self):
         """
+        Monitor and manage threads.
+
         Check if any threads have died, respawn them until the
         MAX_RESTART_THREADS limit is reached. Wait for a KeyBoardInterrupt,
         when it comes, tell all threads to stop and wait for them to stop.
@@ -243,7 +234,7 @@ class Stapledaemon(object):
                     self.__spawn_thread(
                         name=thread['name'],
                         thread_object=thread['object'],
-                        restarted=thread['restarted']+1,
+                        restarted=thread['restarted'] + 1,
                         **thread['kwargs']
                     )
                 else:
@@ -271,6 +262,7 @@ class Stapledaemon(object):
     def __spawn_thread(self, name, thread_object, restarted=0, **kwargs):
         """
         Spawns threads based on obejects and registers them in a dictionary.
+
         Also remembers how the thread was started.
 
         :param str name: Name of the thread

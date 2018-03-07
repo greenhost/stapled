@@ -23,50 +23,58 @@ TEST_FILES = [
                 ['/run/haproxy/admin.sock']
             ]
         )
-    # ), (
-    #     # The same as above but with a `crt_base` directive
-    #     # passing files as a string deliberately because that should also work.
-    #     'stapled/tests/.haproxy/haproxy-test-base.cfg',
-    #     (
-    #         [['/etc/ssl/private/cert.pem', '/etc/ssl/private/certbot/']],
-    #         [['/run/haproxy/admin-crt-base.sock']]
-    #     )
-    # ), (
-    #     # The same as above but with a `crt_base` directive
-    #     # passing files as a string deliberately because that should also work.
-    #     'stapled/tests/.haproxy/haproxy-test-no-socket.cfg',
-    #     (
-    #         [['/etc/ssl/private/cert.pem', '/etc/ssl/private certs']],
-    #         [None]
-    #     )
-    # ), (
-    #     # Two test files test
-    #     [
-    #         'stapled/tests/.haproxy/haproxy-test.cfg',
-    #         'stapled/tests/.haproxy/haproxy-test-base.cfg',
-    #         'stapled/tests/.haproxy/haproxy-test-no-socket.cfg'
-    #     ],
-    #     (
-    #         [
-    #             [
-    #                 '/etc/ssl/private/__fallback.pem',
-    #                 '/etc/ssl/private certs',
-    #                 '/etc/ssl/private/fall back.pem',
-    #                 '/etc/ssl/private certs2'
-    #             ], [
-    #                 '/etc/ssl/private/cert.pem',
-    #                 '/etc/ssl/private/certbot/'
-    #             ], [
-    #                 '/etc/ssl/private/cert.pem',
-    #                 '/etc/ssl/private certs'
-    #             ]
-    #         ],
-    #         [
-    #             ['/run/haproxy/admin.sock'],
-    #             ['/run/haproxy/admin-crt-base.sock'],
-    #             [None]
-    #         ]
-    #     )
+    ), (
+        # The same as above but with a `crt_base` directive
+        # passing files as a string deliberately because that should also work.
+        'stapled/tests/.haproxy/haproxy-test-base.cfg',
+        (
+            [['/etc/ssl/private/cert.pem', '/etc/ssl/private/certbot/']],
+            [['/run/haproxy/admin-crt-base.sock']]
+        )
+    ), (
+        # The same as above but with a `crt_base` directive
+        # passing files as a string deliberately because that should also work.
+        'stapled/tests/.haproxy/haproxy-test-no-socket.cfg',
+        (
+            [['/etc/ssl/private/cert.pem', '/etc/ssl/private certs']],
+            [[]]
+        )
+    ), (
+        # Test that we can parse two cert paths mapped to two sockets.
+        'stapled/tests/.haproxy/haproxy-test-two-sockets.cfg',
+        (
+            [['/etc/ssl/private/cert.pem', '/etc/ssl/private/certbot/']],
+            [
+                ['/run/haproxy/admin.sock', '/run/haproxy/user.sock']
+            ]
+        )
+    ), (
+        # Two test files test
+        [
+            'stapled/tests/.haproxy/haproxy-test.cfg',
+            'stapled/tests/.haproxy/haproxy-test-base.cfg',
+            'stapled/tests/.haproxy/haproxy-test-no-socket.cfg'
+        ],
+        (
+            [
+                [
+                    '/etc/ssl/private/__fallback.pem',
+                    '/etc/ssl/private certs',
+                    '/etc/ssl/private/fall back.pem',
+                    '/etc/ssl/private certs2'
+                ], [
+                    '/etc/ssl/private/cert.pem',
+                    '/etc/ssl/private/certbot/'
+                ], [
+                    '/etc/ssl/private/cert.pem',
+                    '/etc/ssl/private certs'
+                ]
+            ], [
+                ['/run/haproxy/admin.sock'],
+                ['/run/haproxy/admin-crt-base.sock'],
+                []
+            ]
+        )
     )
 ]
 

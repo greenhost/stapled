@@ -317,37 +317,39 @@ def init():
     # Parse the cert_paths argument
     arg_cert_paths = __get_arg_cert_paths(args)
     # Parse haproxy_sockets argument.
-    arg_sockets = __get_arg_haproxy_sockets(args)
+    arg_haproxy_sockets = __get_arg_haproxy_sockets(args)
     # Make a mapping from certificate paths to sockets in a dict.
-    socket_mapping = dict(zip(arg_cert_paths, arg_sockets))
+    haproxy_socket_mapping = dict(zip(arg_cert_paths, arg_haproxy_sockets))
 
     # Parse HAProxy config files.
-    conf_cert_paths, conf_sockets = parse_haproxy_config(args.haproxy_config)
+    conf_cert_paths, conf_haproxy_sockets = parse_haproxy_config(
+        args.haproxy_config
+    )
     # Combine the socket and certificate paths of the arguments and config
     # files in the sockets dictionary.
     for i, paths in enumerate(conf_cert_paths):
         for path in paths:
-            if path in socket_mapping:
-                socket_mapping[path] = unique(
-                    socket_mapping[path] + conf_sockets[i],
+            if path in haproxy_socket_mapping:
+                haproxy_socket_mapping[path] = unique(
+                    haproxy_socket_mapping[path] + conf_haproxy_sockets[i],
                     preserve_order=False
                 )
             else:
-                socket_mapping[path] = conf_sockets[i]
+                haproxy_socket_mapping[path] = conf_haproxy_sockets[i]
 
-    logger.debug("Paths to socket mapping: %s", str(socket_mapping))
+    logger.debug("Paths to socket mapping: %s", str(haproxy_socket_mapping))
 
     # Now sockets' keys are the merged cert paths from arguments and haproxy
     # config files, de-duplicated.
-    cert_paths = socket_mapping.keys()
+    cert_paths = haproxy_socket_mapping.keys()
 
     # Determine if we need to start a stapleadder thread.
-    if not any(socket_mapping.values()):
-        args.haproxy_sockets = None
+    if not any(haproxy_socket_mapping.values()):
+        haproxy_socket_mapping = None
 
     daemon_kwargs = dict(
         cert_paths=cert_paths,
-        sockets=socket_mapping,
+        haproxy_socket_mapping=haproxy_socket_mapping,
         file_extensions=args.file_extensions,
         renewal_threads=args.renewal_threads,
         refresh_interval=args.refresh_interval,
@@ -402,7 +404,8 @@ def __get_arg_cert_paths(args):
             raise ValueError(
                 "You mixed the deprecated --directories and the supported "
                 "argument --cert-paths, this could lead to unforeseen "
-                "consequences, please reconfigure stapled to --cert-paths only."
+                "consequences, please reconfigure stapled to --cert-paths"
+                "only."
             )
         # Make stuff not break after an update.
         args.cert_paths = args.directories

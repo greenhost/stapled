@@ -50,27 +50,29 @@ class StapleAdder(threading.Thread):
         """
         Initialise the thread and its parent :class:`threading.Thread`.
 
-        :kwarg dict socket_paths: A mapping from a directory (typically the
-            directory containing TLS certificates) to a HAProxy socket that
-            serves certificates from that directory. These sockets are used to
-            communicate new OCSP staples to HAProxy, so it does not have to be
-            restarted.
+        :kwarg dict haproxy_socket_mapping: A mapping from a directory
+            (typically the directory containing TLS certificates) to a HAProxy
+            socket that serves certificates from that directory. These sockets
+            are used to communicate new OCSP staples to HAProxy, so it does not
+            have to be restarted.
         :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler
             object where we can get "haproxy-adder" tasks from **(required)**.
         """
         self.stop = False
         LOG.debug("Starting StapleAdder thread")
         self.scheduler = kwargs.pop('scheduler', None)
-        self.paths = kwargs.pop('socket_paths', None)
+        self.haproxy_socket_mapping = kwargs.pop(
+            'haproxy_socket_mapping', None
+        )
 
         assert self.scheduler is not None, \
             "Please pass a scheduler to get and add proxy-add tasks."
-        assert self.paths is not None, \
-            "The StapleAdder needs a socket_paths dict"
+        assert self.haproxy_socket_mapping is not None, \
+            "The StapleAdder needs a haproxy_socket_mapping dict"
 
         self.socks = {}
         with stapled_except_handle():
-            for paths in self.paths.values():
+            for paths in self.haproxy_socket_mapping.values():
                 for path in paths:
                     self.socks[path] = self._open_socket(path)
         super(StapleAdder, self).__init__(*args, **kwargs)
@@ -116,8 +118,6 @@ class StapleAdder(threading.Thread):
         Send any commands that enter the command queue.
 
         This is the stapleadder thread's main loop.
-
-        :raises ValueError: if the command queue is empty.
         """
         LOG.info("Started an OCSP adder thread.")
 
@@ -145,7 +145,7 @@ class StapleAdder(threading.Thread):
         """
         command = self.OCSP_ADD.format(model.ocsp_staple.base64)
         LOG.debug("Setting OCSP staple with command '%s'", command)
-        path = self.paths[model.cert_path]
+        path = self.haproxy_socket_mapping[model.cert_path]
         if path is None:
             LOG.debug("No socket set for %s", model.filename)
             return

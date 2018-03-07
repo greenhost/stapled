@@ -33,7 +33,7 @@ class StapleAdderBadResponse(Exception):
 
 
 class CertFileAccessError(Exception):
-    """Gets raised when a file can't be accessed at all."""
+    """Raised when a file can't be accessed at all."""
 
     pass
 
