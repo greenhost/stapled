@@ -1,7 +1,8 @@
 stages:
 - build-containers
+- unit-tests
 - build-compile
-- test
+- functional-tests
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -9,8 +10,7 @@ variables:
   BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
   STRETCH_TEST_CONTAINER: $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
   JESSIE_TEST_CONTAINER: $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
-  PYPY25_TEST_CONTAINER: $DOCKER_FILES_URL/test-pypy25:$CI_COMMIT_REF_NAME
-  PYPY35_TEST_CONTAINER: $DOCKER_FILES_URL/test-pypy35:$CI_COMMIT_REF_NAME
+  GIT_SUBMODULE_STRATEGY: recursive
 
 build:build-container:
   image: docker:latest
@@ -45,35 +45,12 @@ build:test-stretch:
   - docker build --pull --cache-from $STRETCH_TEST_CONTAINER -t $STRETCH_TEST_CONTAINER ./docker/test-stretch/
   - docker push $STRETCH_TEST_CONTAINER
 
-build:test-pypy25:
-  image: docker:latest
-  services:
-  - docker:dind
-  stage: build-containers
-  script:
-  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
-  - docker pull $PYPY25_TEST_CONTAINER || true
-  - docker build --pull --cache-from $PYPY25_TEST_CONTAINER -t $PYPY25_TEST_CONTAINER ./docker/test-pypy25/
-  - docker push $PYPY25_TEST_CONTAINER
-
-build:test-pypy35:
-  image: docker:latest
-  services:
-  - docker:dind
-  stage: build-containers
-  script:
-  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
-  - docker pull $PYPY35_TEST_CONTAINER || true
-  - docker build --pull --cache-from $PYPY35_TEST_CONTAINER -t $PYPY35_TEST_CONTAINER ./docker/test-pypy35/
-  - docker push $PYPY35_TEST_CONTAINER
-
 build:compile:
   stage: build-compile
   image: $BUILD_COMPILE_CONTAINER
   script:
   - which python3 && $(which python3) --version
   - openssl version
-  - git submodule update --init --recursive
   - pip3 install --user -r requirements.txt
   - make clean
   - make
@@ -86,87 +63,73 @@ build:compile:
     - dist/stapled*.deb
 
 test:jessie:python2:
-  stage: test
+  stage: functional-tests
   image: $JESSIE_TEST_CONTAINER
   script:
-  - which python2 && $(which python2) --version
+  - which python && $(which python) --version
   - openssl version
   - dpkg -i ./dist/stapled-py2_*all.deb
   - openssl version
   - ./refresh_testdata.sh
-  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
   - build:compile
 
+unit:python2:
+  stage: unit-tests
+  image: python:2.7-stretch
+  script:
+  - which python && $(which python) --version
+  - pip install -r requirements.txt
+  - pytest -v
+
+unit:python3:
+  stage: unit-tests
+  image: python:3.6-stretch
+  script:
+  - which python && $(which python) --version
+  - pip3 install -r requirements.txt
+  - pytest -v
+
 test:jessie:python3:
-  stage: test
+  stage: functional-tests
   image: $JESSIE_TEST_CONTAINER
   script:
   - which python3 && $(which python3) --version
   - openssl version
   - dpkg -i ./dist/stapled_*all.deb
-  - openssl version
   - ./refresh_testdata.sh
-  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
   - build:compile
 
 test:stretch:python2:
-  stage: test
+  stage: functional-tests
   image: $STRETCH_TEST_CONTAINER
   script:
-  - which python2 && $(which python2) --version
+  - which python && $(which python) --version
   - openssl version
   - apt-get install -y -q ./dist/stapled-py2_*all.deb
-  - openssl version
   - ./refresh_testdata.sh
-  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
   - build:compile
 
 test:stretch:python3:
-  stage: test
+  stage: functional-tests
   image: $STRETCH_TEST_CONTAINER
   script:
   - which python3 && $(which python3) --version
   - openssl version
   - apt-get install -y -q ./dist/stapled_*all.deb
   - ./refresh_testdata.sh
-  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 30
-  - ls /tmp/testdata/**/chain.pem.ocsp
-  dependencies:
-  - build:compile
-
-test:pypy2:
-  stage: test
-  image: $PYPY25_TEST_CONTAINER
-  script:
-  - which python2 && $(which python2) --version
-  - openssl version
-  - dpkg -i ./dist/stapled-py2_*all.deb
-  - ./refresh_testdata.sh
-  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 30
-  - ls /tmp/testdata/**/chain.pem.ocsp
-  dependencies:
-  - build:compile
-
-test:pypy3:
-  stage: test
-  image: $PYPY35_TEST_CONTAINER
-  script:
-  - which python3 && $(which python3) --version
-  - openssl version
-  - dpkg -i ./dist/stapled_*all.deb
-  - ./refresh_testdata.sh
-  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
@@ -178,12 +141,8 @@ test:dev-setup:
   script:
   - which python3 && $(which python3) --version
   - openssl version
-  - git submodule update --init
-  - pip3 install virtualenv
-  - virtualenv -p $(which python3) env/
-  - source env/bin/activate
   - pip3 install -e .
   - ./refresh_testdata.sh
-  - stapled -d /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
+  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls /tmp/testdata/**/chain.pem.ocsp

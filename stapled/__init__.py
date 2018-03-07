@@ -5,7 +5,6 @@ Initialise the stapled module.
 This file only contains some variables we need in the ``stapled`` name space.
 """
 
-import sys
 import os
 from stapled.version import __version__, __app_name__
 from stapled.lib import add_paths
@@ -34,4 +33,3 @@ DEFAULT_CONFIG_FILE_LOCATIONS = [
     '~/.stapled.conf',
     '/etc/stapled/stapled.conf'
 ]
-

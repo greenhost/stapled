@@ -6,7 +6,6 @@ import threading
 import logging
 import socket
 import errno
-import os
 import queue
 from io import StringIO
 from stapled.core.excepthandler import stapled_except_handle
@@ -15,7 +14,6 @@ import stapled.core.exceptions
 try:
     _ = BrokenPipeError
 except NameError:
-    import socket
     BrokenPipeError = socket.error
 
 LOG = logging.getLogger(__name__)
@@ -25,15 +23,15 @@ SOCKET_TIMEOUT = 86400
 
 class StapleAdder(threading.Thread):
     """
-    This class is used to add a OCSP staples to a running HAProxy instance by
-    sending it over a socket. It runs a thread that keeps connections to
-    sockets open for each of the supplied haproxy sockets. Code from
-    `collectd haproxy connection`_ under the MIT license, was used for
-    inspiration.
+    Add OCSP staples to a running HAProxy instance by sending it over a socket.
 
-    Tasks are taken from the :class:`stapled.scheduling.SchedulerThread`, as soon
-        as a task context is received, an OCSP response is read from the model
-        within it, it is added to a HAProxy socket found in
+    It runs a thread that keeps connections to sockets open for each of the
+    supplied haproxy sockets. Code from `collectd haproxy connection`_ under
+    the MIT license, was used for inspiration.
+
+    Tasks are taken from the :class:`stapled.scheduling.SchedulerThread`, as
+        soon as a task context is received, an OCSP response is read from the
+        model within it, it is added to a HAProxy socket found in
         self.socks[<certificate directory>].
 
     .. _collectd haproxy connection:
@@ -50,69 +48,77 @@ class StapleAdder(threading.Thread):
 
     def __init__(self, *args, **kwargs):
         """
-        Initialise the thread with its parent :class:`threading.Thread` and its
-        arguments.
+        Initialise the thread and its parent :class:`threading.Thread`.
 
-        :kwarg dict socket_paths: A mapping from a directory (typically the
-            directory containing TLS certificates) to a HAProxy socket that
-            serves certificates from that directory. These sockets are used to
-            communicate new OCSP staples to HAProxy, so it does not have to be
-            restarted.
-        :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler object
-            where we can get "haproxy-adder" tasks from **(required)**.
+        :kwarg dict haproxy_socket_mapping: A mapping from a directory
+            (typically the directory containing TLS certificates) to a HAProxy
+            socket that serves certificates from that directory. These sockets
+            are used to communicate new OCSP staples to HAProxy, so it does not
+            have to be restarted.
+        :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler
+            object where we can get "haproxy-adder" tasks from **(required)**.
         """
         self.stop = False
         LOG.debug("Starting StapleAdder thread")
         self.scheduler = kwargs.pop('scheduler', None)
-        self.socket_paths = kwargs.pop('socket_paths', None)
+        self.haproxy_socket_mapping = kwargs.pop(
+            'haproxy_socket_mapping', None
+        )
 
         assert self.scheduler is not None, \
             "Please pass a scheduler to get and add proxy-add tasks."
-        assert self.socket_paths is not None, \
-            "The StapleAdder needs a socket_paths dict"
+        assert self.haproxy_socket_mapping is not None, \
+            "The StapleAdder needs a haproxy_socket_mapping dict"
 
         self.socks = {}
-        with stapled_except_handle():
-            for key, socket_path in self.socket_paths.items():
-                self._open_socket(key, socket_path)
+        for paths in self.haproxy_socket_mapping.values():
+            for path in paths:
+                with stapled_except_handle():
+                    self.socks[path] = self._open_socket(path)
+
         super(StapleAdder, self).__init__(*args, **kwargs)
 
-    def _open_socket(self, key, socket_path):
+    def _open_socket(self, path):
         """
-        Opens a socket located at socket_path and saves it in self.socks[key].
+        Open socket located at path, and return the socket.
+
         Subsequently it asks for a prompt to keep the socket connection open,
         so several commands can be sent without having to close and re-open the
         socket.
 
-        :param key: the identifier of the socket in self.socks
-        :param str socket_path: A valid HAProxy socket path.
+        :param str path: A valid HAProxy socket path.
 
         :raises :exc:stapled.core.exceptions.SocketError: when the socket can
             not be opened.
         """
-        self.socks[key] = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock = socket.socket(
+            socket.AF_UNIX,
+            socket.SOCK_STREAM
+        )
         try:
-            self.socks[key].connect(socket_path)
-        except FileNotFoundError as exc:
+            sock.connect(path)
+        except (FileNotFoundError, PermissionError) as exc:
             raise stapled.core.exceptions.SocketError(
                 "Could not initialize StapleAdder with socket {}: {}".format(
-                    socket_path, exc))
-        result = self.send(key, "prompt")
-        result = self.send(key, "set timeout cli {}".format(SOCKET_TIMEOUT))
+                    path,
+                    exc
+                )
+            )
+        result = self.send(path, "prompt")
         LOG.debug("Opened prompt with result: '%s'", result)
+        result = self.send(path, "set timeout cli {}".format(SOCKET_TIMEOUT))
+        return sock
 
     def __del__(self):
-        """
-        Close the sockets on exit.
-        """
+        """Close the sockets on exit."""
         for sock in self.socks.values():
             sock.close()
 
     def run(self):
         """
-        The main loop: send any commands that enter the command queue
+        Send any commands that enter the command queue.
 
-        :raises ValueError: if the command queue is empty.
+        This is the stapleadder thread's main loop.
         """
         LOG.info("Started an OCSP adder thread.")
 
@@ -122,7 +128,8 @@ class StapleAdder(threading.Thread):
                 model = context.model
                 LOG.debug("Sending staple for cert:'%s'", model)
 
-                # Open the exception handler context to run tasks likely to fail
+                # Open the exception handler context to run tasks likely to
+                # fail
                 with stapled_except_handle(context):
                     self.add_staple(model)
                 self.scheduler.task_done(self.TASK_NAME)
@@ -132,26 +139,33 @@ class StapleAdder(threading.Thread):
 
     def add_staple(self, model):
         """
-        Create and send the command that adds a base64 encoded OCSP staple to
-        the HAProxy
+        Create and send base64 encoded OCSP staple to the HAProxy.
 
         :param model: An object that has a binary string `ocsp_staple` in it
             and a filename `filename`.
         """
         command = self.OCSP_ADD.format(model.ocsp_staple.base64)
         LOG.debug("Setting OCSP staple with command '%s'", command)
-        response = self.send(model.cert_path, command)
-        if response != 'OCSP Response updated!':
-            raise stapled.core.exceptions.StapleAdderBadResponse(
-                "Bad HAProxy response: {}".format(response))
+        path = self.haproxy_socket_mapping[model.cert_path]
+        if path is None:
+            LOG.debug("No socket set for %s", model.filename)
+            return
+        responses = self.send(path, command)
+        for response in responses:
+            if response != 'OCSP Response updated!':
+                raise stapled.core.exceptions.StapleAdderBadResponse(
+                    "Bad HAProxy response: '{}' from socket {}".format(
+                        response,
+                        path
+                    )
+                )
 
-    def send(self, socket_key, command):
+    def send(self, paths, command):
         """
-        Send the command through self.socks[socket_key] (using
-        self.socket_paths)
+        Send the command through the socket at ``path``.
 
-        :param str socket_key: Identifying dictionary key of the socket. This
-            is typically the directory HAProxy serves certificates from.
+        :param list paths: The path(s) to the socket(s) which should already
+            be open.
         :param str command: String with the HAProxy command. For a list of
             possible commands, see the `haproxy documentation`_
 
@@ -172,7 +186,7 @@ class StapleAdder(threading.Thread):
         # each time we want to communicate...
         # while True:
         #     try:
-        #         chunk = self.socks[socket_key].recv(SOCKET_BUFFER_SIZE)
+        #         chunk = self.socks[path].recv(SOCKET_BUFFER_SIZE)
         #         if not chunk:
         #             break
         #     except IOError as err:
@@ -183,43 +197,44 @@ class StapleAdder(threading.Thread):
 
         # Send command
         with stapled_except_handle():
-            try:
-                self.socks[socket_key].sendall((command + "\n").encode())
-            except BrokenPipeError:
-                # Try to re-open the socket. If that doesn't work, that will
-                # raise a :exc:`~stapled.core.exceptions.SocketError`
-                LOG.warning(
-                    "Re-opening socket %s belonging to %s",
-                    self.socket_paths[socket_key],
-                    socket_key
-                )
-                self.socks[socket_key].close()
-                self._open_socket(socket_key, self.socket_paths[socket_key])
-                # Try again, if this results in a BrokenPipeError *again*, it
-                # will be caught by stapled_except_handle
-                self.socks[socket_key].sendall((command + "\n").encode())
+            responses = []
+            for path in paths:
+                try:
+                    sock = self.socks[path]
+                    sock.sendall((command + "\n").encode())
+                except (BrokenPipeError, KeyError):
+                    # Try to re-open the socket. If that doesn't work, that
+                    # will raise a :exc:`~stapled.core.exceptions.SocketError`
+                    LOG.info("Re-opening socket %s", path)
+                    try:
+                        sock.close()
+                    except UnboundLocalError:  # sock is not yet defined.
+                        pass
+                    sock = self.socks[path] = self._open_socket(path)
+                    # Try again, if this results in a BrokenPipeError *again*,
+                    # it will be caught by stapled_except_handle
+                    sock.sendall((command + "\n").encode())
+                buff = StringIO()
+                # Get new response.
+                while True:
+                    try:
+                        chunk = sock.recv(SOCKET_BUFFER_SIZE)
+                        if chunk:
+                            d_chunk = chunk.decode('ascii')
+                            buff.write(d_chunk)
+                            # TODO: Find out what happens if several threads
+                            # are talking to HAProxy on this socket
+                            if '> ' in d_chunk:
+                                break
+                        else:
+                            break
+                    except IOError as err:
+                        if err.errno not in (errno.EAGAIN, errno.EINTR):
+                            raise
 
-        buff = StringIO()
-
-        # Get new response.
-        while True:
-            try:
-                chunk = self.socks[socket_key].recv(SOCKET_BUFFER_SIZE)
-                if chunk:
-                    d_chunk = chunk.decode('ascii')
-                    buff.write(d_chunk)
-                    # TODO: Find out what happens if several threads are
-                    # talking to HAProxy on this socket
-                    if '> ' in d_chunk:
-                        break
-                else:
-                    break
-            except IOError as err:
-                if err.errno not in (errno.EAGAIN, errno.EINTR):
-                    raise
-
-        # Strip *all* \n, > and space characters from the end
-        response = buff.getvalue().strip('\n> ')
-        buff.close()
-        LOG.debug("Received HAProxy response '%s'", response)
-        return response
+                # Strip *all* \n, > and space characters from the end
+                response = buff.getvalue().strip('\n> ')
+                LOG.debug("Received HAProxy response '%s'", response)
+                responses.append()
+                buff.close()
+        return responses

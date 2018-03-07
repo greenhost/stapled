@@ -95,9 +95,9 @@ ENV/
 # Project-specific
 *.ocsp
 /stapled.conf
-# This data can be generated with refresh_testdata.sh
-testdata
 build_deps
 deb_dist
 dist-docker
 .mypy_cache
+.pytest_cache
+venv*/

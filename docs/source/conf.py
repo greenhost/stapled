@@ -16,7 +16,10 @@ import sys
 import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('../..'))
 from stapled.lib import add_paths
-add_paths()
+
+# Add libraries to sys.path and print which libs were added.
+added_paths = add_paths()
+print("Adding paths: {}".format(", ".join(added_paths)))
 
 # -- General configuration ------------------------------------------------
 

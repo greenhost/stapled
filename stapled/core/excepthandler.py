@@ -100,7 +100,13 @@ def stapled_except_handle(ctx=None):
             # serve the staple because it may make the server unavailable,
             # while not serving it only makes things slightly slower.
             delete_ocsp_for_context(ctx)
-        LOG.critical(exc)
+        if isinstance(exc, CertParsingError):
+            if exc.log_level:
+                LOG.log(exc.log_level, exc)
+            else:
+                LOG.critical(exc)
+        else:
+            LOG.critical(exc)
     except OCSPBadResponse as exc:
         # The OCSP response is empty, invalid or the status is not "good", we
         # can try again, maybe there's server side problem.
@@ -133,9 +139,9 @@ def stapled_except_handle(ctx=None):
         #  - every hour (9x), 3 per url
         #  - twice a day per url
         err_count = ctx.set_last_exception(str(exc))
-        if err_count < (3*len_ocsp_urls)+1:
+        if err_count < (3 * len_ocsp_urls) + 1:
             ctx.reschedule(10)  # every err_count minutes
-        elif err_count < (6*len_ocsp_urls)+1:
+        elif err_count < (6 * len_ocsp_urls) + 1:
             ctx.reschedule(3600)  # every hour
         else:
             ctx.reschedule(43200 // len_ocsp_urls)  # twice a day per url
@@ -144,6 +150,9 @@ def stapled_except_handle(ctx=None):
             "entries",
             err_count, len_ocsp_urls
         )
+    except PermissionError as exc:
+        LOG.critical(exc)
+
     # the show must go on..
     except Exception as exc:  # pylint: disable=broad-except
         dump_stack_trace(ctx, exc)

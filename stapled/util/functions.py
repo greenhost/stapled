@@ -9,6 +9,7 @@ import binascii
 def pretty_base64(data, line_len=79, prefix="", suffix="\n"):
     """
     Format data as a base64 blob with fixed line lengths and pre-/suffixes.
+
     Splits the base64 data into lines of ``line_len`` lines and can apply
     a prefix such as ``\n\t`` to align output.
 
@@ -53,4 +54,54 @@ def split_by_len(string, length):
     :len int length: Max length of the lines.
     :return list: List of substrings of input string
     """
-    return [string[i:i+length] for i in range(0, len(string), length)]
+    return [string[i:i + length] for i in range(0, len(string), length)]
+
+
+def unique(seq, preserve_order=True):
+    """
+    Return the unique values of a sequence in the type of the input sequence.
+
+    Does not support sets and dicts, as they are already unique.
+
+    :param list|tuple seq: Data to return unique values from.
+    :param bool preserve_order: Preserve order of seq? (Default: True)
+    :returns list|tuple: Whatever unique values you fed into ``seq``.
+    """
+    if preserve_order:
+        return type(seq)(unique_generator(seq))
+
+    if isinstance(seq, (set, dict)):
+        # Should not do this, this is wasting CPU cycles.
+        raise TypeError("{} types are always unique".format(type(seq)))
+
+    # If order is not important we can do set() which is a C implementation
+    # and it's super fast. Return a new sequence of the same type with
+    # unique values
+    return type(seq)(set(seq))
+
+
+def unique_generator(seq):
+    """
+    Remove duplicates from an iterable sequence.
+
+    Keep a list of values we see, check to see if an item was already seen.
+    Optionally preserve order.
+
+    Does not support sets and dicts, as they are already unique.
+
+    :param list|tuple seq: Data to yield unique values from.
+    :returns type(seq): Sequence of same type of unique values of ``seq``.
+    """
+    def __unique_generator(seq):
+        seen = set()
+        seen_add = seen.add  # Speeds up, it skips __getattribute__ on seen.
+        for element in seq:
+            if element not in seen:
+                yield element
+                seen_add(element)
+
+    if isinstance(seq, (set, dict)):
+        # Should not do this, this is wasting CPU cycles.
+        raise TypeError("{} types are always unique".format(type(seq)))
+
+    return __unique_generator(seq)

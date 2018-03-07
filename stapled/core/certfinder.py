@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This module locates certificate files in the supplied directories and parses
+This module locates certificate files in the supplied paths and parses
 them. It then keeps track of the following:
 
 - If cert is found for the first time (thus also when the daemon is started),
@@ -14,9 +14,9 @@ them. It then keeps track of the following:
   to the scheduler for parsing again, any scheduled actions for the old file
   are cancelled.
 
-- When certificates are deleted from the directories, the entries are removed
-  from the cache in :attr:`stapled.core.daemon.run.models`. Any scheduled actions
-  for deleted files are cancelled.
+- When certificates are deleted from the paths, the entries are removed
+  from the cache in :attr:`stapled.core.daemon.run.models`. Any scheduled
+  actions for deleted files are cancelled.
 
 The cache of parsed files is volatile so every time the process is killed
 files need to be indexed again (thus files are considered "new").
@@ -38,7 +38,7 @@ LOG = logging.getLogger(__name__)
 
 class CertFinderThread(threading.Thread):
     """
-    This searches directories for certificate files.
+    This searches paths for certificate files.
     When found, models are created for the certificate files, which are wrapped
     in a :class:`stapled.core.taskcontext.StapleTaskContext` which are then
     scheduled to be processed by the
@@ -54,9 +54,9 @@ class CertFinderThread(threading.Thread):
         arguments.
 
         :kwarg dict models: A dict to maintain a model cache **(required)**.
-        :kwarg iter directories: The directories to index **(required)**.
-        :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler object
-            where we add new parse tasks to. **(required)**.
+        :kwarg iter cert_paths: The paths to index **(required)**.
+        :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler
+            object where we add new parse tasks to. **(required)**.
         :kwarg int refresh_interval: The minimum amount of time (s)
             between search runs, defaults to 10 seconds. Set to None to run
             only once **(optional)**.
@@ -65,7 +65,7 @@ class CertFinderThread(threading.Thread):
         """
         self.stop = False
         self.models = kwargs.pop('models', None)
-        self.directories = kwargs.pop('directories', None)
+        self.cert_paths = kwargs.pop('cert_paths', None)
         self.scheduler = kwargs.pop('scheduler', None)
         self.refresh_interval = kwargs.pop(
             'refresh_interval', stapled.DEFAULT_REFRESH_INTERVAL
@@ -75,13 +75,13 @@ class CertFinderThread(threading.Thread):
         )
         self.last_refresh = None
         self.ignore = kwargs.pop('ignore', []) or []
-        self.recursive_dirs = kwargs.pop('recursive_dirs', False)
+        self.recursive = kwargs.pop('recursive', False)
 
         assert self.models is not None, \
             "You need to pass a dict to hold the certificate model cache."
 
-        assert self.directories is not None, \
-            "At least one directory should be passed for indexing."
+        assert self.cert_paths is not None, \
+            "At least one path should be passed for indexing."
 
         assert self.scheduler is not None, \
             "Please pass a scheduler to get tasks from and add tasks to."
@@ -89,12 +89,8 @@ class CertFinderThread(threading.Thread):
         super(CertFinderThread, self).__init__(*args, **kwargs)
 
     def run(self):
-        """
-        Start the certificate finder thread.
-        """
-
-        LOG.info("Scanning directories: %s", ", ".join(self.directories))
-
+        """Start the certificate finder thread."""
+        LOG.info("Scanning paths: '%s'", "', '".join(self.cert_paths))
         while not self.stop:
             # Catch any exceptions within this context to protect the thread.
             with stapled_except_handle():
@@ -134,7 +130,7 @@ class CertFinderThread(threading.Thread):
 
     def refresh(self):
         """
-        Wraps up the internal :meth:`CertFinder._update_cached_certs()` and
+        Wrap up the internal :meth:`CertFinder._update_cached_certs()` and
         :meth:`CertFinder._find_new_certs()` functions.
 
         ..  Note:: This method is automatically called by
@@ -143,7 +139,7 @@ class CertFinderThread(threading.Thread):
         self.last_refresh = time.time()
         LOG.info("Starting a refresh run.")
         self._update_cached_certs()
-        self._find_new_certs(self.directories)
+        self._find_new_certs(self.cert_paths)
 
     def _find_new_certs(self, paths, cert_path=None):
         """
@@ -165,11 +161,21 @@ class CertFinderThread(threading.Thread):
                 # an argument or in config.
                 cert_path = path
             try:
-                LOG.debug("Scanning directory: %s", path)
-                for entry in os.listdir(path):
+                LOG.debug("Scanning path: %s", path)
+                dirs = []
+                try:
+                    dirs = os.listdir(path)
+                except NotADirectoryError:
+                    # If a path is actually a file we can still use it..
+                    if os.path.isfile(path):
+                        LOG.debug("%s may be a single file", path)
+                        # This will allow us to use our usual iteration.
+                        dirs = [os.path.basename(path)]
+                        path = os.path.dirname(path)
+                for entry in dirs:
                     entry = os.path.join(path, entry)
                     if os.path.isdir(entry):
-                        if self.recursive_dirs:
+                        if self.recursive:
                             LOG.debug("Recursing path %s", entry)
                             self._find_new_certs([entry], cert_path)
                         continue
@@ -201,15 +207,16 @@ class CertFinderThread(threading.Thread):
                 # refresh until the directory is readable. We catch this here
                 # so any readable directory can still be scanned.
                 LOG.critical(
-                    "Can't read directory: %s, reason: %s.",
+                    "Can't read path: %s, reason: %s.",
                     path, exc
                 )
 
     def _del_model(self, filename):
         """
-        Delete model from :attr:`stapled.core.daemon.run.models` in a
-        thread-safe manner, if another thread deleted it, we should ignore the
-        KeyError making this function omnipotent.
+        Delete model from :attr:`stapled.core.daemon.run.models`.
+
+        This is done in a thread-safe manner, if another thread deleted it,
+        we should ignore the KeyError making this function omnipotent.
 
         :param str filename: The filename of the model to forget about.
         """
@@ -220,6 +227,8 @@ class CertFinderThread(threading.Thread):
 
     def _update_cached_certs(self):
         """
+        Check for deleted or changed certificate files.
+
         Loop through the list of files that were already found and check
         whether they were deleted or changed.
 

@@ -9,7 +9,8 @@ This module bootstraps the stapled process by starting threads for:
 
 - 1x :class:`stapled.core.certfinder.CertFinderThread`
 
-  - Finds certificate files in the specified directories at regular intervals.
+  - Finds certificate files in the specified certificate paths at regular
+    intervals.
   - Removes deleted certificates from the context cache in
     :attr:`stapled.core.daemon.run.models`.
   - Add the found certificate to the the parse action queue of the scheduler
@@ -64,35 +65,49 @@ LOG = logging.getLogger(__name__)
 
 class Stapledaemon(object):
 
-    def __init__(self, args):
+    def __init__(self, **kwargs):
         """
         Creates queues and spawns the threads documented above.
         Threads are not started as daemons so this will run indefinitely unless
         the entire process is halted or all threads are killed.
 
-        :param argparse.Namespace args: Parsed CLI arguments
+        :param **dict kwargs: Parsed CLI arguments and configurations.
+        :kwarg list cert_paths: A list of certificate paths to scan for
+            certificates.
+        :kwarg dict|NoneType haproxy_socket_mapping: A mapping of certificate
+            directories and corresponding HAProxy sockets or None.
+        :kwarg list file_extensions: List of file extensions to search for
+            certificates.
+        :kwarg int renewal_threads: Amount of staple renewal threads.
+        :kwarg int refresh_interval: Interval between re-indexing of
+            certificate paths.
+        :kwarg int minimum_validity: Minimum validity of stapled before
+            renewing.
+        :kwarg bool recursive: Recursively scan certificate directories.
+        :kwarg list ignore: List of paths to ignore during indexing of
+            certificate directories.
         """
-        LOG.debug("Started with CLI args: %s", str(args))
-        self.directories = args.directories
-        self.sockets = args.haproxy_sockets
-        self.socket_paths = None
-        if self.sockets:
-            if len(self.directories) != len(self.sockets):
-                raise ValueError("#sockets does not equal #directories")
-            # Make a mapping from directory to socket
-            self.socket_paths = dict(zip(self.directories, self.sockets))
-        self.file_extensions = args.file_extensions.replace(" ", "").split(",")
-        self.renewal_threads = args.renewal_threads
-        self.refresh_interval = args.refresh_interval
-        self.minimum_validity = args.minimum_validity
-        self.recursive_dirs = args.recursive
-        rel_path_re = re.compile(r'^\.+\/')
+        LOG.debug("Started with CLI args: %s", str(kwargs))
+        self.cert_paths = kwargs.pop('cert_paths', None)
+        self.haproxy_socket_mapping = kwargs.pop(
+            'haproxy_socket_mapping', None
+        )
+        self.file_extensions = kwargs.pop('file_extensions')
+        self.file_extensions.replace(" ", "").split(",")
+        self.renewal_threads = kwargs.pop('renewal_threads')
+        self.refresh_interval = kwargs.pop('refresh_interval')
+        self.minimum_validity = kwargs.pop('minimum_validity')
+        self.recursive = kwargs.pop('recursive')
+        self.no_recycle = kwargs.pop('no_recycle')
+
         self.ignore = []
-        if args.ignore is not None:
+        rel_path_re = re.compile(r'^\.+\/')
+        ignore = kwargs.pop('ignore', None)
+        if ignore is not None:
             # Filter out patterns that look like relative paths, e.g.:
             # ./cert.pem and ../certs/*.crt, i.e. starts with one or more
             # ``.`` followed by ``/``.
-            for pattern in args.ignore:
+            for pattern in ignore:
                 if rel_path_re.match(pattern) is not None:
                     LOG.warn(
                         "Pattern %s seems to be a relative path, rather than a"
@@ -102,8 +117,6 @@ class Stapledaemon(object):
                 else:
                     self.ignore.append(pattern)
 
-        self.ignore = args.ignore
-        self.no_recycle = args.no_recycle
         self.model_cache = {}
         self.all_threads = []
         self.stop = False
@@ -123,7 +136,7 @@ class Stapledaemon(object):
         self.scheduler = self.start_scheduler_thread()
 
         # Start proxy adder thread if sockets were supplied
-        if self.socket_paths:
+        if self.haproxy_socket_mapping:
             self.start_staple_adder_thread()
 
         # Start ocsp response gathering threads
@@ -139,16 +152,12 @@ class Stapledaemon(object):
         self.monitor_threads()
 
     def exit_gracefully(self, signum, _frame):
-        """
-        Sets self.stop so the main thread stops
-        """
+        """Set self.stop so the main thread stops."""
         LOG.info("Exiting with signal number %d", signum)
         self.stop = True
 
     def start_scheduler_thread(self):
-        """
-        Spawns a scheduler thread with the appropriate keyword arguments.
-        """
+        """Spawn a scheduler thread with the appropriate keyword arguments."""
         return self.__spawn_thread(
             name="scheduler",
             thread_object=SchedulerThread,
@@ -156,37 +165,30 @@ class Stapledaemon(object):
         )
 
     def start_staple_adder_thread(self):
-        """
-        Spawns a StapleAdder thread, that adds staples to HAProxy, with the
-        appropriate keyword arguments.
-        """
+        """Spawns a StapleAdder thread."""
         return self.__spawn_thread(
             name="proxy-adder",
             thread_object=StapleAdder,
-            socket_paths=self.socket_paths,
+            haproxy_socket_mapping=self.haproxy_socket_mapping,
             scheduler=self.scheduler
         )
 
     def start_finder_thread(self):
-        """
-        Spawns a finder thread with the appropriate keyword arguments.
-        """
+        """Spawn a finder thread."""
         return self.__spawn_thread(
             name="finder",
             thread_object=CertFinderThread,
             models=self.model_cache,
-            directories=self.directories,
+            cert_paths=self.cert_paths,
             refresh_interval=self.refresh_interval,
             file_extensions=self.file_extensions,
             scheduler=self.scheduler,
             ignore=self.ignore,
-            recursive_dirs=self.recursive_dirs
+            recursive=self.recursive
         )
 
     def start_renewer_thread(self, tid):
-        """
-        Spawns a Staple renewer thread with the appropriate keyword arguments.
-        """
+        """Spawn a Staple renewer thread."""
         return self.__spawn_thread(
             name="renewer-{:02d}".format(tid),
             thread_object=StapleRenewerThread,
@@ -195,9 +197,7 @@ class Stapledaemon(object):
         )
 
     def start_parser_thread(self):
-        """
-        Spawns a parser thread with the appropriate keyword arguments.
-        """
+        """Spawn a parser thread ."""
         return self.__spawn_thread(
             name="parser",
             thread_object=CertParserThread,
@@ -209,6 +209,8 @@ class Stapledaemon(object):
 
     def monitor_threads(self):
         """
+        Monitor and manage threads.
+
         Check if any threads have died, respawn them until the
         MAX_RESTART_THREADS limit is reached. Wait for a KeyBoardInterrupt,
         when it comes, tell all threads to stop and wait for them to stop.
@@ -232,7 +234,7 @@ class Stapledaemon(object):
                     self.__spawn_thread(
                         name=thread['name'],
                         thread_object=thread['object'],
-                        restarted=thread['restarted']+1,
+                        restarted=thread['restarted'] + 1,
                         **thread['kwargs']
                     )
                 else:
@@ -260,6 +262,7 @@ class Stapledaemon(object):
     def __spawn_thread(self, name, thread_object, restarted=0, **kwargs):
         """
         Spawns threads based on obejects and registers them in a dictionary.
+
         Also remembers how the thread was started.
 
         :param str name: Name of the thread
