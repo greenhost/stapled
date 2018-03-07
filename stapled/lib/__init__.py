@@ -51,11 +51,15 @@ def find_lib_path_dict():
 
 
 def add_paths():
-    """Add the found libs to the python path so they can be imported."""
+    """
+    Add the found libs to the python path so they can be imported.
+
+    :returns list|NoneType: A list of paths added to sys.path or None.
+    """
     libs = _libs().values()
     if libs:
         for lib in libs:
             sys.path.append(lib)
-        return True
+        return libs
     else:
-        return False
+        return None

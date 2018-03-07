@@ -1,3 +1,15 @@
+stapled (0.5) stretch; urgency=low
+
+ * Improved consistency in source code.
+ * Improved exception handling.
+ * Add an argument that tells stapled to parse a HAProxy config file for
+   sockets and certificate directories.
+ * It is now possible to specify single certificate aside from entire
+   directories.
+ * DEPRECATED: --directories was superseded by --cert-paths. 
+
+ -- Chris Snijder <chris@greenhost.nl> Wed, 7 Mar 2018 16:35:22 +0100
+
 stapled (0.4) stretch; urgency=low
 
  * Improve the stability of the socket communication.

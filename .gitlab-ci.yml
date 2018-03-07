@@ -10,6 +10,7 @@ variables:
   BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
   STRETCH_TEST_CONTAINER: $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
   JESSIE_TEST_CONTAINER: $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
+  GIT_SUBMODULE_STRATEGY: recursive
 
 build:build-container:
   image: docker:latest
@@ -50,8 +51,7 @@ build:compile:
   script:
   - which python3 && $(which python3) --version
   - openssl version
-  - git submodule update --init
-  - pip3 install --user -r requirements.txt
+    - pip3 install --user -r requirements.txt
   - make clean
   - make
   artifacts:
@@ -82,8 +82,7 @@ unit:python2:
   image: python:2.7-stretch
   script:
   - which python && $(which python) --version
-  - git submodule update --init
-  - pip install -r requirements.txt
+    - pip install -r requirements.txt
   - pytest -v
 
 unit:python3:
@@ -91,8 +90,7 @@ unit:python3:
   image: python:3.6-stretch
   script:
   - which python && $(which python) --version
-  - git submodule update --init
-  - pip3 install -r requirements.txt
+    - pip3 install -r requirements.txt
   - pytest -v
 
 test:jessie:python3:
@@ -143,8 +141,7 @@ test:dev-setup:
   script:
   - which python && $(which python) --version
   - openssl version
-  - git submodule update --init
-  - pip3 install -e .
+    - pip3 install -e .
   - ./refresh_testdata.sh
   - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30

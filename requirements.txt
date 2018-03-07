@@ -36,9 +36,3 @@ pylint==1.8.2
 
 # Testing
 pytest==3.4.1
-
-# These are required to be installed for generating documentation
--e ./stapled/lib/oscrypto/
--e ./stapled/lib/asn1crypto/
--e ./stapled/lib/ocspbuilder/
--e ./stapled/lib/certvalidator/
