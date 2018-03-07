@@ -51,7 +51,7 @@ build:compile:
   script:
   - which python3 && $(which python3) --version
   - openssl version
-    - pip3 install --user -r requirements.txt
+  - pip3 install --user -r requirements.txt
   - make clean
   - make
   artifacts:
@@ -82,7 +82,7 @@ unit:python2:
   image: python:2.7-stretch
   script:
   - which python && $(which python) --version
-    - pip install -r requirements.txt
+  - pip install -r requirements.txt
   - pytest -v
 
 unit:python3:
@@ -90,7 +90,7 @@ unit:python3:
   image: python:3.6-stretch
   script:
   - which python && $(which python) --version
-    - pip3 install -r requirements.txt
+  - pip3 install -r requirements.txt
   - pytest -v
 
 test:jessie:python3:
@@ -141,7 +141,7 @@ test:dev-setup:
   script:
   - which python && $(which python) --version
   - openssl version
-    - pip3 install -e .
+  - pip3 install -e .
   - ./refresh_testdata.sh
   - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
