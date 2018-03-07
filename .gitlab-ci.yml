@@ -66,7 +66,7 @@ test:jessie:python2:
   stage: functional-tests
   image: $JESSIE_TEST_CONTAINER
   script:
-  - which python2 && $(which python2) --version
+  - which python && $(which python) --version
   - openssl version
   - dpkg -i ./dist/stapled-py2_*all.deb
   - openssl version
@@ -125,7 +125,7 @@ test:stretch:python3:
   stage: functional-tests
   image: $STRETCH_TEST_CONTAINER
   script:
-  - which python && $(which python) --version
+  - which python3 && $(which python3) --version
   - openssl version
   - apt-get install -y -q ./dist/stapled_*all.deb
   - ./refresh_testdata.sh
@@ -139,7 +139,7 @@ test:dev-setup:
   stage: build-compile
   image: python:3.6-stretch
   script:
-  - which python && $(which python) --version
+  - which python3 && $(which python3) --version
   - openssl version
   - pip3 install -e .
   - ./refresh_testdata.sh
