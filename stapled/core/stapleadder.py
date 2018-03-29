@@ -97,7 +97,7 @@ class StapleAdder(threading.Thread):
         )
         try:
             sock.connect(path)
-        except (FileNotFoundError, PermissionError) as exc:
+        except (OSError, IOError) as exc:
             raise stapled.core.exceptions.SocketError(
                 "Could not initialize StapleAdder with socket {}: {}".format(
                     path,
