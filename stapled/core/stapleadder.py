@@ -125,7 +125,7 @@ class StapleAdder(threading.Thread):
             sock.connect(path)
             result = []
             for command in self.CONNECT_COMMANDS:
-                result.extend(self._send(sock, command)
+                result.extend(self._send(sock, command))
             # Results (index 1) come per path (index 0), we need only results
             result = [res[1] for res in result]
             # Indented and on separate lines or None if an empty list
