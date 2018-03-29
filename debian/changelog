@@ -1,3 +1,12 @@
+stapled (0.6) stretch; urgency=low
+
+ * Improvement: Remove some spaces from log lines.
+ * FIX: Broken exception handling in python 2 version.
+ * FIX: Parsing file extensions incorrectly from config file.
+ * FIX: Opening, re-opening and sending of commands to sockets broken.n
+
+ -- Chris Snijder <chris@greenhost.nl> Thu, 29 Mar 2018 18:46:44 +0200
+
 stapled (0.5) stretch; urgency=low
 
  * Improved consistency in source code.
@@ -6,7 +15,7 @@ stapled (0.5) stretch; urgency=low
    sockets and certificate directories.
  * It is now possible to specify single certificate aside from entire
    directories.
- * DEPRECATED: --directories was superseded by --cert-paths. 
+ * DEPRECATED: --directories was superseded by --cert-paths.
 
  -- Chris Snijder <chris@greenhost.nl> Wed, 7 Mar 2018 16:35:22 +0100
 
