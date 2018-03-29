@@ -44,13 +44,13 @@ from stapled.util.functions import unique
 
 #: :attr:`logging.format` format string for log files and syslog
 LOGFORMAT = (
-    "%(asctime)s [%(levelname)s] %(threadName)+14s/%(name)-16.20s"
+    "%(asctime)s [%(levelname)s] %(threadName)+11s/%(name)-16.20s "
     "%(message)s"
 )
 #: :attr:`logging.format` format string for stdout
 COLOUR_LOGFORMAT = (
     "{msg}%(asctime)s{reset} {lvl}[%(levelname)s]{reset} "
-    "{msg}%(threadName)+14s/%(name)-16.20s %(message)s{reset}"
+    "{msg}%(threadName)+11s/%(name)-16.20s %(message)s{reset}"
 )
 
 TIMESTAMP_FORMAT = "%b %d %H:%M:%S"
