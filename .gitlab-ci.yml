@@ -159,7 +159,7 @@ test:dev-setup:
   - which python3 && $(which python3) --version
   - openssl version
   - pip3 install -e .
-  - ~/refresh_testdata.sh
+  - ./refresh_testdata.sh
   - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls /tmp/testdata/**/chain.pem.ocsp
