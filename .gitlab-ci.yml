@@ -35,7 +35,7 @@ build:test-jessie:
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $JESSIE_TEST_CONTAINER || true
-  - docker build --pull --cache-from $JESSIE_TEST_CONTAINER -t $JESSIE_TEST_CONTAINER ./docker/test-jessie/ ./
+  - docker build --pull --cache-from $JESSIE_TEST_CONTAINER -t $JESSIE_TEST_CONTAINER -f ./docker/test-jessie/Dockerfile ./
   - docker push $JESSIE_TEST_CONTAINER
 
 build:test-stretch:
@@ -48,7 +48,7 @@ build:test-stretch:
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $STRETCH_TEST_CONTAINER || true
-  - docker build --pull --cache-from $STRETCH_TEST_CONTAINER -t $STRETCH_TEST_CONTAINER ./docker/test-stretch/ ./
+  - docker build --pull --cache-from $STRETCH_TEST_CONTAINER -t $STRETCH_TEST_CONTAINER -f ./docker/test-stretch/Dockerfile ./
   - docker push $STRETCH_TEST_CONTAINER
 
 build:compile:
