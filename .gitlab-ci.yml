@@ -126,9 +126,9 @@ test:stretch:python2:
   - which python && $(which python) --version
   - openssl version
   - apt-get install -y -q ./dist/stapled-py2_*all.deb
-  - ./refresh_testdata.sh
   - pwd
   - ls -lah
+  - ./refresh_testdata.sh
   - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls /tmp/testdata/**/chain.pem.ocsp
