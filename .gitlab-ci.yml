@@ -18,7 +18,7 @@ build:build-container:
   - docker:dind
   stage: build-containers
   variables:
-    - GIT_STRATEGY: fetch
+  - GIT_STRATEGY: fetch
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $BUILD_COMPILE_CONTAINER || true
@@ -31,7 +31,7 @@ build:test-jessie:
   - docker:dind
   stage: build-containers
   variables:
-    - GIT_STRATEGY: fetch
+  - GIT_STRATEGY: fetch
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $JESSIE_TEST_CONTAINER || true
@@ -44,7 +44,7 @@ build:test-stretch:
   - docker:dind
   stage: build-containers
   variables:
-    - GIT_STRATEGY: fetch
+  - GIT_STRATEGY: fetch
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $STRETCH_TEST_CONTAINER || true
