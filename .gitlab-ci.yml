@@ -127,8 +127,9 @@ test:stretch:python2:
   - openssl version
   - apt-get install -y -q ./dist/stapled-py2_*all.deb
   - pwd
-  - ls -lah
-  - ./refresh_testdata.sh
+  - ls -lah /
+  - ls -lah ~/
+  - /refresh_testdata.sh
   - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls /tmp/testdata/**/chain.pem.ocsp
@@ -144,7 +145,7 @@ test:stretch:python3:
   - which python3 && $(which python3) --version
   - openssl version
   - apt-get install -y -q ./dist/stapled_*all.deb
-  - ./refresh_testdata.sh
+  - /refresh_testdata.sh
   - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls /tmp/testdata/**/chain.pem.ocsp
@@ -158,7 +159,7 @@ test:dev-setup:
   - which python3 && $(which python3) --version
   - openssl version
   - pip3 install -e .
-  - ./refresh_testdata.sh
+  - ~/refresh_testdata.sh
   - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
   - sleep 30
   - ls /tmp/testdata/**/chain.pem.ocsp
