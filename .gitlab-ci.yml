@@ -27,8 +27,6 @@ build:test-jessie:
   image: docker:latest
   services:
   - docker:dind
-  variables:
-    GIT_STRATEGY: fetch
   stage: build-containers
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
@@ -40,8 +38,6 @@ build:test-stretch:
   image: docker:latest
   services:
   - docker:dind
-  variables:
-    GIT_STRATEGY: fetch
   stage: build-containers
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
