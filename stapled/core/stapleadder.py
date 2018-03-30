@@ -133,7 +133,7 @@ class StapleAdder(threading.Thread):
             LOG.debug("Opened prompt with result: %s", result)
             self.socks[path] = sock
             return sock
-        except (BrokenPipeError, OSError, IOError) as exc:
+        except (OSError, IOError) as exc:
             raise stapled.core.exceptions.SocketError(
                 "Could not initialize StapleAdder with socket {}: {}".format(
                     path,
