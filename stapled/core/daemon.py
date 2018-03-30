@@ -93,7 +93,7 @@ class Stapledaemon(object):
             'haproxy_socket_mapping', None
         )
         self.file_extensions = kwargs.pop('file_extensions')
-        self.file_extensions.replace(" ", "").split(",")
+        self.file_extensions = self.file_extensions.replace(" ", "").split(",")
         self.renewal_threads = kwargs.pop('renewal_threads')
         self.refresh_interval = kwargs.pop('refresh_interval')
         self.minimum_validity = kwargs.pop('minimum_validity')
