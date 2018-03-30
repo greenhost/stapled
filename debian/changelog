@@ -1,3 +1,10 @@
+stapled (0.7) stretch; urgency=low
+
+ * FIX: Multiple cert paths leads to cert path socket mismatch.
+ * FIX: Handle exceptions for non-existent haproxy config files properly.
+
+ -- Chris Snijder <chris@greenhost.nl> Fri, 30 Mar 2018 15:45:05 +0200
+
 stapled (0.6) stretch; urgency=low
 
  * Improvement: Remove some spaces from log lines.
