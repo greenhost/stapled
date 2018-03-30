@@ -28,6 +28,7 @@ import logging
 import fnmatch
 import os
 import stapled
+import errno
 from stapled.core.excepthandler import stapled_except_handle
 from stapled.core.taskcontext import StapleTaskContext
 from stapled.core.certmodel import CertModel
@@ -165,13 +166,15 @@ class CertFinderThread(threading.Thread):
                 dirs = []
                 try:
                     dirs = os.listdir(path)
-                except NotADirectoryError:
+                except (OSError, IOError) as exc:
                     # If a path is actually a file we can still use it..
-                    if os.path.isfile(path):
+                    if exc.errno == errno.ENOTDIR and os.path.isfile(path):
                         LOG.debug("%s may be a single file", path)
                         # This will allow us to use our usual iteration.
                         dirs = [os.path.basename(path)]
                         path = os.path.dirname(path)
+                    else:
+                        raise exc
                 for entry in dirs:
                     entry = os.path.join(path, entry)
                     if os.path.isdir(entry):

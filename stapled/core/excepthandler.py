@@ -35,6 +35,7 @@ from contextlib import contextmanager
 import datetime
 import logging
 import os
+import errno
 import traceback
 import configargparse
 from stapled.core.exceptions import OCSPBadResponse
@@ -150,8 +151,17 @@ def stapled_except_handle(ctx=None):
             "entries",
             err_count, len_ocsp_urls
         )
-    except PermissionError as exc:
-        LOG.critical(exc)
+    except (IOError, OSError) as exc:
+        if exc.errno==errno.EPERM or exc.errno==errno.EACCES:
+            reason = "Permission error"
+        elif exc.errno==errno.ENOENT:
+            reason = "File not found error"
+        elif isinstance(exc, IOError):
+            reason = "I/O Error"
+        else:
+            reason = "OS Error"
+
+        LOG.critical("{}: {}".format(reason, str(exc)))
 
     # the show must go on..
     except Exception as exc:  # pylint: disable=broad-except
