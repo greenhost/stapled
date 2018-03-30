@@ -7,4 +7,5 @@ RUN apt-get install -y -t jessie-backports python-configargparse \
     python3-future
 RUN apt-get install -y openssl ca-certificates python-six python-cffi \
     python3-six python3-cffi
+RUN ls -lah
 ADD ./refresh_testdata.sh ./refresh_testdata.sh
