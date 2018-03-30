@@ -87,7 +87,7 @@ class StapleAdder(threading.Thread):
     def _re_open_socket(self, path):
         """
         Re-open socket located at path, and return the socket.
-        Closes open sockets and wraps appropriate logging arount the
+        Closes open sockets and wraps appropriate logging around the
         ``_open_socket`` method.
 
         :param str path: A valid HAProxy socket path.
