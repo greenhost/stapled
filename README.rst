@@ -2,6 +2,11 @@
     :target: https://code.greenhost.net/open/stapled/commits/master
     :alt: Pipeline Status
 
+.. image:: https://code.greenhost.net/open/stapled/raw/master/stapled_128.png
+    :target: https://stapled.readthedocs.io/en/latest/
+    :alt: Stapled logo
+    :align: left
+
 ===========
 Quick start
 ===========
