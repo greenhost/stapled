@@ -27,6 +27,8 @@ build:test-jessie:
   image: docker:latest
   services:
   - docker:dind
+  variables:
+    GIT_STRATEGY: none
   stage: build-containers
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
@@ -38,6 +40,8 @@ build:test-stretch:
   image: docker:latest
   services:
   - docker:dind
+  variables:
+    GIT_STRATEGY: none
   stage: build-containers
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
@@ -65,6 +69,8 @@ build:compile:
 test:jessie:python2:
   stage: functional-tests
   image: $JESSIE_TEST_CONTAINER
+  variables:
+    GIT_STRATEGY: none
   script:
   - which python && $(which python) --version
   - openssl version
@@ -96,6 +102,8 @@ unit:python3:
 test:jessie:python3:
   stage: functional-tests
   image: $JESSIE_TEST_CONTAINER
+  variables:
+    GIT_STRATEGY: none
   script:
   - which python3 && $(which python3) --version
   - openssl version
@@ -110,6 +118,8 @@ test:jessie:python3:
 test:stretch:python2:
   stage: functional-tests
   image: $STRETCH_TEST_CONTAINER
+  variables:
+    GIT_STRATEGY: none
   script:
   - which python && $(which python) --version
   - openssl version
@@ -124,6 +134,8 @@ test:stretch:python2:
 test:stretch:python3:
   stage: functional-tests
   image: $STRETCH_TEST_CONTAINER
+  variables:
+    GIT_STRATEGY: none
   script:
   - which python3 && $(which python3) --version
   - openssl version
