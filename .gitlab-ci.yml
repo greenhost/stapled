@@ -17,6 +17,8 @@ build:build-container:
   services:
   - docker:dind
   stage: build-containers
+  variables:
+    - GIT_STRATEGY: fetch
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $BUILD_COMPILE_CONTAINER || true
@@ -28,10 +30,12 @@ build:test-jessie:
   services:
   - docker:dind
   stage: build-containers
+  variables:
+    - GIT_STRATEGY: fetch
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $JESSIE_TEST_CONTAINER || true
-  - docker build --pull --cache-from $JESSIE_TEST_CONTAINER -t $JESSIE_TEST_CONTAINER ./docker/test-jessie/
+  - docker build --pull --cache-from $JESSIE_TEST_CONTAINER -t $JESSIE_TEST_CONTAINER ./docker/test-jessie/ ./
   - docker push $JESSIE_TEST_CONTAINER
 
 build:test-stretch:
@@ -39,10 +43,12 @@ build:test-stretch:
   services:
   - docker:dind
   stage: build-containers
+  variables:
+    - GIT_STRATEGY: fetch
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $STRETCH_TEST_CONTAINER || true
-  - docker build --pull --cache-from $STRETCH_TEST_CONTAINER -t $STRETCH_TEST_CONTAINER ./docker/test-stretch/
+  - docker build --pull --cache-from $STRETCH_TEST_CONTAINER -t $STRETCH_TEST_CONTAINER ./docker/test-stretch/ ./
   - docker push $STRETCH_TEST_CONTAINER
 
 build:compile:
