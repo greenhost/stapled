@@ -37,6 +37,7 @@ import daemon
 import stapled
 import stapled.core.daemon
 import stapled.core.excepthandler
+from stapled.core.excepthandler import handle_file_error
 from stapled.util.haproxy import parse_haproxy_config
 from stapled.colourlog import ColourFormatter
 from stapled.version import __version__, __app_name__
@@ -322,9 +323,14 @@ def init():
     haproxy_socket_mapping = dict(zip(arg_cert_paths, arg_haproxy_sockets))
 
     # Parse HAProxy config files.
-    conf_cert_paths, conf_haproxy_sockets = parse_haproxy_config(
-        args.haproxy_config
-    )
+    try:
+        conf_cert_paths, conf_haproxy_sockets = parse_haproxy_config(
+            args.haproxy_config
+        )
+    except (OSError, IOError) as exc:
+        handle_file_error(exc)
+        exit(1)
+
     # Combine the socket and certificate paths of the arguments and config
     # files in the sockets dictionary.
     for i, paths in enumerate(conf_cert_paths):

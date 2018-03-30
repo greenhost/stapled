@@ -152,20 +152,23 @@ def stapled_except_handle(ctx=None):
             err_count, len_ocsp_urls
         )
     except (IOError, OSError) as exc:
-        if exc.errno==errno.EPERM or exc.errno==errno.EACCES:
-            reason = "Permission error"
-        elif exc.errno==errno.ENOENT:
-            reason = "File not found error"
-        elif isinstance(exc, IOError):
-            reason = "I/O Error"
-        else:
-            reason = "OS Error"
-
-        LOG.critical("{}: {}".format(reason, str(exc)))
+        handle_file_error(exc)
 
     # the show must go on..
     except Exception as exc:  # pylint: disable=broad-except
         dump_stack_trace(ctx, exc)
+
+def handle_file_error(exc):
+    if exc.errno==errno.EPERM or exc.errno==errno.EACCES:
+        reason = "Permission error"
+    elif exc.errno==errno.ENOENT:
+        reason = "File not found error"
+    elif isinstance(exc, IOError):
+        reason = "I/O Error"
+    else:
+        reason = "OS Error"
+
+    LOG.critical("{}: {}".format(reason, str(exc)))
 
 
 def delete_ocsp_for_context(ctx):
