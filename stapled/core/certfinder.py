@@ -142,25 +142,26 @@ class CertFinderThread(threading.Thread):
         self._update_cached_certs()
         self._find_new_certs(self.cert_paths)
 
-    def _find_new_certs(self, paths, cert_path=None):
+    def _find_new_certs(self, paths, force_cert_path=None):
         """
         Locate new files, schedule them for parsing.
 
         :param list|tuple paths: Paths to scan for certificates.
-        :param str|Nonetype cert_path: Parent path as specified in the
+        :param str|Nonetype force_cert_path: Parent path as specified in the
             CLI arguments. Necessary to link certificates found in `paths` to
             any configured sockets.
-        :param str|Nonetype cert_path: Certificate path passed as arguments,
-            this will serve as a key to relate Certmodels to certificate paths.
         :raises stapled.core.exceptions.CertFileAccessError: When the
             certificate file can't be accessed.
         """
         for path in paths:
-            if cert_path is None:
+            if force_cert_path:
                 # Keep this value so we know in which directory it was found.
                 # Only keep the highest level, equal to what was supplied as
                 # an argument or in config.
+                cert_path = force_cert_path
+            else:
                 cert_path = path
+
             try:
                 LOG.debug("Scanning path: %s", path)
                 dirs = []
