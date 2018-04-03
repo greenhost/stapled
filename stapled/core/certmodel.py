@@ -22,9 +22,7 @@ import logging
 import binascii
 import datetime
 import certvalidator
-import ocspbuilder
 import asn1crypto
-from oscrypto import asymmetric
 from stapled.core.exceptions import CertFileAccessError
 from stapled.core.exceptions import OCSPBadResponse
 from stapled.core.exceptions import RenewalRequirementMissing
@@ -32,10 +30,6 @@ from stapled.core.exceptions import CertParsingError
 from stapled.core.exceptions import CertValidationError
 from stapled.util.ocsp import OCSPResponseParser
 from stapled.util.functions import pretty_base64
-from stapled.util.cache import cache
-from future.standard_library import hooks
-with hooks():
-    from urllib.parse import urlparse
 
 LOG = logging.getLogger(__name__)
 
@@ -114,7 +108,7 @@ class CertModel(object):
         # from with the `set ssl ocsp-response [data]` command if a staple file
         # did not already exist at start-up, an empty file seems to fix that.
         # https://www.mail-archive.com/haproxy@formilux.org/msg24750.html
-        if len(raw_staple) == 0:
+        if not raw_staple:
             LOG.info("Staple %s is empty, schedule a renewal.", ocsp_file)
             return False
         # Parse the staple
@@ -305,7 +299,7 @@ class CertModel(object):
             # If we did find some CA stuff but not a server certicate, we
             # assume this is a CA root/intermediate file and don't log a
             # critical error.
-            if len(self.intermediates) > 0:
+            if self.intermediates:
                 raise CertParsingError(
                     "Can't find server certificate items for \"{}\". "
                     "Assuming this is a root or intermediate "

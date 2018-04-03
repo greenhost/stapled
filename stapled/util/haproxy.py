@@ -90,6 +90,8 @@ class HAProxyParser(object):
             self.conf_files = (conf_files,)
         else:
             self.conf_files = conf_files
+        self.cert_paths = None
+        self.socket_paths = None
 
     def parse(self):
         """
@@ -98,7 +100,7 @@ class HAProxyParser(object):
         :return tuple: Tuple containing lists of paths and corresponding
             sockets.
         """
-        if not hasattr(self, 'cert_paths'):
+        if self.cert_paths is None:
             self.cert_paths, self.socket_paths = self._parse()
         return (self.cert_paths, self.socket_paths)
 
@@ -143,7 +145,7 @@ class HAProxyParser(object):
         """
         # Make a dictionary with the keys of find_words corresponding with
         # empty array as a place holder.
-        relevant_lines = dict([(word, []) for word in cls.FIND_WORDS.keys()])
+        relevant_lines = dict([(word, []) for word in cls.FIND_WORDS])
         # Now locate the relevant lines in this file and keep the found
         # pattern matches.
         with open(conf_file_path, 'r') as config:

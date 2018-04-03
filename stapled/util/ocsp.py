@@ -4,7 +4,6 @@ This class contains utilities for all things OCSP related.
 """
 from builtins import str
 import datetime
-import asn1crypto
 from stapled.util.functions import base64
 
 
@@ -25,6 +24,9 @@ class OCSPResponseParser(object):
 
     @property
     def base64(self):
+        """
+        Return the staple data in base64 form.
+        """
         return base64(self.raw.dump())
 
     @property

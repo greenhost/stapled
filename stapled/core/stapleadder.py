@@ -192,7 +192,8 @@ class StapleAdder(threading.Thread):
                     )
                 )
 
-    def _send(self, sock, command):
+    @staticmethod
+    def _send(sock, command):
         """
         Send the command through the ``socket`` and handle response.
 

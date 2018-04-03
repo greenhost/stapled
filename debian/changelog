@@ -1,3 +1,12 @@
+stapled (0.8) stretch; urgency=low
+
+ * FIX: Don't delete staple files for invalid certificates, instead zero the
+        file so HAProxy will still serve staples once the certificates are
+        valid again.
+ * Improved documentation and applied stricter coding style standards.
+
+ -- Chris Snijder <chris@greenhost.nl> Tue, 3 Apr 2018 16:57:35 +0200
+
 stapled (0.7) stretch; urgency=low
 
  * FIX: Multiple cert paths leads to cert path socket mismatch.
