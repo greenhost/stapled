@@ -48,7 +48,7 @@ class CertParsingError(Exception):
         :param str msg: Exception message.
         :kwarg log_level: Python logging log level, default: logging.CRITICAL
         """
-        self.log_level = kwargs.get('log_level', CRITICAL)
+        self.log_level = kwargs.pop('log_level', CRITICAL)
         super(CertParsingError, self).__init__(msg, *args, **kwargs)
 
 
