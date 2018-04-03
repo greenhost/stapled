@@ -152,7 +152,8 @@ def stapled_except_handle(ctx=None):
             err_count, len_ocsp_urls
         )
     except (IOError, OSError) as exc:
-        handle_file_error(exc)
+        LOG.critical(handle_file_error(exc))
+
 
     # the show must go on..
     except Exception as exc:  # pylint: disable=broad-except
@@ -166,6 +167,7 @@ def handle_file_error(exc):
     Python 2.7.x yet. This won't be required after we remove Python 2.7.x
     support.
     :param Exception exc: OSError or IOError to handle logging for.
+    :return str: Reason for OSError/IOError.
     """
     if exc.errno == errno.EPERM or exc.errno == errno.EACCES:
         reason = "Permission error"
@@ -175,8 +177,7 @@ def handle_file_error(exc):
         reason = "I/O Error"
     else:
         reason = "OS Error"
-
-    LOG.critical("%s: %s", reason, str(exc))
+    return "{}: {}".format(reason, str(exc))
 
 
 def delete_ocsp_for_context(ctx):
@@ -192,10 +193,11 @@ def delete_ocsp_for_context(ctx):
         ocsp_file = "{}.ocsp".format(ctx.model.filename)
         with open(ocsp_file, 'w') as ocsp_file_obj:
             ocsp_file_obj.write("")
-    except (IOError, OSError):
+    except (IOError, OSError) as exc:
         LOG.debug(
-            "Can't delete OCSP staple %s, maybe it doesn't exist.",
-            ocsp_file
+            "Can't replace OCSP staple \"%s\" by an empty stub, reason: %s",
+            ocsp_file,
+            handle_file_error(exc)
         )
 
 

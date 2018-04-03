@@ -328,7 +328,7 @@ def init():
             args.haproxy_config
         )
     except (OSError, IOError) as exc:
-        handle_file_error(exc)
+        logger.critical(handle_file_error(exc))
         exit(1)
 
     # Combine the socket and certificate paths of the arguments and config
