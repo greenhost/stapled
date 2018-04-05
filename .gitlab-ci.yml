@@ -7,49 +7,52 @@ stages:
 variables:
   DOCKER_DRIVER: overlay2
   DOCKER_FILES_URL: docker.greenhost.net/open/stapled
-  BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-stretch:$CI_COMMIT_REF_NAME
-  STRETCH_TEST_CONTAINER: $DOCKER_FILES_URL/test-stretch:$CI_COMMIT_REF_NAME
-  JESSIE_TEST_CONTAINER: $DOCKER_FILES_URL/test-jessie:$CI_COMMIT_REF_NAME
+  BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-stretch
+  STRETCH_TEST_CONTAINER: $DOCKER_FILES_URL/test-stretch
+  JESSIE_TEST_CONTAINER: $DOCKER_FILES_URL/test-jessie
   GIT_SUBMODULE_STRATEGY: recursive
 
 build:build-container:
   image: docker:latest
   services:
-  - docker:dind
+  - docker:dind:latest
   stage: build-containers
   variables:
     GIT_STRATEGY: fetch
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $BUILD_COMPILE_CONTAINER || true
-  - docker build --pull --cache-from $BUILD_COMPILE_CONTAINER -t $BUILD_COMPILE_CONTAINER -f ./docker/build-stretch/Dockerfile ./
-  - docker push $BUILD_COMPILE_CONTAINER
+  - docker build --cache-from $CONTAINER_IMAGE:latest --pull --cache-from $BUILD_COMPILE_CONTAINER:latest -t $BUILD_COMPILE_CONTAINER:$CI_BUILD_REF -t $BUILD_COMPILE_CONTAINER:latest -f ./docker/build-stretch/Dockerfile ./
+  - docker push $BUILD_COMPILE_CONTAINER:$CI_BUILD_REF
+  - docker push $BUILD_COMPILE_CONTAINER:latest
 
 build:test-jessie:
   image: docker:latest
   services:
-  - docker:dind
+  - docker:dind:latest
   stage: build-containers
   variables:
     GIT_STRATEGY: fetch
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $JESSIE_TEST_CONTAINER || true
-  - docker build --pull --cache-from $JESSIE_TEST_CONTAINER -t $JESSIE_TEST_CONTAINER -f ./docker/test-jessie/Dockerfile ./
-  - docker push $JESSIE_TEST_CONTAINER
+  - docker build --cache-from $CONTAINER_IMAGE:latest --pull --cache-from $JESSIE_TEST_CONTAINER:latest -t $JESSIE_TEST_CONTAINER:$CI_BUILD_REF -t $JESSIE_TEST_CONTAINER:latest -f ./docker/build-stretch/Dockerfile ./
+  - docker push $JESSIE_TEST_CONTAINER:$CI_BUILD_REF
+  - docker push $JESSIE_TEST_CONTAINER:latest
 
 build:test-stretch:
   image: docker:latest
   services:
-  - docker:dind
+  - docker:dind:latest
   stage: build-containers
   variables:
    GIT_STRATEGY: fetch
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $STRETCH_TEST_CONTAINER || true
-  - docker build --pull --cache-from $STRETCH_TEST_CONTAINER -t $STRETCH_TEST_CONTAINER -f ./docker/test-stretch/Dockerfile ./
-  - docker push $STRETCH_TEST_CONTAINER
+  - docker build --cache-from $CONTAINER_IMAGE:latest --pull --cache-from $STRETCH_TEST_CONTAINER:latest -t $STRETCH_TEST_CONTAINER:$CI_BUILD_REF -t $STRETCH_TEST_CONTAINER:latest -f ./docker/build-stretch/Dockerfile ./
+  - docker push $STRETCH_TEST_CONTAINER:$CI_BUILD_REF
+  - docker push $STRETCH_TEST_CONTAINER:latest
 
 build:compile:
   stage: build-compile
