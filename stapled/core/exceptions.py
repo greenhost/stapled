@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from logging import CRITICAL
 """
 This module holds the application specific exceptions.
 """
+from logging import CRITICAL
 
 
 class OCSPBadResponse(Exception):
@@ -41,14 +41,14 @@ class CertFileAccessError(Exception):
 class CertParsingError(Exception):
     """Raised when something went wrong while parsing the certificate file."""
 
-    def __init__(self, msg, log_level=CRITICAL, *args, **kwargs):
+    def __init__(self, msg, *args, **kwargs):
         """
         Add a critical flag to init.
 
         :param str msg: Exception message.
-        :param bool critical: Should this cause a critical log entry?
+        :kwarg log_level: Python logging log level, default: logging.CRITICAL
         """
-        self.log_level = log_level
+        self.log_level = kwargs.pop('log_level', CRITICAL)
         super(CertParsingError, self).__init__(msg, *args, **kwargs)
 
 

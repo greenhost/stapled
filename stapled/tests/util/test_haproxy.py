@@ -1,3 +1,11 @@
+"""
+Test HAProxy config file parsing functions.
+"""
+
+# pylint: disable=no-self-use
+# pylint: disable=invalid-name
+# pylint: disable=invalid-name
+
 import pytest
 from stapled.util.haproxy import parse_haproxy_config
 
@@ -79,8 +87,10 @@ TEST_FILES = [
 ]
 
 
-class TestParseHaproxyConfig(object):
-    @pytest.mark.parametrize("files,expected", TEST_FILES)
-    def test_files(self, files, expected):
-        parsed = parse_haproxy_config(files)
-        assert parsed == expected
+@pytest.mark.parametrize("files,expected", TEST_FILES)
+def test_files(files, expected):
+    """
+    Test many valid config files and see if the expected values are returned.
+    """
+    parsed = parse_haproxy_config(files)
+    assert parsed == expected

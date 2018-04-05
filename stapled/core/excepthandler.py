@@ -37,7 +37,7 @@ import logging
 import os
 import errno
 import traceback
-import configargparse
+from future.standard_library import hooks
 from stapled.core.exceptions import OCSPBadResponse
 from stapled.core.exceptions import RenewalRequirementMissing
 from stapled.core.exceptions import CertFileAccessError
@@ -45,14 +45,14 @@ from stapled.core.exceptions import CertParsingError
 from stapled.core.exceptions import CertValidationError
 from stapled.core.exceptions import StapleAdderBadResponse
 from stapled.core.exceptions import SocketError
-from future.standard_library import hooks
+
 with hooks():
     from urllib.error import URLError
 try:
     _ = BrokenPipeError
 except NameError:
     import socket
-    BrokenPipeError = socket.error
+    BrokenPipeError = socket.error  #noqa
 
 LOG = logging.getLogger(__name__)
 
@@ -152,23 +152,32 @@ def stapled_except_handle(ctx=None):
             err_count, len_ocsp_urls
         )
     except (IOError, OSError) as exc:
-        handle_file_error(exc)
+        LOG.critical(handle_file_error(exc))
+
 
     # the show must go on..
     except Exception as exc:  # pylint: disable=broad-except
         dump_stack_trace(ctx, exc)
 
 def handle_file_error(exc):
-    if exc.errno==errno.EPERM or exc.errno==errno.EACCES:
+    """
+    Wrapper for handling IOError and OSError logging..
+
+    Can't use FileNotFoundError and PermissionError because they don't exist in
+    Python 2.7.x yet. This won't be required after we remove Python 2.7.x
+    support.
+    :param Exception exc: OSError or IOError to handle logging for.
+    :return str: Reason for OSError/IOError.
+    """
+    if exc.errno == errno.EPERM or exc.errno == errno.EACCES:
         reason = "Permission error"
-    elif exc.errno==errno.ENOENT:
+    elif exc.errno == errno.ENOENT:
         reason = "File not found error"
     elif isinstance(exc, IOError):
         reason = "I/O Error"
     else:
         reason = "OS Error"
-
-    LOG.critical("{}: {}".format(reason, str(exc)))
+    return "{}: {}".format(reason, str(exc))
 
 
 def delete_ocsp_for_context(ctx):
@@ -179,14 +188,16 @@ def delete_ocsp_for_context(ctx):
     .. TODO:: Check that HAProxy doesn't cache this, it probably does, we need
         to be able to tell it not to remember it.
     """
-    LOG.info("Deleting any OCSP staple: \"%s.ocsp\" if it exists.", ctx.model)
+    LOG.info("Zero-ing any OCSP staple: \"%s.ocsp\" if it exists.", ctx.model)
     try:
         ocsp_file = "{}.ocsp".format(ctx.model.filename)
-        os.remove(ocsp_file)
-    except (IOError, OSError):
+        with open(ocsp_file, 'w') as ocsp_file_obj:
+            ocsp_file_obj.write("")
+    except (IOError, OSError) as exc:
         LOG.debug(
-            "Can't delete OCSP staple %s, maybe it doesn't exist.",
-            ocsp_file
+            "Can't replace OCSP staple \"%s\" by an empty stub, reason: %s",
+            ocsp_file,
+            handle_file_error(exc)
         )
 
 

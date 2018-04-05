@@ -27,8 +27,8 @@ import time
 import logging
 import fnmatch
 import os
-import stapled
 import errno
+import stapled
 from stapled.core.excepthandler import stapled_except_handle
 from stapled.core.taskcontext import StapleTaskContext
 from stapled.core.certmodel import CertModel
@@ -293,7 +293,7 @@ class CertFinderThread(threading.Thread):
         for pattern in self.ignore:
             # Strip spaces, check if length still greater than 0
             pattern = pattern.strip()
-            if len(pattern) == 0:
+            if not pattern:
                 continue
             # If pattern starts with / it is absolute, do nothing, if not, add
             # ``**`` to make fnmatch match any parent directory.

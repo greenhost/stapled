@@ -5,8 +5,8 @@ certificate models that consist of parsed certificates. It then generates an
 OCSP request and sends it to the OCSP server(s) that is/are found in the
 certificate and saves both the request and the response in the model. It also
 generates a file containing the respone (the OCSP staple) and creates a new
-:class:`stapled.core.taskcontext.StapleTaskContext` to schedule a renewal before
-the staple expires. Optionally creates a
+:class:`stapled.core.taskcontext.StapleTaskContext` to schedule a renewal
+before the staple expires. Optionally creates a
 :class:`stapled.core.taskcontext.StapleTaskContext` task context for the
 :class:`stapled.core.oscpadder.StapleAdder` and schedules it to be run ASAP.
 """
@@ -39,8 +39,9 @@ class StapleRenewerThread(threading.Thread):
         :kwarg int minimum_validity: The amount of seconds the OCSP staple is
             still valid for, before starting to attempt to request a new OCSP
             staple **(required)**.
-        :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler object
-            where we can get tasks from and add new tasks to. **(required)**.
+        :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler
+            object where we can get tasks from and add new tasks to.
+            **(required)**.
         """
         self.stop = False
         self.minimum_validity = kwargs.pop('minimum_validity', None)

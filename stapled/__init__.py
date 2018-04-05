@@ -9,10 +9,8 @@ import os
 from stapled.version import __version__, __app_name__
 from stapled.lib import add_paths
 
-if add_paths():
-    LOCAL_LIB_MODE = True
-else:
-    LOCAL_LIB_MODE = False
+#: If local libs are in use this constant will be ``True``
+LOCAL_LIB_MODE = bool(add_paths())
 
 #: The extensions the daemon will try to parse as certificate files
 FILE_EXTENSIONS_DEFAULT = 'crt,pem,cer'
