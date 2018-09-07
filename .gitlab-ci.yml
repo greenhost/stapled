@@ -39,7 +39,7 @@ build:test-stretch:
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $STRETCH_TEST_CONTAINER || true
-  - docker build --cache-from $CONTAINER_IMAGE:latest --pull --cache-from $STRETCH_TEST_CONTAINER:latest -t $STRETCH_TEST_CONTAINER:$CI_BUILD_REF -t $STRETCH_TEST_CONTAINER:latest -f ./docker/build-stretch/Dockerfile ./
+  - docker build --cache-from $CONTAINER_IMAGE:latest --pull --cache-from $STRETCH_TEST_CONTAINER:latest -t $STRETCH_TEST_CONTAINER:$CI_BUILD_REF -t $STRETCH_TEST_CONTAINER:latest -f ./docker/test-stretch/Dockerfile ./
   - docker push $STRETCH_TEST_CONTAINER:$CI_BUILD_REF
   - docker push $STRETCH_TEST_CONTAINER:latest
 
@@ -68,7 +68,7 @@ unit:python3:
   script:
   - git submodule sync --recursive
   - git submodule update --init --recursive
-  - which python && $(which python) --version
+  - which python3 && $(which python3) --version
   - pip3 install -r requirements.txt
   - pytest -v
 
