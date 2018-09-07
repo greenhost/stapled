@@ -15,7 +15,6 @@ variables:
   # https://gitlab.com/gitlab-org/gitlab-runner/issues/2148
   # Adding old fashion before_script below.
   # GIT_SUBMODULE_STRATEGY: recursive
-  GIT_SUBMODULE_STRATEGY: normal
 
 before_script:
   - git submodule sync --recursive
