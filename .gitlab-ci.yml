@@ -13,9 +13,9 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 build:build-container:
-  image: docker:test
+  image: docker:latest
   services:
-  - docker:test-dind
+  - docker:latest-dind
   stage: build-containers
   variables:
     GIT_STRATEGY: fetch
@@ -27,7 +27,7 @@ build:build-container:
   - docker push $BUILD_COMPILE_CONTAINER:latest
 
 build:test-jessie:
-  image: docker:test
+  image: docker:latest
   services:
   - docker:dind:latest
   stage: build-containers
@@ -41,7 +41,7 @@ build:test-jessie:
   - docker push $JESSIE_TEST_CONTAINER:latest
 
 build:test-stretch:
-  image: docker:test
+  image: docker:latest
   services:
   - docker:dind:latest
   stage: build-containers
