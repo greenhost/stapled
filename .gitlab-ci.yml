@@ -99,5 +99,5 @@ source:dev-setup:
   - pip3 install -e .
   - ./refresh_testdata.sh
   - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 30
+  - sleep 15
   - ls /tmp/testdata/**/chain.pem.ocsp
