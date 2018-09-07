@@ -86,7 +86,7 @@ test:stretch:
   - sleep 30
   - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
-  - build:test-container
+  - build:package
 
 source:dev-setup:
   stage: source-tests
