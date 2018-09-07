@@ -25,7 +25,7 @@ Read the full documentation on
 System requirements
 ===================
 
-This application requires **Python 3.3+** or **Python 2.7.9** and an installed
+This application requires **Python 3.3+** and an installed
 version of **PIP** for the Python version you are using. It is also convenient
 to have ``virtualenv`` installed so you can make a separate environment for
 stapled's dependencies.
@@ -111,21 +111,17 @@ Build locally
 Assuming you have the following packages installed on a debian based system:
 
 - build-essential
-- python-cffi
 - python3-cffi
 - libffi-dev
-- python-all
 - python3-all
-- python-dev
 - python3-dev
-- python-setuptools
 - python3-setuptools
-- python-pip
+- python-pip3
 - rpm
 - tar, gzip & bzip2
 - git
 - debhelper
-- stdeb (``pip install --user stdeb``)
+- stdeb (``pip3 install --user stdeb``)
 
 Or the equivalents of these on another distribution. You can build the packages
 by running one or more of the following ``make`` commands.

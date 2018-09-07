@@ -9,7 +9,6 @@ import re
 import time
 import collections
 import os
-from six.moves import input
 
 try:
     from stapled.version import __version__, __app_name__, __debian_version__
@@ -17,12 +16,6 @@ except ImportError as exc:
     __version__ = None
     __app_name__ = None
     __debian_version__ = None
-
-# For Python2.7 compatibility
-try:
-    FileNotFoundError
-except NameError:
-    FileNotFoundError = IOError
 
 
 class NeedInputException(Exception):
@@ -383,7 +376,7 @@ class GitVersion(object):
             log = log_str.format(
                 app_name=self.app_name,
                 version=str(self),
-                deb_os_version=self.deb_os_version,  # jessie, stretch, etc.
+                deb_os_version=self.deb_os_version,  # stretch, sid.
                 log=log,
                 name=name,
                 email=email,

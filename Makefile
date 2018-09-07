@@ -29,12 +29,12 @@ rpm:
 .PHONY: deb-src
 deb-src:
 	python3 setup.py --command-packages=stdeb.command sdist_dsc \
-	 				--with-python2=True --with-python3=True
+	 				--with-python3=True
 
 .PHONY: deb
 deb:
 	python3 setup.py --command-packages=stdeb.command sdist_dsc \
-	 				--with-python2=True --with-python3=True bdist_deb
+	 				--with-python3=True bdist_deb
 	@echo "Moving binary packages from 'deb_dist' to 'dist'."
 	mkdir -p dist/
 	mv deb_dist/stapled*.deb dist/
