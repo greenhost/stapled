@@ -21,7 +21,7 @@ before_script:
   - git submodule update --init --recursive
 
 build:build-container:
-  image: docker:stable
+  image: docker:stable-git
   services:
   - docker:stable-dind
   stage: build-containers
@@ -37,7 +37,7 @@ build:build-container:
 
 
 build:test-jessie:
-  image: docker:stable
+  image: docker:stable-git
   services:
   - docker:stable-dind
   stage: build-containers
@@ -51,7 +51,7 @@ build:test-jessie:
   - docker push $JESSIE_TEST_CONTAINER:latest
 
 build:test-stretch:
-  image: docker:stable
+  image: docker:stable-git
   services:
   - docker:stable-dind
   stage: build-containers
