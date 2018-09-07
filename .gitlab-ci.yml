@@ -10,7 +10,16 @@ variables:
   BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-stretch
   STRETCH_TEST_CONTAINER: $DOCKER_FILES_URL/test-stretch
   JESSIE_TEST_CONTAINER: $DOCKER_FILES_URL/test-jessie
-  GIT_SUBMODULE_STRATEGY: recursive
+  # GL bug causes recursive strategy to fail for LE certificates
+  # GH recently started using LE certificates:
+  # https://gitlab.com/gitlab-org/gitlab-runner/issues/2148
+  # Adding old fashion before_script below.
+  # GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_STRATEGY: normal
+
+before_script:
+  - git submodule sync --recursive
+  - git submodule update --init --recursive
 
 build:build-container:
   image: docker:stable
@@ -25,6 +34,8 @@ build:build-container:
   - docker build --cache-from $CONTAINER_IMAGE:latest --pull --cache-from $BUILD_COMPILE_CONTAINER:latest -t $BUILD_COMPILE_CONTAINER:$CI_BUILD_REF -t $BUILD_COMPILE_CONTAINER:latest -f ./docker/build-stretch/Dockerfile ./
   - docker push $BUILD_COMPILE_CONTAINER:$CI_BUILD_REF
   - docker push $BUILD_COMPILE_CONTAINER:latest
+
+
 
 build:test-jessie:
   image: docker:stable
