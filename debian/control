@@ -2,23 +2,12 @@
  Maintainer: Greenhost BV <info@greenhost.nl>
  Section: Network
  Priority: optional
- Build-Depends: python-setuptools (>= 0.6b3), python3-setuptools, python-all (>= 2.6.6-3), python3-all, debhelper (>= 7.4.3)
+ Build-Depends: python3-setuptools, python3-all, debhelper (>= 7.4.3)
  Standards-Version: 3.9.1
-
-
-
- Package: stapled-py2
- Architecture: all
- Depends: ${misc:Depends}, ${python:Depends}, python-daemon, python-certvalidator, python-ocspbuilder, python-oscrypto, python-asn1crypto, python-future, python-configargparse, python-six
- Provides: stapled
- Description: Daemon for updating OCSP staples
-  Update OCSP staples from CA's and store the result so they can be served to clients.
-
-
 
  Package: stapled
  Architecture: all
- Depends: ${misc:Depends}, ${python3:Depends}, python3-daemon, python3-certvalidator, python3-ocspbuilder, python3-oscrypto, python3-asn1crypto, python-future, python3-configargparse, python3-six
+ Depends: ${misc:Depends}, ${python3:Depends}, python3-daemon, python3-certvalidator, python3-ocspbuilder, python3-oscrypto, python3-asn1crypto, python3-configargparse
  Provides: stapled
  Description: Daemon for updating OCSP staples
   Update OCSP staples from CA's and store the result so they can be served to clients.

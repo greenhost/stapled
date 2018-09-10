@@ -37,7 +37,6 @@ import logging
 import os
 import errno
 import traceback
-from future.standard_library import hooks
 from stapled.core.exceptions import OCSPBadResponse
 from stapled.core.exceptions import RenewalRequirementMissing
 from stapled.core.exceptions import CertFileAccessError
@@ -45,14 +44,7 @@ from stapled.core.exceptions import CertParsingError
 from stapled.core.exceptions import CertValidationError
 from stapled.core.exceptions import StapleAdderBadResponse
 from stapled.core.exceptions import SocketError
-
-with hooks():
-    from urllib.error import URLError
-try:
-    _ = BrokenPipeError
-except NameError:
-    import socket
-    BrokenPipeError = socket.error  #noqa
+from urllib.error import URLError
 
 LOG = logging.getLogger(__name__)
 

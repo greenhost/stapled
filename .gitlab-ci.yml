@@ -1,7 +1,7 @@
 stages:
+- source-tests
 - build-containers
-- unit-tests
-- build-compile
+- packaging
 - functional-tests
 
 variables:
@@ -9,14 +9,13 @@ variables:
   DOCKER_FILES_URL: docker.greenhost.net/open/stapled
   BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-stretch
   STRETCH_TEST_CONTAINER: $DOCKER_FILES_URL/test-stretch
-  JESSIE_TEST_CONTAINER: $DOCKER_FILES_URL/test-jessie
   # GL bug causes recursive strategy to fail for LE certificates
   # GH recently started using LE certificates:
   # https://gitlab.com/gitlab-org/gitlab-runner/issues/2148
   # Adding old fashion before_script below.
   # GIT_SUBMODULE_STRATEGY: recursive
 
-build:build-container:
+build:compile-container:
   image: docker:stable-git
   services:
   - docker:stable-dind
@@ -30,38 +29,22 @@ build:build-container:
   - docker push $BUILD_COMPILE_CONTAINER:$CI_BUILD_REF
   - docker push $BUILD_COMPILE_CONTAINER:latest
 
-
-
-build:test-jessie:
+build:test-container:
+  stage: build-containers
   image: docker:stable-git
   services:
   - docker:stable-dind
-  stage: build-containers
-  variables:
-    GIT_STRATEGY: fetch
-  script:
-  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
-  - docker pull $JESSIE_TEST_CONTAINER || true
-  - docker build --cache-from $CONTAINER_IMAGE:latest --pull --cache-from $JESSIE_TEST_CONTAINER:latest -t $JESSIE_TEST_CONTAINER:$CI_BUILD_REF -t $JESSIE_TEST_CONTAINER:latest -f ./docker/build-stretch/Dockerfile ./
-  - docker push $JESSIE_TEST_CONTAINER:$CI_BUILD_REF
-  - docker push $JESSIE_TEST_CONTAINER:latest
-
-build:test-stretch:
-  image: docker:stable-git
-  services:
-  - docker:stable-dind
-  stage: build-containers
   variables:
    GIT_STRATEGY: fetch
   script:
   - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
   - docker pull $STRETCH_TEST_CONTAINER || true
-  - docker build --cache-from $CONTAINER_IMAGE:latest --pull --cache-from $STRETCH_TEST_CONTAINER:latest -t $STRETCH_TEST_CONTAINER:$CI_BUILD_REF -t $STRETCH_TEST_CONTAINER:latest -f ./docker/build-stretch/Dockerfile ./
+  - docker build --cache-from $CONTAINER_IMAGE:latest --pull --cache-from $STRETCH_TEST_CONTAINER:latest -t $STRETCH_TEST_CONTAINER:$CI_BUILD_REF -t $STRETCH_TEST_CONTAINER:latest -f ./docker/test-stretch/Dockerfile ./
   - docker push $STRETCH_TEST_CONTAINER:$CI_BUILD_REF
   - docker push $STRETCH_TEST_CONTAINER:latest
 
-build:compile:
-  stage: build-compile
+build:package:
+  stage: packaging
   image: $BUILD_COMPILE_CONTAINER
   script:
   - git submodule sync --recursive
@@ -79,77 +62,17 @@ build:compile:
     - dist/stapled*.tar.bz2
     - dist/stapled*.deb
 
-unit:python2:
-  stage: unit-tests
-  image: python:2.7-stretch
-  script:
-  - git submodule sync --recursive
-  - git submodule update --init --recursive
-  - which python && $(which python) --version
-  - pip install -r requirements.txt
-  - pytest -v
-
-unit:python3:
-  stage: unit-tests
+source:unit:
+  stage: source-tests
   image: python:3.6-stretch
   script:
   - git submodule sync --recursive
   - git submodule update --init --recursive
-  - which python && $(which python) --version
+  - which python3 && $(which python3) --version
   - pip3 install -r requirements.txt
   - pytest -v
 
-test:jessie:python2:
-  stage: functional-tests
-  image: $JESSIE_TEST_CONTAINER
-  variables:
-    GIT_STRATEGY: none
-  script:
-  - which python && $(which python) --version
-  - openssl version
-  - dpkg -i ./dist/stapled-py2_*all.deb
-  - openssl version
-  - /refresh_testdata.sh
-  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 30
-  - ls /tmp/testdata/**/chain.pem.ocsp
-  dependencies:
-  - build:compile
-
-test:jessie:python3:
-  stage: functional-tests
-  image: $JESSIE_TEST_CONTAINER
-  variables:
-    GIT_STRATEGY: none
-  script:
-  - which python3 && $(which python3) --version
-  - openssl version
-  - dpkg -i ./dist/stapled_*all.deb
-  - /refresh_testdata.sh
-  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 30
-  - ls /tmp/testdata/**/chain.pem.ocsp
-  dependencies:
-  - build:compile
-
-test:stretch:python2:
-  stage: functional-tests
-  image: $STRETCH_TEST_CONTAINER
-  variables:
-    GIT_STRATEGY: none
-  script:
-  - which python && $(which python) --version
-  - openssl version
-  - apt-get install -y -q ./dist/stapled-py2_*all.deb
-  - pwd
-  - /refresh_testdata.sh
-  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 30
-  - ls /tmp/testdata/**/chain.pem.ocsp
-  dependencies:
-  - build:compile
-
-test:stretch:python3:
+test:stretch:
   stage: functional-tests
   image: $STRETCH_TEST_CONTAINER
   variables:
@@ -160,13 +83,13 @@ test:stretch:python3:
   - apt-get install -y -q ./dist/stapled_*all.deb
   - /refresh_testdata.sh
   - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 30
+  - sleep 15
   - ls /tmp/testdata/**/chain.pem.ocsp
   dependencies:
-  - build:compile
+  - build:package
 
-test:dev-setup:
-  stage: build-compile
+source:dev-setup:
+  stage: source-tests
   image: python:3.6-stretch
   script:
   - git submodule sync --recursive
@@ -176,5 +99,5 @@ test:dev-setup:
   - pip3 install -e .
   - ./refresh_testdata.sh
   - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 30
+  - sleep 15
   - ls /tmp/testdata/**/chain.pem.ocsp

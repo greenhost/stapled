@@ -11,11 +11,6 @@ from io import StringIO
 from stapled.core.excepthandler import stapled_except_handle
 import stapled.core.exceptions
 
-try:
-    _ = BrokenPipeError
-except NameError:
-    BrokenPipeError = socket.error
-
 LOG = logging.getLogger(__name__)
 SOCKET_BUFFER_SIZE = 1024
 SOCKET_TIMEOUT = 86400

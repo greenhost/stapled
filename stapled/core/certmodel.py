@@ -166,8 +166,7 @@ class CertModel(object):
         :raises OCSPBadResponse: Response is empty, invalid or the status is
             not "good".
         :raises urllib.error.URLError: An OCSP url can't be opened (Python3).
-        :raises urllib2.URLError: An OCSP url can't be opened (Python2).
-        :raises: urllib.error.URLError/urllib2.URLError - when a URL/HTTP error
+        :raises: urllib.error.URLError - when a URL/HTTP error
             occurs
         :raises:
             socket.error - when a socket error occurs
