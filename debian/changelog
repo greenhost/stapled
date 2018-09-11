@@ -1,3 +1,11 @@
+stapled (1.0) stretch; urgency=low
+
+ * This version removes support for debian Jessie due to the shutdown of
+   jessie-backports.
+ * Removes Python 2 support, Python 3 should be sufficiently propagated.
+
+ -- Chris <chris@greenhost.nl> Tue, 11 Sep 2018 15:51:22 +0200
+
 stapled (0.8) stretch; urgency=low
 
  * FIX: Don't delete staple files for invalid certificates, instead zero the
