@@ -116,7 +116,7 @@ Assuming you have the following packages installed on a debian based system:
 - python3-all
 - python3-dev
 - python3-setuptools
-- python-pip3
+- python3-pip
 - rpm
 - tar, gzip & bzip2
 - git
