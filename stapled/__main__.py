@@ -225,10 +225,10 @@ def get_cli_arg_parser():
         )
     )
     parser.add(
-        '--haproxy-socket-timeout',
+        '--haproxy-socket-keepalive',
         type=int,
         default=3600,
-        metavar="TIMEOUT <seconds, minimum: 10>",
+        metavar="KEEP-ALIVE <seconds, minimum: 10>",
         help=(
             "HAProxy sockets are kept open for performance reasons, you can "
             "set the amount of seconds sockets should remain open "
@@ -346,7 +346,7 @@ def init():
     daemon_kwargs = dict(
         cert_paths=cert_paths,
         haproxy_socket_mapping=haproxy_socket_mapping,
-        haproxy_socket_timeout=args.haproxy_socket_timeout,
+        haproxy_socket_keepalive=args.haproxy_socket_keepalive,
         file_extensions=args.file_extensions,
         renewal_threads=args.renewal_threads,
         refresh_interval=args.refresh_interval,
@@ -501,9 +501,9 @@ def __get_validated_args():
     parser = get_cli_arg_parser()
     args = parser.parse_args()
     try:
-        if args.haproxy_socket_timeout < 10:
+        if args.haproxy_socket_keepalive < 10:
             raise ArgumentError(
-                "`--haproxy-socket-timeout` should be higher than 10."
+                "`--haproxy-socket-keepalive` should be higher than 10."
             )
     except ArgumentError as exc:
         parser.print_usage(sys.stderr)

@@ -1,7 +1,8 @@
 stapled (1.1) stretch; urgency=low
 
- * Change haproxy socket connection timeout to new default: 3600 seconds.
- * Add --haproxy-socket-timeout command line argument.
+ * Change haproxy socket connection keep-alive (formerly "timeout") to new
+   default: 3600 seconds.
+ * Add --haproxy-socket-keepalive command line argument.
 
  -- Chris <chris@greenhost.nl> Mon, 22 Oct 2018 18:34:15 +0200
 
