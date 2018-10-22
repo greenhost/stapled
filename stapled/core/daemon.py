@@ -92,6 +92,7 @@ class Stapledaemon(object):
         self.haproxy_socket_mapping = kwargs.pop(
             'haproxy_socket_mapping', None
         )
+        self.haproxy_socket_timeout = kwargs.pop('haproxy_socket_timeout')
         self.file_extensions = kwargs.pop('file_extensions')
         self.file_extensions = self.file_extensions.replace(" ", "").split(",")
         self.renewal_threads = kwargs.pop('renewal_threads')
@@ -170,6 +171,7 @@ class Stapledaemon(object):
             name="proxy-adder",
             thread_object=StapleAdder,
             haproxy_socket_mapping=self.haproxy_socket_mapping,
+            haproxy_socket_timeout=self.haproxy_socket_timeout,
             scheduler=self.scheduler
         )
 
