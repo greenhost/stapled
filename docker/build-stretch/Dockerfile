@@ -1,6 +1,6 @@
 FROM debian:stretch
 RUN apt-get update -qq
-RUN apt-get upgrade
+RUN apt-get upgrade -y
 RUN apt-get install -q -y build-essential python3-cffi libffi-dev \
     python-all python3-all python3-dev python3-setuptools python3-pip \
     rpm tar gzip bzip2 git debhelper ca-certificates
