@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This is the module that parses your command line arguments and then starts
-the OCSP Staple daemon, which searches your certificate paths and
-requests staples for all certificates in them. They will then be saved as
-``certificatename.pem.ocsp`` in the same paths that are being indexed.
+Parse command line arguments and starts the OCSP Staple daemon.
+
+The daemon searches your certificate paths and requests staples for all
+certificates in them. They will then be saved as ``certificatename.pem.ocsp``
+in the same paths that are being indexed.
 
 Type ``stapled.py -h`` for all command line arguments.
 
@@ -29,11 +30,11 @@ user's process hierarchy node. In any case, it starts up the
 :mod:`stapled.core.daemon`
 module to bootstrap the application.
 """
-import configargparse
 import logging
 import logging.handlers
 import os
 import sys
+import configargparse
 import daemon
 import stapled
 import stapled.core.daemon
@@ -330,7 +331,6 @@ def init():
 
     log_file_handles = __init_logging(args)
 
-
     # Get a mapping of configured sockets and certificate directories from:
     # haproxy config, stapled config and command line arguments
     haproxy_socket_mapping = __get_haproxy_socket_mapping(args)
@@ -451,10 +451,12 @@ def __init_logging(args):
         logger.addHandler(syslog_handler)
     return log_file_handles
 
+
 def __get_haproxy_socket_mapping(args):
     """
-    Get a mapping of configured sockets and certificate directories from:
-    haproxy config, stapled config and command line arguments.
+    Get mapping of configured sockets and certificate directories.
+
+    From: haproxy config, stapled config and command line arguments.
 
     :param Namespace args: Argparser argument list.
     :return dict Of cert-paths and sockets for inform of changes.
@@ -490,9 +492,10 @@ def __get_haproxy_socket_mapping(args):
     logger.debug("Paths to socket mapping: %s", str(mapping))
     return mapping
 
+
 def __get_validated_args():
     """
-    Check that arguments make sense.
+    Parse and validate CLI arguments and configuration.
 
     Checks should match the restrictions in the usage help messages.
 
@@ -507,11 +510,10 @@ def __get_validated_args():
             )
     except ArgumentError as exc:
         parser.print_usage(sys.stderr)
-        logger.critical(
-            "Invalid command line argument or value: {}".format(exc)
-        )
+        logger.critical("Invalid command line argument or value: %s", exc)
         exit(1)
     return args
+
 
 if __name__ == '__main__':
     try:
