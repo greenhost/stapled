@@ -60,3 +60,10 @@ class CertValidationError(Exception):
     """
 
     pass
+
+
+class ArgumentError(Exception):
+    """
+    Raised when a command line argument has an invalid value.
+    """
+    pass

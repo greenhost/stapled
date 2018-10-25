@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-This is a general purpose scheduler. It does best effort scheduling and
-execution of expired items in the order they are added. This also means that
-there is no guarantee the tasks will be executed on time every time, in fact
-they will always be late, even if just by milliseconds. If you need it to be
-done on time, you schedule it early, but remember that it will still be best
-effort.
+This is a general purpose scheduler.
+
+It does best effort scheduling and execution of expired items in the order
+they are added. This also means that there is no guarantee the tasks will be
+executed on time every time, in fact they will always be late, even if just by
+milliseconds. If you need it to be done on time, you schedule it early, but
+remember that it will still be best effort.
 
 The way this scheduler is supposed to be used is to add a scheduling queue,
 then you can add tasks to the queue to either be put in a task queue ASAP, or
@@ -31,19 +32,29 @@ from collections import defaultdict
 LOG = logging.getLogger(__name__)
 
 
+class QueueError(Exception):
+    """Raised when a queue does not exist."""
+
+    pass
+
+
 class ScheduledTaskContext(object):
     """
-    A context for scheduled tasks, this context can be updated with an
-    exception count for the last exception, so it can be re-scheduled if it is
-    the appropriate action.
+    A context for scheduled tasks.
+
+    This context can be updated with an exception count for the last exception,
+    so it can be re-scheduled if it is the appropriate action.
     """
+
     # pylint: disable=too-few-public-methods
     def __init__(self, task_name, subject, sched_time=None, **attributes):
         """
-        Initialise a :class:`~stapled.scheduling.ScheduledTaskContext` with a
-        task name, subject and optional scheduled time. Any remaining keyword
-        arguments are set as attributes of the task context.
+        Initialise a task context.
 
+        Intialises a :class:`~stapled.scheduling.ScheduledTaskContext` with a
+        task name, subject and optional scheduled time.
+        Any remaining keyword arguments are set as attributes of the task
+        context.
         :param str task: A task corresponding to an existing queue in the
             target scheduler.
         :param datetime.datetime|int sched_time: Absolute time
@@ -85,6 +96,11 @@ class ScheduledTaskContext(object):
                 "This context was never added to a queue before.")
 
     def __repr__(self):
+        """
+        Make a text representation of ScheduledTaskContext.
+
+        :return str text representation of ScheduledTaskContext
+        """
         return "<ScheduledTaskContext {}: {}>".format(
             self.task_name, self.subject)
 
@@ -105,17 +121,17 @@ class SchedulerThread(threading.Thread):
     that, you should pass ``sched_time=None`` instead, it will bypass the
     scheduling mechanism and place your task directly into the worker queue.
     """
+
     def __init__(self, *args, **kwargs):
         """
-        Initialise the thread's arguments and its parent
-        :class:`threading.Thread`.
+        Initialise thread's arguments and its parent :class:`threading.Thread`.
 
         :kwarg iterable queues: A list, tuple or any iterable that returns
             strings that should be the names of queues.
         :kwarg int|float sleep: The sleep time in seconds between checking the
             expired items in the queue (default=1)
-        :raises KeyError: If the queue name is already taken (only when queues
-            kwarg is used).
+        :raises QueueError: If the queue name is already taken (only when
+            queues kwarg is used).
         """
         self.stop = False
         self._queues = {}
@@ -144,10 +160,12 @@ class SchedulerThread(threading.Thread):
 
         :param str name: A unique name for the queue.
         :param int max_size: Maximum queue depth, [default=0 (unlimited)].
-        :raises KeyError: If the queue name is already taken.
+        :raises QueueError: If the queue name is already taken.
         """
         if name in self._queues:
-            raise KeyError("A queue with name %s already exists.", name)
+            raise QueueError(
+                "A queue with name \"{}\" already exists.".format(name)
+            )
         self._queues[name] = Queue(max_size)
         self.scheduled_by_queue[name] = []
 
@@ -156,7 +174,7 @@ class SchedulerThread(threading.Thread):
         Remove a scheduled queue from the scheduler.
 
         :param str name: The name of the existing queue.
-        :raises KeyError: If the queue doesn't exist.
+        :raises QueueError: If the queue doesn't exist.
         """
         try:
             for ctx in self.scheduled_by_queue[name]:
@@ -166,29 +184,49 @@ class SchedulerThread(threading.Thread):
             del self.scheduled_by_queue[name]
             del self._queues[name]
         except KeyError:
-            raise KeyError("A queue with name %s doesn't exist.", name)
+            raise QueueError("No such queue \"{}\".".format(name))
+
+    def queue_exists(self, name):
+        """
+        Check whether the specified queue exists.
+
+        :param str name of queue
+        :returns bool True if queue exists.
+        """
+        return name in self._queues
+
+    def is_empty_queue(self, name):
+        """
+        Check whether the specified queue is empty.
+
+        :param str name of queue
+        :returns bool True if queue is emtpy.
+        :raises QueueError: If the queue doesn't exist.
+        """
+        try:
+            return self._queues[name].empty()
+        except KeyError:
+            raise QueueError("No such queue \"{}\".".format(name))
 
     def add_task(self, ctx):
         """
-        Add a :class:`~scheduler.ScheduledTaskContext` to be added to the task
-        queue either ASAP, or at a specific time.
+        Add a task context to its task queue.
 
         If the context is not unique, the scheduled task will be cancelled
         before scheduling the new task.
 
-        :param ScheduledTaskContext ctx: A context containing data for a
-            worker thread.
+        :param ScheduledTaskContext ctx: A task context containing data for a
+            worker thread to be added to its task queue.
         :raises queue.Queue.Full: If the underlying task queue is full.
         :raises TypeError: If the passed context is not a
             :class:`~scheduler.ScheduledTaskContext`
-        :raises KeyError: If the task queue doesn't exist.
+        :raises QueueError: If the task queue doesn't exist.
         """
         if not isinstance(ctx, ScheduledTaskContext):
             raise TypeError(
                 "Passed context is not an instance of ScheduledTaskContext")
         if ctx.task_name not in self._queues:
-            raise KeyError(
-                "Queue with task name {} doesn't exist.", ctx.task_name)
+            raise QueueError("No such queue \"{}\".".format(ctx.task_name))
 
         ctx.scheduler = self
         if not ctx.sched_time:
@@ -248,28 +286,25 @@ class SchedulerThread(threading.Thread):
             queue.
         :raises Queue.Empty: If the underlying task queue is empty and
             blocking is False or the timout expires.
-        :raises KeyError: If the task queue does not exist.
+        :raises QueueError: If the task queue does not exist.
         """
         if task_name not in self._queues:
-            raise KeyError("Queue with task name {} doesn't exist.", task_name)
+            raise QueueError("No such queue \"{}\".".format(task_name))
         return self._queues[task_name].get(blocking, timeout)
 
     def task_done(self, task_name):
         """
-        Mark a task done on a queue, this up the queue's counter of completed
-        tasks.
+        Mark a queue task done, upping the queue's counter of completed tasks.
 
         :param str task_name: The task queue name.
-        :raises KeyError: If the task queue does not exist.
+        :raises QueueError: If the task queue does not exist.
         """
         if task_name not in self._queues:
-            raise KeyError("Queue with task name {} doesn't exist.", task_name)
+            raise QueueError("No such queue \"{}\".".format(task_name))
         return self._queues[task_name].task_done()
 
     def run(self):
-        """
-        Start the scheduler thread.
-        """
+        """Start the scheduler thread."""
         LOG.info("Started a scheduler thread.")
         while not self.stop:
             self._run()
@@ -277,15 +312,11 @@ class SchedulerThread(threading.Thread):
         LOG.debug("Goodbye cruel world..")
 
     def run_all(self):
-        """
-        Run all tasks currently queued regardless schedule time.
-        """
+        """Run all tasks currently queued regardless schedule time."""
         self._run(True)
 
     def _run(self, all_tasks=False):
-        """
-        Runs all scheduled tasks that have a scheduled time < now.
-        """
+        """Run all scheduled tasks that have a scheduled time < now."""
         now = datetime.datetime.now()
         # Take a copy of all sched_time keys
         if all_tasks:

@@ -57,7 +57,7 @@ from stapled.core.certfinder import CertFinderThread
 from stapled.core.certparser import CertParserThread
 from stapled.core.staplerenewer import StapleRenewerThread
 from stapled.core.stapleadder import StapleAdder
-from stapled.scheduling import SchedulerThread
+from stapled.scheduling import SchedulerThread, QueueError
 from stapled import MAX_RESTART_THREADS
 
 LOG = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class Stapledaemon(object):
         :kwarg list file_extensions: List of file extensions to search for
             certificates.
         :kwarg int renewal_threads: Amount of staple renewal threads.
-        :kwarg int refresh_interval: Interval between re-indexing of
+        :kwarg NoneType|int refresh_interval: Interval between re-indexing of
             certificate paths.
         :kwarg int minimum_validity: Minimum validity of stapled before
             renewing.
@@ -96,9 +96,11 @@ class Stapledaemon(object):
         self.file_extensions = self.file_extensions.replace(" ", "").split(",")
         self.renewal_threads = kwargs.pop('renewal_threads')
         self.refresh_interval = kwargs.pop('refresh_interval')
+        self.one_off = kwargs.pop('one_off')
         self.minimum_validity = kwargs.pop('minimum_validity')
         self.recursive = kwargs.pop('recursive')
         self.no_recycle = kwargs.pop('no_recycle')
+        self.exit_code_tracker = kwargs.pop('exit_code_tracker')
 
         self.ignore = []
         rel_path_re = re.compile(r'^\.+\/')
@@ -135,21 +137,24 @@ class Stapledaemon(object):
         # Scheduler thread
         self.scheduler = self.start_scheduler_thread()
 
+        self.staple_adder = None
         # Start proxy adder thread if sockets were supplied
         if self.haproxy_socket_mapping:
-            self.start_staple_adder_thread()
+            self.staple_adder = self.start_staple_adder_thread()
 
         # Start ocsp response gathering threads
-        threads_list = []
+        self.renewers = []
         for tid in range(0, self.renewal_threads):
-            threads_list.append(self.start_renewer_thread(tid))
+            self.renewers.append(self.start_renewer_thread(tid))
 
         # Start certificate parser thread
         self.parser = self.start_parser_thread()
         # Start certificate finding thread
         self.finder = self.start_finder_thread()
-
-        self.monitor_threads()
+        if self.one_off:
+            self.handle_one_off()
+        else:
+            self.monitor_threads()
 
     def exit_gracefully(self, signum, _frame):
         """Set self.stop so the main thread stops."""
@@ -259,6 +264,63 @@ class Stapledaemon(object):
                 pass  # cannot join current thread
         LOG.info("Stopping daemon thread")
 
+    def handle_one_off(self):
+        """
+        Stop threads that are done so we can do a one-off run.
+
+        - When the certfinder is done and the parsing queue is empty, we can
+          end the certparser thread.
+        - When the certparser is done and and the renewal queue is empty, we
+          can end the staplerenewers.
+        - When the staplerenewers are done and the stapleadder queue is empty,
+          we can end the stapleadder.
+        - When all of the above are done, we end the scheduler.
+        """
+
+        # Queue and worker thread mapping, note: these queue MUST exist.
+        stop_threads = [
+            ('parse', [self.parser]),
+            ('renew', self.renewers)
+        ]
+        # Check if enabled before adding stapleadder queue.
+        if self.staple_adder:
+            stop_threads.append(('adder', [self.staple_adder]))
+
+        def one_off_generator():
+            """Make generator to iteratively end the stapled process."""
+
+            LOG.debug("START ENDING THREADS")
+            if self.finder.is_alive():
+                # If the finder is still active, we can't yet end anything.
+                yield False
+
+            for queue, threads in stop_threads:
+                # Queue must exist, if it doesn't it wasn't yet created.
+                if not self.scheduler.queue_exists(queue):
+                    yield False
+
+                # Wait until queues are empty..
+                while not self.scheduler.is_empty_queue(queue):
+                    yield False
+
+                # Stop threads that have empty queues..
+                for thread in threads:
+                    thread.stop = True
+                    while thread.is_alive():
+                        yield False
+
+            # End the scheduler
+            self.scheduler.stop = True
+            yield True
+        for end in one_off_generator():
+            LOG.debug("Waiting for threads to complete their queued tasks..")
+            time.sleep(.25)
+        if self.exit_code_tracker.errors_occurred > 0:
+            LOG.error(self.exit_code_tracker)
+            exit(1)
+        else:
+            exit(0)
+
     def __spawn_thread(self, name, thread_object, restarted=0, **kwargs):
         """
         Spawns threads based on obejects and registers them in a dictionary.
@@ -281,6 +343,7 @@ class Stapledaemon(object):
             'kwargs': kwargs,
             'thread': thread_obj,
             'name': name,
-            'restarted': restarted
+            'restarted': restarted,
+            'stopped': False
         })
         return thread_obj

@@ -82,9 +82,7 @@ test:stretch:
   - openssl version
   - apt-get install -y -q ./dist/stapled_*all.deb
   - /refresh_testdata.sh
-  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
-  - ls /tmp/testdata/**/chain.pem.ocsp
+  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv --one-off
   dependencies:
   - build:package
 
@@ -98,6 +96,4 @@ source:dev-setup:
   - openssl version
   - pip3 install -e .
   - ./refresh_testdata.sh
-  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv &
-  - sleep 15
-  - ls /tmp/testdata/**/chain.pem.ocsp
+  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv --one-off
