@@ -286,7 +286,7 @@ class GitVersion(object):
             # Take index 7: to strip off 'commit '
             commit_hash = str(
                 subprocess.check_output(
-                    ['git', 'log', '-n', '1', self.file],
+                    ['git', 'log', '--decorate=', '-n', '1', self.file],
                     universal_newlines=True
                 )
             ).split('\n')[0][len('commit '):]
@@ -453,7 +453,7 @@ def main():
         default='stapled/version.py',
         const='stapled/version.py',
         help=(
-            'Save the new number to the a file named .version, optionally pass'
+            'Save the new number to the version file, optionally pass'
             'a different filename to the argument.'
         )
     )
