@@ -576,28 +576,6 @@ def __get_haproxy_socket_mapping(args):
     return mapping
 
 
-def __get_validated_args():
-    """
-    Parse and validate CLI arguments and configuration.
-
-    Checks should match the restrictions in the usage help messages.
-
-    :returns Namespace: Validated argparser argument list.
-    """
-    parser = get_cli_arg_parser()
-    args = parser.parse_args()
-    try:
-        if args.haproxy_socket_keepalive < 10:
-            raise ArgumentError(
-                "`--haproxy-socket-keepalive` should be higher than 10."
-            )
-    except ArgumentError as exc:
-        parser.print_usage(sys.stderr)
-        logger.critical("Invalid command line argument or value: %s", exc)
-        exit(1)
-    return args
-
-
 if __name__ == '__main__':
     try:
         init()
