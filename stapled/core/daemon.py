@@ -318,9 +318,10 @@ class Stapledaemon(object):
             LOG.debug("Waiting for threads to complete their queued tasks..")
             time.sleep(.25)
         if self.exit_code_tracker.errors_occurred > 0:
-            LOG.error(self.exit_code_tracker)
+            LOG.error("One off completed with errors: %s", self.exit_code_tracker)
             exit(1)
         else:
+            LOG.info("One off completed without errors: %s", self.exit_code_tracker)
             exit(0)
 
     def __spawn_thread(self, name, thread_object, restarted=0, **kwargs):
