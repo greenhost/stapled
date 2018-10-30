@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This is the module that parses your command line arguments and then starts
-the OCSP Staple daemon, which searches your certificate paths and
-requests staples for all certificates in them. They will then be saved as
-``certificatename.pem.ocsp`` in the same paths that are being indexed.
+Parse command line arguments and starts the OCSP Staple daemon.
+
+The daemon searches your certificate paths and requests staples for all
+certificates in them. They will then be saved as ``certificatename.pem.ocsp``
+in the same paths that are being indexed.
 
 Type ``stapled.py -h`` for all command line arguments.
 
@@ -29,11 +30,11 @@ user's process hierarchy node. In any case, it starts up the
 :mod:`stapled.core.daemon`
 module to bootstrap the application.
 """
-import configargparse
 import logging
 import logging.handlers
 import os
 import sys
+import configargparse
 import daemon
 import stapled
 import stapled.core.daemon
@@ -532,6 +533,69 @@ def __get_validated_args():
     if args.one_off:
         args.refresh_interval = None
         args.daemon = False
+    return args
+
+
+def __get_haproxy_socket_mapping(args):
+    """
+    Get mapping of configured sockets and certificate directories.
+
+    From: haproxy config, stapled config and command line arguments.
+
+    :param Namespace args: Argparser argument list.
+    :return dict Of cert-paths and sockets for inform of changes.
+    """
+    # Parse the cert_paths argument
+    arg_cert_paths = __get_arg_cert_paths(args)
+    # Parse haproxy_sockets argument.
+    arg_haproxy_sockets = __get_arg_haproxy_sockets(args)
+    # Make a mapping from certificate paths to sockets in a dict.
+    mapping = dict(zip(arg_cert_paths, arg_haproxy_sockets))
+
+    # Parse HAProxy config files.
+    try:
+        conf_cert_paths, conf_haproxy_sockets = parse_haproxy_config(
+            args.haproxy_config
+        )
+    except (OSError, IOError) as exc:
+        logger.critical(handle_file_error(exc))
+        exit(1)
+
+    # Combine the socket and certificate paths of the arguments and config
+    # files in the sockets dictionary.
+    for i, paths in enumerate(conf_cert_paths):
+        for path in paths:
+            if path in mapping:
+                mapping[path] = unique(
+                    mapping[path] + conf_haproxy_sockets[i],
+                    preserve_order=False
+                )
+            else:
+                mapping[path] = conf_haproxy_sockets[i]
+
+    logger.debug("Paths to socket mapping: %s", str(mapping))
+    return mapping
+
+
+def __get_validated_args():
+    """
+    Parse and validate CLI arguments and configuration.
+
+    Checks should match the restrictions in the usage help messages.
+
+    :returns Namespace: Validated argparser argument list.
+    """
+    parser = get_cli_arg_parser()
+    args = parser.parse_args()
+    try:
+        if args.haproxy_socket_keepalive < 10:
+            raise ArgumentError(
+                "`--haproxy-socket-keepalive` should be higher than 10."
+            )
+    except ArgumentError as exc:
+        parser.print_usage(sys.stderr)
+        logger.critical("Invalid command line argument or value: %s", exc)
+        exit(1)
     return args
 
 

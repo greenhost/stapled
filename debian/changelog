@@ -1,3 +1,11 @@
+stapled (1.1) stretch; urgency=low
+
+ * Change haproxy socket connection keep-alive (formerly "timeout") to new
+   default: 3600 seconds.
+ * Add --haproxy-socket-keepalive command line argument.
+
+ -- Chris <chris@greenhost.nl> Mon, 22 Oct 2018 18:34:15 +0200
+
 stapled (1.0) stretch; urgency=low
 
  * This version removes support for debian Jessie due to the shutdown of

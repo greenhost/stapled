@@ -13,7 +13,6 @@ import stapled.core.exceptions
 
 LOG = logging.getLogger(__name__)
 SOCKET_BUFFER_SIZE = 1024
-SOCKET_TIMEOUT = 86400
 
 
 class StapleAdder(threading.Thread):
@@ -41,12 +40,6 @@ class StapleAdder(threading.Thread):
     #: the base64 encoded OCSP staple
     OCSP_ADD = 'set ssl ocsp-response {}'
 
-    #: Predefines commands to send to sockets just after opening them.
-    CONNECT_COMMANDS = [
-        "prompt",
-        "set timeout cli {}".format(SOCKET_TIMEOUT)
-    ]
-
     def __init__(self, *args, **kwargs):
         """
         Initialise the thread and its parent :class:`threading.Thread`.
@@ -65,11 +58,21 @@ class StapleAdder(threading.Thread):
         self.haproxy_socket_mapping = kwargs.pop(
             'haproxy_socket_mapping', None
         )
-
+        self.haproxy_socket_keepalive = kwargs.pop(
+            'haproxy_socket_keepalive', None
+        )
         assert self.scheduler is not None, \
             "Please pass a scheduler to get and add proxy-add tasks."
         assert self.haproxy_socket_mapping is not None, \
             "The StapleAdder needs a haproxy_socket_mapping dict"
+        assert self.haproxy_socket_keepalive is not None, \
+            "No keep-alive defined for haproxy socket connection."
+
+        # Predefines commands to send to sockets just after opening them.
+        self.connect_commands = [
+            "prompt",
+            "set timeout cli {}".format(self.haproxy_socket_keepalive)
+        ]
 
         self.socks = {}
         for paths in self.haproxy_socket_mapping.values():
@@ -119,7 +122,7 @@ class StapleAdder(threading.Thread):
         try:
             sock.connect(path)
             result = []
-            for command in self.CONNECT_COMMANDS:
+            for command in self.connect_commands:
                 result.extend(self._send(sock, command))
             # Results (index 1) come per path (index 0), we need only results
             result = [res[1] for res in result]
