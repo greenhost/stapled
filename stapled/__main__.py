@@ -465,6 +465,8 @@ def __init_logging(args):
         # errors occurred.
         exit_code_tracker = ExitCodeTracker(logging.WARN)
         logger.addHandler(exit_code_tracker)
+    else:
+        exit_code_tracker = None
     return log_file_handles, exit_code_tracker
 
 
