@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This module defines a context in which we can run actions that are likely to
 fail because they have intricate dependencies e.g. network connections,

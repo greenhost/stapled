@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 ANSI colourise the logging stream (works on LINUX/UNIX based systems).
 

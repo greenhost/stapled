@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This module takes renew task contexts from the scheduler which contain
 certificate models that consist of parsed certificates. It then generates an

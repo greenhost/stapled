@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Parse command line arguments and starts the OCSP Staple daemon.
 
@@ -341,7 +340,6 @@ def init():
 
     log_file_handles, exit_code_tracker = __init_logging(args)
 
-
     # Get a mapping of configured sockets and certificate directories from:
     # haproxy config, stapled config and command line arguments
     haproxy_socket_mapping = __get_haproxy_socket_mapping(args)
@@ -472,8 +470,9 @@ def __init_logging(args):
 
 def __get_haproxy_socket_mapping(args):
     """
-    Get a mapping of configured sockets and certificate directories from:
-    haproxy config, stapled config and command line arguments.
+    Get a mapping of configured sockets and certificate directories.
+
+    From: haproxy config, stapled config and command line arguments.
 
     :param Namespace args: Argparser argument list.
     :return dict Of cert-paths and sockets for inform of changes.
@@ -557,8 +556,8 @@ def __get_haproxy_socket_mapping(args):
         conf_cert_paths, conf_haproxy_sockets = parse_haproxy_config(
             args.haproxy_config
         )
-    except (OSError, IOError) as exc:
-        logger.critical(handle_file_error(exc))
+    except (OSError) as exc:
+        logger.critical(exc)
         exit(1)
 
     # Combine the socket and certificate paths of the arguments and config

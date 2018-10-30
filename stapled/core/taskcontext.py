@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This module defines an extended version of the general purpose
 :class:`scheduling.ScheduledTaskContext` for use in the OCSP daemon.

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This module bootstraps the stapled process by starting threads for:
 

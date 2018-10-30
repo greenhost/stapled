@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Defines a class that can be used as a decorator that will cache returns of a
 method for a set of arguments and/or keyword arguments. If the arguments are

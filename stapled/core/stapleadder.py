@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Module for adding OCSP Staples to a running HAProxy instance.
 """

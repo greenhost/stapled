@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
 """
-This module locates certificate files in the supplied paths and parses
-them. It then keeps track of the following:
+Locate certificate files in the supplied paths and parse them.
+
+It also keeps track of the following:
 
 - If cert is found for the first time (thus also when the daemon is started),
   the cert is added to the :attr:`stapled.core.certfinder.CertFinder.scheduler`
@@ -39,7 +39,8 @@ LOG = logging.getLogger(__name__)
 
 class CertFinderThread(threading.Thread):
     """
-    This searches paths for certificate files.
+    A thread that searches paths for certificate files.
+
     When found, models are created for the certificate files, which are wrapped
     in a :class:`stapled.core.taskcontext.StapleTaskContext` which are then
     scheduled to be processed by the
@@ -48,19 +49,18 @@ class CertFinderThread(threading.Thread):
     Pass ``refresh_interval=None`` if you want to run it only once (e.g. for
     testing)
     """
+
     # pylint: disable=too-many-instance-attributes
     def __init__(self, *args, **kwargs):
         """
-        Initialise the thread with its parent :class:`threading.Thread` and its
-        arguments.
+        Initialise with parent :class:`threading.Thread` and its arguments.
 
         :kwarg dict models: A dict to maintain a model cache **(required)**.
         :kwarg iter cert_paths: The paths to index **(required)**.
         :kwarg stapled.scheduling.SchedulerThread scheduler: The scheduler
             object where we add new parse tasks to. **(required)**.
-        :kwarg int refresh_interval: The minimum amount of time (s)
-            between search runs, defaults to 10 seconds. Set to None to run
-            only once **(optional)**.
+        :kwarg int refresh_interval: The minimum amount of time (s) between
+            search runs. Set to None (default) to run once **(optional)**.
         :kwarg array file_extensions: An array containing the file extensions
             of file types to check for certificate content **(optional)**.
         """
@@ -84,13 +84,21 @@ class CertFinderThread(threading.Thread):
         assert self.cert_paths is not None, \
             "At least one path should be passed for indexing."
 
+        assert self.file_extensions is not None, \
+            "Please specify file extensions to search for certificates."
+
         assert self.scheduler is not None, \
             "Please pass a scheduler to get tasks from and add tasks to."
 
         super(CertFinderThread, self).__init__(*args, **kwargs)
 
     def run(self):
-        """Start the certificate finder thread."""
+        """
+        Start the certificate finder thread.
+
+        The "scheduling" mentioned in this method does not use the scheduler.
+        It will sleep instead, only because it is simpler.
+        """
         LOG.info("Scanning paths: '%s'", "', '".join(self.cert_paths))
         while not self.stop:
             # Catch any exceptions within this context to protect the thread.
@@ -103,7 +111,7 @@ class CertFinderThread(threading.Thread):
                 since_last = time.time() - self.last_refresh
                 # Check if the last refresh took longer than the interval..
                 if since_last > self.refresh_interval:
-                    # It did so start right now..
+                    # It did take longer than the interval so, start right now
                     LOG.info(
                         "Starting a new refresh immediately because the last "
                         "refresh took %0.3f seconds while the minimum "
@@ -131,6 +139,8 @@ class CertFinderThread(threading.Thread):
 
     def refresh(self):
         """
+        Refresh the index.
+
         Wrap up the internal :meth:`CertFinder._update_cached_certs()` and
         :meth:`CertFinder._find_new_certs()` functions.
 
@@ -167,7 +177,7 @@ class CertFinderThread(threading.Thread):
                 dirs = []
                 try:
                     dirs = os.listdir(path)
-                except (OSError, IOError) as exc:
+                except (OSError) as exc:
                     # If a path is actually a file we can still use it..
                     if exc.errno == errno.ENOTDIR and os.path.isfile(path):
                         LOG.debug("%s may be a single file", path)
@@ -206,7 +216,7 @@ class CertFinderThread(threading.Thread):
                         sched_time=None
                     )
                     self.scheduler.add_task(context)
-            except (IOError, OSError) as exc:
+            except (OSError) as exc:
                 # If the directory is unreadable this gets printed at every
                 # refresh until the directory is readable. We catch this here
                 # so any readable directory can still be scanned.
