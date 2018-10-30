@@ -307,6 +307,7 @@ class Stapledaemon(object):
                 # Stop threads that have empty queues..
                 for thread in threads:
                     thread.stop = True
+                for thread in threads:
                     while thread.is_alive():
                         yield False
 
