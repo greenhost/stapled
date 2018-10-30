@@ -28,7 +28,6 @@ import logging
 import fnmatch
 import os
 import errno
-import stapled
 from stapled.core.excepthandler import stapled_except_handle
 from stapled.core.taskcontext import StapleTaskContext
 from stapled.core.certmodel import CertModel
@@ -68,12 +67,8 @@ class CertFinderThread(threading.Thread):
         self.models = kwargs.pop('models', None)
         self.cert_paths = kwargs.pop('cert_paths', None)
         self.scheduler = kwargs.pop('scheduler', None)
-        self.refresh_interval = kwargs.pop(
-            'refresh_interval', stapled.DEFAULT_REFRESH_INTERVAL
-        )
-        self.file_extensions = kwargs.pop(
-            'file_extensions', stapled.FILE_EXTENSIONS_DEFAULT
-        )
+        self.refresh_interval = kwargs.pop('refresh_interval', None)
+        self.file_extensions = kwargs.pop('file_extensions', None)
         self.last_refresh = None
         self.ignore = kwargs.pop('ignore', []) or []
         self.recursive = kwargs.pop('recursive', False)
