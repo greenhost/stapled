@@ -46,6 +46,8 @@ setup(
         # Required by deps in `stapled/libs`
         'future>=0.17.1',
         'cffi>=1.11.5',
+        # Required for python-daemon (package dep not specified)
+        'docutils>=0.14',
     ],
     extras_require={
         'docs': [
