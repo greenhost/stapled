@@ -227,13 +227,13 @@ def get_cli_arg_parser():
     parser.add(
         '--haproxy-socket-keepalive',
         type=int,
-        default=3600,
+        default=10,
         metavar="KEEP-ALIVE <seconds, minimum: 10>",
         help=(
             "HAProxy sockets are kept open for performance reasons, you can "
             "set the amount of seconds sockets should remain open "
-            "(default=3600). Note that a short amount of time is required to "
-            "to pass messages to HAProxy, so 10 seconds if the minimum "
+            "(default=10). Note that a short amount of time is required to "
+            "to pass messages to HAProxy, so 1 second if the minimum "
             "accepted value."
         )
     )
@@ -522,9 +522,9 @@ def __get_validated_args():
     parser = get_cli_arg_parser()
     args = parser.parse_args()
     try:
-        if args.haproxy_socket_keepalive < 10:
+        if args.haproxy_socket_keepalive < 1:
             raise ArgumentError(
-                "`--haproxy-socket-keepalive` should be higher than 10."
+                "`--haproxy-socket-keepalive` should be 1 or higher."
             )
     except ArgumentError as exc:
         parser.print_usage(sys.stderr)
