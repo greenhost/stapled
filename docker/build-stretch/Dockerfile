@@ -6,4 +6,5 @@ RUN apt-get install -q -y build-essential python3-cffi libffi-dev \
     rpm tar gzip bzip2 git debhelper ca-certificates
 ADD ./requirements.txt ./requirements.txt
 RUN pip3 install --user pip
+RUN pip3 install --user docutils==0.14
 RUN pip3 install --user -r requirements.txt
