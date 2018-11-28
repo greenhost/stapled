@@ -41,15 +41,19 @@ setup(
     package_dir=find_lib_path_dict(),
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
     install_requires=[
-        'python-daemon>=1.5.5',
-        'future>=0.15.0',
-        'configargparse>=0.10.0',
+        'python-daemon>=2.2.0',
+        'configargparse>=0.13.0',
+        # Required by deps in `stapled/libs`
+        'future>=0.17.1',
+        'cffi>=1.11.5',
+        # Required for python-daemon (package dep not specified)
+        'docutils>=0.14',
     ],
     extras_require={
         'docs': [
-            'Sphinx>=1.0',
-            'sphinx-argparse>=0.1.15',
-            'sphinx_rtd_theme',
+            'Sphinx>=1.8.2',
+            'sphinx-argparse>=0.2.5',
+            'sphinx_rtd_theme>=0.4.2',
         ]
     },
     license='Apache Version 2.0',
