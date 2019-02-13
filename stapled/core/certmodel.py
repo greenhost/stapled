@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This module defines the :class:`stapled.core.certmodel.CertModel` class which is
 used to keep track of certificates that are found by the

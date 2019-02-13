@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This module parses certificate in a queue so the data contained in the
 certificate can be used to request OCSP responses. After parsing a new

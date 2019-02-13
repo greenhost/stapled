@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Initialise the stapled module.
 

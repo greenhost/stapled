@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This module defines a context in which we can run actions that are likely to
 fail because they have intricate dependencies e.g. network connections,
@@ -57,9 +56,7 @@ STACK_TRACE_FILENAME = "stapled_exception{:%Y%m%d-%H%M%s%f}.trace"
 
 @contextmanager
 def stapled_except_handle(ctx=None):
-    """
-    Handle lots of potential errors and reschedule failed action contexts.
-    """
+    """Handle potential errors and reschedule failed action contexts."""
     # pylint: disable=too-many-branches,too-many-statements
     try:
         yield  # do the "with stapled_except_handle(ctx):" code block
@@ -77,8 +74,8 @@ def stapled_except_handle(ctx=None):
             LOG.critical("%s, giving up..", exc)
     except (SocketError, BrokenPipeError) as exc:
         # This is a fatal exception that can occur during initialisation of a
-        # StapleAdder or when an StapleAdder uses a socket that consistently has a
-        # broken pipe
+        # StapleAdder or when an StapleAdder uses a socket that consistently
+        # has a broken pipe
         LOG.critical(exc)
     except (RenewalRequirementMissing,
             CertValidationError,
@@ -143,37 +140,18 @@ def stapled_except_handle(ctx=None):
             "entries",
             err_count, len_ocsp_urls
         )
-    except (IOError, OSError) as exc:
-        LOG.critical(handle_file_error(exc))
-
+    except OSError as exc:
+        LOG.critical(exc)
 
     # the show must go on..
     except Exception as exc:  # pylint: disable=broad-except
         dump_stack_trace(ctx, exc)
 
-def handle_file_error(exc):
-    """
-    Wrapper for handling IOError and OSError logging..
-
-    Can't use FileNotFoundError and PermissionError because they don't exist in
-    Python 2.7.x yet. This won't be required after we remove Python 2.7.x
-    support.
-    :param Exception exc: OSError or IOError to handle logging for.
-    :return str: Reason for OSError/IOError.
-    """
-    if exc.errno == errno.EPERM or exc.errno == errno.EACCES:
-        reason = "Permission error"
-    elif exc.errno == errno.ENOENT:
-        reason = "File not found error"
-    elif isinstance(exc, IOError):
-        reason = "I/O Error"
-    else:
-        reason = "OS Error"
-    return "{}: {}".format(reason, str(exc))
-
 
 def delete_ocsp_for_context(ctx):
     """
+    Delete OSCP staple for a context.
+
     When something bad happens, sometimes it is good to delete a related bad
     OCSP file so it can't be served any more.
 
@@ -185,16 +163,18 @@ def delete_ocsp_for_context(ctx):
         ocsp_file = "{}.ocsp".format(ctx.model.filename)
         with open(ocsp_file, 'w') as ocsp_file_obj:
             ocsp_file_obj.write("")
-    except (IOError, OSError) as exc:
+    except (OSError) as exc:
         LOG.debug(
             "Can't replace OCSP staple \"%s\" by an empty stub, reason: %s",
             ocsp_file,
-            handle_file_error(exc)
+            exc
         )
 
 
 def dump_stack_trace(ctx, exc):
     """
+    Dump a stack trace to a file so stapled can be debugged.
+
     Examine the last exception and dump a stack trace to a file, if it fails
     due to an IOError or OSError, log that it failed so the a sysadmin
     may make the directory writeable.
