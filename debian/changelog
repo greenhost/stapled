@@ -1,3 +1,18 @@
+stapled (1.2) stretch; urgency=low
+
+ * Updated dependencies with vulnerabilities, not afftecting stapled.
+ * Added the --one-off argument that allows running stapled in one-off mode
+   which is a mode that runs staple fetching for all certificates as usual,
+   including threading, but stops threads once they are finished with their
+   queues and then quits.
+ * Reduced minimum time to live setting for keeping HAProxy sockets open to 10
+   seconds.
+ * Reduced default time to live setting for keeping HAProxy sockets open to 10
+   seconds. This should still be more then enough for all expected conditions
+   stapled could run under.
+
+ -- Chris <chris@chrissnijder.nl> Wed, 27 Feb 2019 13:43:58 +0100
+
 stapled (1.1) stretch; urgency=low
 
  * Change haproxy socket connection keep-alive (formerly "timeout") to new
