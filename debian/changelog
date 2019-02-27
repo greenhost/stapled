@@ -1,6 +1,6 @@
 stapled (1.2) stretch; urgency=low
 
- * Updated dependencies with vulnerabilities, not afftecting stapled.
+ * Updated dependencies with vulnerabilities, not affecting stapled.
  * Added the --one-off argument that allows running stapled in one-off mode
    which is a mode that runs staple fetching for all certificates as usual,
    including threading, but stops threads once they are finished with their
