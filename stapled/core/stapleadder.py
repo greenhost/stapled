@@ -263,11 +263,11 @@ class StapleAdder(threading.Thread):
         #             raise
         #         else:
         #             break
-        with stapled_except_handle():
-            responses = []
-            if not isinstance(paths, (list, tuple)):
-                paths = [paths]
-            for path in paths:
+        responses = []
+        if not isinstance(paths, (list, tuple)):
+            paths = [paths]
+        for path in paths:
+            with stapled_except_handle():
                 try:
                     sock = self.socks[path]
                     response = self._send(sock, "{}\n".format(command))
@@ -277,4 +277,4 @@ class StapleAdder(threading.Thread):
 
                 LOG.debug("Received HAProxy response '%s'", response)
                 responses.append((path, response))
-            return responses
+        return responses
