@@ -18,7 +18,8 @@ variables:
 build:compile-container:
   image: docker:stable-git
   services:
-  - docker:stable-dind
+    #- docker:stable-dind
+    - docker:18-dind # Hotfix for https://gitlab.com/gitlab-org/gitlab-runner/issues/4501
   stage: build-containers
   variables:
     GIT_STRATEGY: fetch
@@ -33,7 +34,8 @@ build:test-container:
   stage: build-containers
   image: docker:stable-git
   services:
-  - docker:stable-dind
+    #- docker:stable-dind
+    - docker:18-dind # Hotfix for https://gitlab.com/gitlab-org/gitlab-runner/issues/4501
   variables:
    GIT_STRATEGY: fetch
   script:
