@@ -245,29 +245,11 @@ class StapleAdder(threading.Thread):
             http://haproxy.tech-notes.net/9-2-unix-socket-commands/
 
         """
-        # Empty buffer first, it's possible that other commands have been fired
-        # to the same socket, we don't want the response to those commands in
-        # our response string.
-        # FIXME: This would be nice, but is tricky because the socket seems to
-        # close if the recv call times out. Otherwise the socket stays open but
-        # the recv call is blocking...
-        # If this problem occurs, the easiest way is probably to open a socket
-        # each time we want to communicate...
-        # while True:
-        #     try:
-        #         chunk = self.socks[path].recv(SOCKET_BUFFER_SIZE)
-        #         if not chunk:
-        #             break
-        #     except IOError as err:
-        #         if err.errno not in (errno.EAGAIN, errno.EINTR):
-        #             raise
-        #         else:
-        #             break
         responses = []
-        if not isinstance(paths, (list, tuple)):
-            paths = [paths]
-        for path in paths:
-            with stapled_except_handle():
+        with stapled_except_handle():
+            if not isinstance(paths, (list, tuple)):
+                paths = [paths]
+            for path in paths:
                 try:
                     sock = self.socks[path]
                     response = self._send(sock, "{}\n".format(command))
