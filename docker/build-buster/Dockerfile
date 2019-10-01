@@ -1,4 +1,4 @@
-FROM debian:stretch
+FROM debian:buster
 RUN apt-get update -qq
 RUN apt-get upgrade -y
 RUN apt-get install -q -y build-essential python3-cffi libffi-dev \

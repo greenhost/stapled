@@ -1,4 +1,4 @@
-FROM debian:stretch
+FROM debian:buster
 RUN apt-get update -qq
 RUN apt-get upgrade -y
 RUN apt-get install -q -y build-essential python3-cffi libffi-dev \
@@ -7,4 +7,5 @@ RUN apt-get install -q -y build-essential python3-cffi libffi-dev \
 RUN pip3 install --user pip
 ADD . ./
 RUN pip3 install -r requirements.txt
+RUN pip3 install certvalidator ocspbuilder asn1crypto oscrypto
 CMD echo Ready for your commands. && /bin/bash

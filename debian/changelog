@@ -1,3 +1,14 @@
+stapled (1.4) buster; urgency=high
+
+ * Tested against buster
+ * Tested against Python 3.7
+ * Still tested against Python 3.5.
+ * Still tested against stretch
+ * Dependencies updated to latest versions
+ * Improved exception handling of haproxy adder module
+
+ -- Chris <chris@chrissnijder.nl> Wed, 11 Sep 2019 14:44:23 +0200
+
 stapled (1.3) stretch; urgency=low
 
  * Improved excpetion handling to limit flooding of logs

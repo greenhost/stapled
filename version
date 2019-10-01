@@ -31,7 +31,7 @@ class GitVersion(object):
     CLEAN_COMMIT = 'nothing to commit, working tree clean'
     DEFAULT_VERSION = [0, 1]
     CHANGELOG_FILE = 'debian/changelog'
-    DEFAULT_TARGET_DEB_OS = "stretch"
+    DEFAULT_TARGET_DEB_OS = "buster"
 
     def __init__(self, **kwargs):
         """

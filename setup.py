@@ -39,21 +39,21 @@ setup(
     url='https://github.com/greenhost/stapled',
     packages=all_packages(),
     package_dir=find_lib_path_dict(),
-    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
+    python_requires='!=3.0.*, !=3.1.*, !=3.2.*, <4',
     install_requires=[
-        'python-daemon>=2.2.0',
-        'configargparse>=0.13.0',
+        'python-daemon>=2.2.3',
+        'configargparse>=0.14.0',
         # Required by deps in `stapled/libs`
         'future>=0.17.1',
-        'cffi>=1.11.5',
+        'cffi>=1.12.3',
         # Required for python-daemon (package dep not specified)
-        'docutils>=0.14',
+        'docutils>=0.15.2',
     ],
     extras_require={
         'docs': [
-            'Sphinx>=1.8.2',
+            'Sphinx>=2.2.0',
             'sphinx-argparse>=0.2.5',
-            'sphinx_rtd_theme>=0.4.2',
+            'sphinx_rtd_theme>=0.4.3',
         ]
     },
     license='Apache Version 2.0',
@@ -64,8 +64,6 @@ setup(
         'License :: OSI Approved :: Apache Version 2.0',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',

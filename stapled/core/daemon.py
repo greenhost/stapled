@@ -285,7 +285,7 @@ class Stapledaemon(object):
         ]
         # Check if enabled before adding stapleadder queue.
         if self.staple_adder:
-            stop_threads.append(('adder', [self.staple_adder]))
+            stop_threads.append(('proxy-add', [self.staple_adder]))
 
         def one_off_generator():
             """Make generator to iteratively end the stapled process."""
@@ -297,7 +297,8 @@ class Stapledaemon(object):
 
             for queue, threads in stop_threads:
                 # Queue must exist, if it doesn't it wasn't yet created.
-                if not self.scheduler.queue_exists(queue):
+                # Wait for it to be created.
+                while not self.scheduler.queue_exists(queue):
                     yield False
 
                 # Wait until queues are empty..

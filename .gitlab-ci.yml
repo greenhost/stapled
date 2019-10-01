@@ -7,8 +7,9 @@ stages:
 variables:
   DOCKER_DRIVER: overlay2
   DOCKER_FILES_URL: docker.greenhost.net/open/stapled
-  BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-stretch
+  BUILD_COMPILE_CONTAINER: $DOCKER_FILES_URL/build-buster
   STRETCH_TEST_CONTAINER: $DOCKER_FILES_URL/test-stretch
+  BUSTER_TEST_CONTAINER: $DOCKER_FILES_URL/test-buster
   # GL bug causes recursive strategy to fail for LE certificates
   # GH recently started using LE certificates:
   # https://gitlab.com/gitlab-org/gitlab-runner/issues/2148
@@ -30,7 +31,7 @@ build:compile-container:
   - docker push $BUILD_COMPILE_CONTAINER:$CI_BUILD_REF
   - docker push $BUILD_COMPILE_CONTAINER:latest
 
-build:test-container:
+build:test-container-stretch:
   stage: build-containers
   image: docker:stable-git
   services:
@@ -45,6 +46,21 @@ build:test-container:
   - docker push $STRETCH_TEST_CONTAINER:$CI_BUILD_REF
   - docker push $STRETCH_TEST_CONTAINER:latest
 
+build:test-container-buster:
+  stage: build-containers
+  image: docker:stable-git
+  services:
+    #- docker:stable-dind
+    - docker:18-dind # Hotfix for https://gitlab.com/gitlab-org/gitlab-runner/issues/4501
+  variables:
+   GIT_STRATEGY: fetch
+  script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.greenhost.net
+  - docker pull $BUSTER_TEST_CONTAINER || true
+  - docker build --cache-from $CONTAINER_IMAGE:latest --pull --cache-from $BUSTER_TEST_CONTAINER:latest -t $BUSTER_TEST_CONTAINER:$CI_BUILD_REF -t $BUSTER_TEST_CONTAINER:latest -f ./docker/test-buster/Dockerfile ./
+  - docker push $BUSTER_TEST_CONTAINER:$CI_BUILD_REF
+  - docker push $BUSTER_TEST_CONTAINER:latest
+
 build:package:
   stage: packaging
   image: $BUILD_COMPILE_CONTAINER
@@ -54,7 +70,7 @@ build:package:
   - which python3 && $(which python3) --version
   - openssl version
   # Hack to get python-daemon to install..
-  - pip3 install --user docutils==0.14
+  - pip3 install --user docutils==0.15.2
   - pip3 install --user -r requirements.txt
   - make clean
   - make
@@ -66,15 +82,27 @@ build:package:
     - dist/stapled*.tar.bz2
     - dist/stapled*.deb
 
-source:unit:
+source:unit-stretch:
   stage: source-tests
-  image: python:3.6-stretch
+  image: python:3.5-stretch
   script:
   - git submodule sync --recursive
   - git submodule update --init --recursive
   - which python3 && $(which python3) --version
   # Hack to get python-daemon to install..
-  - pip3 install --user docutils==0.14
+  - pip3 install --user docutils==0.15.2
+  - pip3 install -r requirements.txt
+  - pytest -v
+
+source:unit-buster:
+  stage: source-tests
+  image: python:3.7-buster
+  script:
+  - git submodule sync --recursive
+  - git submodule update --init --recursive
+  - which python3 && $(which python3) --version
+  # Hack to get python-daemon to install..
+  - pip3 install --user docutils==0.15.2
   - pip3 install -r requirements.txt
   - pytest -v
 
@@ -92,9 +120,23 @@ test:stretch:
   dependencies:
   - build:package
 
+test:buster:
+  stage: functional-tests
+  image: $BUSTER_TEST_CONTAINER
+  variables:
+    GIT_STRATEGY: none
+  script:
+  - which python3 && $(which python3) --version
+  - openssl version
+  - apt-get install -y -q ./dist/stapled_*all.deb
+  - /refresh_testdata.sh
+  - stapled -p /tmp/testdata/ --recursive --interactive --no-haproxy-sockets -vvvv --one-off
+  dependencies:
+  - build:package
+
 source:dev-setup:
   stage: source-tests
-  image: python:3.6-stretch
+  image: python:3.7-buster
   script:
   - git submodule sync --recursive
   - git submodule update --init --recursive

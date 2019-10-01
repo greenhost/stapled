@@ -217,8 +217,7 @@ def get_cli_arg_parser():
     )
     parser.add(
         '--no-haproxy-sockets',
-        action='store_false',
-        dest='haproxy_sockets',
+        action='store_true',
         help=(
             "Disable HAProxy sockets, overrides ``--haproxy-sockets`` if "
             "specified in the config file."
@@ -348,8 +347,8 @@ def init():
     # config files, de-duplicated.
     cert_paths = haproxy_socket_mapping.keys()
 
-    # Determine if we need to start a stapleadder thread.
-    if not any(haproxy_socket_mapping.values()):
+    # Determine if we need to start a staple adder thread.
+    if args.no_haproxy_sockets or not any(haproxy_socket_mapping.values()):
         haproxy_socket_mapping = None
 
     daemon_kwargs = dict(
@@ -499,15 +498,19 @@ def __get_haproxy_socket_mapping(args):
     # files in the sockets dictionary.
     for i, paths in enumerate(conf_cert_paths):
         for path in paths:
-            if path in mapping:
+            # When certificate path is already in the mapping add the socket
+            # file to the mapping if haproxy_sockets is not disabled.
+            if args.no_haproxy_sockets:
+                # haproxy_sockets are disabled, just ensure the path is in the
+                # mapping without sockets.
+                mapping[path] = []
+            else:
+                # Make sure paths are mapped to all unique sockets.
                 mapping[path] = unique(
-                    mapping[path] + conf_haproxy_sockets[i],
+                    mapping.get(path, []) + conf_haproxy_sockets[i],
                     preserve_order=False
                 )
-            else:
-                mapping[path] = conf_haproxy_sockets[i]
-
-    logger.debug("Paths to socket mapping: %s", str(mapping))
+    logger.debug("Paths to socket mappings: %s", str(mapping))
     return mapping
 
 
@@ -535,47 +538,6 @@ def __get_validated_args():
         args.refresh_interval = None
         args.daemon = False
     return args
-
-
-def __get_haproxy_socket_mapping(args):
-    """
-    Get mapping of configured sockets and certificate directories.
-
-    From: haproxy config, stapled config and command line arguments.
-
-    :param Namespace args: Argparser argument list.
-    :return dict Of cert-paths and sockets for inform of changes.
-    """
-    # Parse the cert_paths argument
-    arg_cert_paths = __get_arg_cert_paths(args)
-    # Parse haproxy_sockets argument.
-    arg_haproxy_sockets = __get_arg_haproxy_sockets(args)
-    # Make a mapping from certificate paths to sockets in a dict.
-    mapping = dict(zip(arg_cert_paths, arg_haproxy_sockets))
-
-    # Parse HAProxy config files.
-    try:
-        conf_cert_paths, conf_haproxy_sockets = parse_haproxy_config(
-            args.haproxy_config
-        )
-    except (OSError) as exc:
-        logger.critical(exc)
-        exit(1)
-
-    # Combine the socket and certificate paths of the arguments and config
-    # files in the sockets dictionary.
-    for i, paths in enumerate(conf_cert_paths):
-        for path in paths:
-            if path in mapping:
-                mapping[path] = unique(
-                    mapping[path] + conf_haproxy_sockets[i],
-                    preserve_order=False
-                )
-            else:
-                mapping[path] = conf_haproxy_sockets[i]
-
-    logger.debug("Paths to socket mapping: %s", str(mapping))
-    return mapping
 
 
 if __name__ == '__main__':
