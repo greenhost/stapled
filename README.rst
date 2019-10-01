@@ -52,12 +52,27 @@ From github (for developers)
     virtualenv -p python3 env/
     # Load the virtualenv
     source env/bin/activate
-    # Install the current directory with pip. This allows you to edit the code
-    pip install -e .
 
 Every time you want to run ``stapled`` you will need to run
-``source env/bin/activate`` to load the virtualenv first. Alternatively you can
-start the daemon by running ``stapled``
+``source env/bin/activate`` to load the virtualenv first. Then you run stapled
+as a module:
+
+.. code-block:: bash
+
+    pythom -m stapled [arguments]
+
+Alternatively you can start the daemon by running ``stapled`` without even
+activating the virtualenv if you install it like this:
+
+.. code-block:: bash
+    # Install dependencies..
+    pip3 install asn1crypto ocspbuilder oscrypto certvalidator
+    # Install the current directory with pip. This install the project dir as
+    # a console script allowing you to run `stapled`,
+    pip3 install -e .
+
+Note that this means you have to keep track of the installed dependencies
+yourself!
 
 Upgrading
 ---------
@@ -78,7 +93,7 @@ the following:
     # Clone submodules too
     git submodule upgrade --init --recursive
     # Install the current directory with pip. This allows you to edit the code
-    pip install -e . --upgrade
+    pip3 install -e . --upgrade
 
 Troubleshooting
 ===============
@@ -143,7 +158,8 @@ by running one or more of the following ``make`` commands.
     # All of the above
     make all
 
-Everything is tested under Debian Stretch, your mileage may vary.
+Everything is tested under Debian Stretch (Python 3.5 and Debian Buster
+(Python 3.7), on other distros :abbr:`YMMV (Your Mileage May Vary)`.
 
 Docker build
 ------------
@@ -159,7 +175,7 @@ build a package.
 
     make docker-all
 
-Remove any previous docker image and/or container named `stapled` then buil the
+Remove any previous docker image and/or container named `stapled` then build the
 image with the same dependencies we used. Then compile the packages, then
 place them in the `./docker-dist` dir.
 

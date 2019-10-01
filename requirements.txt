@@ -1,35 +1,35 @@
 # Project deps
 ConfigArgParse==0.14.0
 future==0.17.1
-cffi==1.12.2
+cffi==1.12.3
 
 ## python-daemon deps
 lockfile==0.12.2
-docutils==0.14
+docutils==0.15.2
 python-daemon==2.2.3
 
 # Packaging and distribution
-twine==1.13.0
-tqdm==4.31.1
+twine==1.14.0
+tqdm==4.35.0
 idna==2.8
-certifi==2018.11.29
+certifi==2019.6.16
 chardet==3.0.4
 pkginfo==1.5.0.1
-requests==2.21.0
+requests==2.22.0
 requests-toolbelt==0.9.1
-urllib3==1.24.1
+urllib3==1.25.3
 stdeb==0.8.5
-wheel==0.33.1
+wheel==0.33.6
 
 # Docs
-Sphinx==1.8.4
+Sphinx==2.2.0
 sphinx-argparse==0.2.5
 sphinx-rtd-theme==0.4.3
 
 # Linting
-pydocstyle==3.0.0
+pydocstyle==4.0.1
 pycodestyle==2.5.0
-pylint==2.3.0
+pylint==2.3.1
 
 # Testing
-pytest==4.3.0
+pytest==5.1.2
