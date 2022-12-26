@@ -19,7 +19,7 @@ requests==2.22.0
 requests-toolbelt==0.9.1
 urllib3==1.25.3
 stdeb==0.8.5
-wheel==0.33.6
+wheel==0.38.1
 
 # Docs
 Sphinx==2.2.0
